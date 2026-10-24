@@ -1,0 +1,234 @@
+{
+  "contact": {
+    "name": "Joseph Akinwole",
+    "role": "Full Stack Engineer",
+    "location": "Ondo, Nigeria",
+    "email": "joseph.akinwole.me@gmail.com",
+    "phone": "+2347036857945",
+    "website": "https://github.com/Joebim",
+    "github": "https://github.com/Joebim",
+    "profiles": [
+      { "label": "GitHub", "short": "GITHUB", "url": "https://github.com/Joebim" },
+      { "label": "LinkedIn", "short": "LINKEDIN", "url": "https://www.linkedin.com/in/joseph-akinwole-71415a198/" },
+      { "label": "dev.to", "short": "DEV.TO", "url": "https://dev.to/joebim" },
+      { "label": "X / Twitter", "short": "X", "url": "https://twitter.com/akinwole_joseph" }
+    ]
+  },
+  "profile": {
+    "heroIntro": "I build secure financial tools, thoughtful product interfaces, and useful web experiences.",
+    "aboutLead": "I’m Joseph, a full stack engineer based in Ondo, Nigeria. I build polished interfaces and dependable application features for products people use every day.",
+    "aboutParagraphs": [
+      "At Precise Financial Systems, I work on core modules for financial management software used by banks and government institutions. My experience spans server-rendered UI, secure APIs, real-time transaction workflows, and reliable high-availability applications.",
+      "Previously, I built client-facing applications at Glimere, worked across a 15-person product team at HNG, and contributed to web projects at CORS and JDLab. I care about clear interfaces, maintainable components, performance, and the details that make software easier to use."
+    ]
+  },
+  "projects": [
+    {
+      "title": "Real Estate Website",
+      "year": "2024",
+      "category": "Product experience",
+      "description": "A considered property platform to explore listings, discover the details, and connect with the people behind them.",
+      "technologies": ["Vue", "Tailwind CSS", "Pinia", "REST API"],
+      "accent": "#c1f071",
+      "kind": "realty"
+    },
+    {
+      "title": "Health Dashboard",
+      "year": "2024",
+      "category": "Data & wellbeing",
+      "description": "A clear, caring home for personal health metrics, progress tracking, and tailored insights.",
+      "technologies": ["React", "Tailwind CSS", "REST API"],
+      "accent": "#aa9dff",
+      "kind": "health",
+      "url": "https://github.com/Joebim/Health-Dashboard",
+      "linkLabel": "VIEW SOURCE CODE"
+    },
+    {
+      "title": "Delve",
+      "year": "JUN—SEP ’24",
+      "category": "Language learning · AI game",
+      "description": "Designed core game interfaces for a language-learning AI game, contributing to a 40% increase in daily active users. Built quest-management tools for admins and helped a 15-person cross-functional team ship 30% faster.",
+      "technologies": ["Next.js", "Tailwind CSS", "Zustand", "shadcn/ui"],
+      "accent": "#ffaf81",
+      "kind": "language"
+    },
+    {
+      "title": "DevLinks",
+      "year": "JUL—OCT ’24",
+      "category": "Link-sharing app",
+      "description": "Designed an interactive link-sharing experience that lifted engagement by 25%. Reusable UI, state management, and Firebase authentication and live sync helped keep the app consistent and responsive.",
+      "technologies": ["Next.js", "Tailwind CSS", "Firebase", "Context API"],
+      "accent": "#90c8ff",
+      "kind": "links",
+      "url": "https://github.com/Joebim/hng_link_sharing_app",
+      "linkLabel": "VIEW SOURCE CODE"
+    },
+    {
+      "title": "Pugabull",
+      "year": "2024",
+      "category": "Community & cause",
+      "description": "A meme coin for good, using laughter and internet culture to help move positive change forward.",
+      "technologies": ["React", "Tailwind CSS", "REST API"],
+      "accent": "#c4f07b",
+      "kind": "meme",
+      "url": "https://pugabull-website.vercel.app",
+      "linkLabel": "VISIT LIVE PROJECT"
+    },
+    {
+      "title": "Couch Cake UI",
+      "year": "2023",
+      "category": "Interactive commerce",
+      "description": "An interior showcase with a playful, realistic three-dimensional preview for furniture.",
+      "technologies": ["React", "Tailwind CSS", "REST API"],
+      "accent": "#f3bf7a",
+      "kind": "interior",
+      "url": "https://github.com/Joebim/interior-ui",
+      "linkLabel": "VIEW SOURCE CODE"
+    },
+    {
+      "title": "Glimere",
+      "year": "2023",
+      "category": "Fashion community",
+      "description": "A fashion-first social space for personal style, discovery, and creative connection.",
+      "technologies": ["React", "Tailwind CSS", "Node.js"],
+      "accent": "#e89dcb",
+      "kind": "fashion",
+      "url": "https://github.com/Joebim/Glimere_Official",
+      "linkLabel": "VIEW SOURCE CODE"
+    },
+    {
+      "title": "Fontasie",
+      "year": "2023",
+      "category": "Creative tool",
+      "description": "A playful type-animation toolkit for composing expressive motion from reusable code patterns.",
+      "technologies": ["React", "Tailwind CSS", "Sass"],
+      "accent": "#f57f5d",
+      "kind": "type"
+    },
+    {
+      "title": "CORS",
+      "year": "2022",
+      "category": "Service brand",
+      "description": "A clear digital front door for a home and office cleaning service.",
+      "technologies": ["React", "Material UI", "Redux"],
+      "accent": "#a3cfd1",
+      "kind": "impact"
+    }
+  ],
+  "additionalProjects": [
+    { "name": "Products Dashboard", "note": "Operations, orders & inventory", "year": "2023", "stack": "Next.js · Context API · Sass" },
+    { "name": "Analytics Dashboard", "note": "Data visualization & insights", "year": "2023", "stack": "Angular · Material UI · Sass", "url": "https://github.com/Joebim/Angular-Dashboard" },
+    { "name": "JDLab School Portal", "note": "A complete school management portal", "year": "2021", "stack": "React · Bootstrap · Redux" },
+    { "name": "Simple Portfolio Landing", "note": "A portfolio landing page with animation", "year": "—", "stack": "React · JavaScript · CSS", "url": "https://github.com/Joebim/Simple-Portfolio-Landing" },
+    { "name": "Login UI", "note": "Responsive sign-in and sign-up screens", "year": "—", "stack": "HTML · CSS · JavaScript", "url": "https://github.com/Joebim/Login-UI" },
+    { "name": "Web UI Components", "note": "A responsive, themed component store", "year": "—", "stack": "React · Styled Components · Tailwind CSS", "url": "https://github.com/Joebim/Web-UI" },
+    { "name": "Xender Web Clone", "note": "A responsive interface with extra features", "year": "—", "stack": "React · Tailwind CSS · Sass", "url": "https://github.com/Joebim/Xender-Web-Clone" },
+    { "name": "Font Manager", "note": "Dynamic previews of font properties", "year": "—", "stack": "React · Tailwind CSS · Sass", "url": "https://github.com/Joebim/Font-Manager" },
+    { "name": "Task List", "note": "A lightweight to-do app for mobile", "year": "—", "stack": "React Native · Expo", "url": "https://github.com/Joebim/Task-List" }
+  ],
+  "experience": [
+    {
+      "company": "Precise Financial Systems",
+      "role": "Software Developer",
+      "dates": "2025—Present",
+      "location": "Yaba, Lagos State · Hybrid",
+      "achievements": [
+        "Designed and implemented core modules for financial management software used by banks and government institutions, reducing manual processing time by 30%.",
+        "Built reusable server-side-rendered components for tables, lists, and approval workflows, improving performance and maintainability across modules.",
+        "Developed secure APIs integrated with financial applications for real-time processing of thousands of transactions daily.",
+        "Contributed to application reliability and scalability in high-availability environments, supporting 99.9% uptime."
+      ]
+    },
+    {
+      "company": "Glimere",
+      "role": "Frontend Engineer",
+      "dates": "2023—2025",
+      "location": "Akure, Ondo State",
+      "achievements": [
+        "Implemented client-facing interfaces and strengthened design consistency across more than three projects.",
+        "Optimized 3D and image assets, reducing load time by 20% and increasing user engagement.",
+        "Tested new features and helped reduce bug reports by half.",
+        "Implemented a Node.js and MongoDB server supporting client and admin applications.",
+        "Used Git to improve collaboration and deployment efficiency within a 10-person team."
+      ]
+    },
+    {
+      "company": "HNG",
+      "role": "Frontend Developer Intern",
+      "dates": "2024",
+      "location": "Akure, Ondo State",
+      "achievements": [
+        "Built reusable boilerplate components, improving consistency and speeding development by 30%.",
+        "Developed the DevLinks link-sharing interface, contributing to a 25% increase in user engagement.",
+        "Designed and implemented core interfaces for Delve, a language-learning AI 3D game.",
+        "Identified and fixed more than 200 UI bugs to improve stability and performance."
+      ]
+    },
+    {
+      "company": "Core Outreach Services (CORS)",
+      "role": "Frontend Developer",
+      "dates": "2022—2023",
+      "location": "Dallas, Texas · Remote",
+      "achievements": [
+        "Maintained more than eight deployed projects to support reliable performance and user satisfaction.",
+        "Resolved browser compatibility issues to improve cross-device usability.",
+        "Translated design files into accessible, interactive interfaces, improving user engagement metrics by 15%."
+      ]
+    },
+    {
+      "company": "JDLab",
+      "role": "Frontend Developer",
+      "dates": "2021—2023",
+      "location": "Minna, Niger State",
+      "achievements": [
+        "Improved website performance through efficient AJAX requests and resource management.",
+        "Integrated API calls in collaboration with backend developers to improve data flow and interaction.",
+        "Enhanced application state management for a smoother user flow and more efficient development.",
+        "Implemented payments for students and applicants, contributing to 30% revenue growth in the first year."
+      ]
+    }
+  ],
+  "skillGroups": [
+    {
+      "title": "Frontend",
+      "items": [
+        { "name": "JavaScript & TypeScript", "note": "Modern, typed application code" },
+        { "name": "React & Next.js", "note": "Component-driven, server-rendered UI" },
+        { "name": "Vue & Nuxt 3", "note": "Progressive web applications" },
+        { "name": "Angular", "note": "Dashboard and application interfaces" },
+        { "name": "HTML & CSS", "note": "Responsive, semantic layouts" },
+        { "name": "Redux & Zustand", "note": "Predictable application state" },
+        { "name": "Tailwind & Sass", "note": "Consistent, responsive styling" },
+        { "name": "Material UI & shadcn/ui", "note": "Reusable interface systems" },
+        { "name": "Accessibility & responsive UI", "note": "Inclusive, cross-device experiences" },
+        { "name": "Jest & Enzyme", "note": "Component and interface testing" }
+      ]
+    },
+    {
+      "title": "Backend",
+      "items": [
+        { "name": "Node.js & Express", "note": "Application services and APIs" },
+        { "name": "C# & SQL", "note": "Application logic and relational data" },
+        { "name": "Secure REST APIs", "note": "Real-time financial integrations" },
+        { "name": "MongoDB", "note": "Document data and services" },
+        { "name": "Firebase", "note": "Authentication and live data" },
+        { "name": "AWS", "note": "Cloud platform experience" },
+        { "name": "Server-rendered workflows", "note": "Tables, approvals, and dashboards" },
+        { "name": "Payment integrations", "note": "Student and applicant payment flows" }
+      ]
+    },
+    {
+      "title": "Design",
+      "items": [
+        { "name": "Figma", "note": "Interface layouts and prototypes" },
+        { "name": "Adobe Illustrator", "note": "Vector artwork and visual assets" },
+        { "name": "Design-to-code", "note": "Accurate, accessible interface builds" },
+        { "name": "Reusable design systems", "note": "Consistent patterns across projects" },
+        { "name": "3D & image optimization", "note": "Lighter, faster visual experiences" },
+        { "name": "Usability & browser QA", "note": "Practical review across devices" },
+        { "name": "Micro-interactions", "note": "Motion with purpose and clarity" }
+      ]
+    }
+  ],
+  "softSkills": ["Problem-solving", "Team collaboration", "Adaptability", "Attention to detail"]
+}

@@ -1,0 +1,235 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0b0b;
+  --color-paper: #eeeae5;
+  --color-quiet: #96918d;
+  --color-muted: #66615d;
+  --color-line: rgba(238, 234, 229, 0.13);
+  --color-ember: #f36d45;
+  --color-ember-soft: #ffb490;
+  --font-mono: var(--font-mono), 'DM Mono', monospace;
+  --font-sans: var(--font-sans), 'Manrope', sans-serif;
+}
+
+/* Base custom font & scrollbar behavior */
+:root {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+  scroll-padding-top: 92px;
+}
+
+html {
+  min-width: 320px;
+  background-color: #0b0b0b;
+  color: #eeeae5;
+  font-family: var(--font-sans), 'Manrope', sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  background-color: #0b0b0b;
+  color: #eeeae5;
+}
+
+body.menu-is-open {
+  overflow: hidden;
+}
+
+::selection {
+  color: #0b0b0b;
+  background-color: #ffb490;
+}
+
+/* Scroll reveal transition */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition: opacity 0.75s cubic-bezier(0.22, 0.61, 0.36, 1),
+              transform 0.75s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+/* Kinetic Line-in Animation */
+@keyframes hero-line-in {
+  0% {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Ticker loop */
+@keyframes ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 42s linear infinite;
+}
+
+/* Icon Nudge Down */
+@keyframes nudge-down {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.animate-nudge-down {
+  animation: nudge-down 1.4s ease-in-out infinite;
+}
+
+/* Slow spin */
+@keyframes slow-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-slow-spin {
+  animation: slow-spin 24s linear infinite;
+}
+
+/* Cursor Click Shockwave Ripple */
+@keyframes cursor-ripple {
+  0% {
+    width: 16px;
+    height: 16px;
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  100% {
+    width: 68px;
+    height: 68px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.4);
+  }
+}
+
+/* Contact orbit gentle turn */
+@keyframes contact-turn {
+  from {
+    transform: rotate(-6deg) scale(0.98);
+  }
+  to {
+    transform: rotate(6deg) scale(1.02);
+  }
+}
+
+.animate-contact-turn {
+  animation: contact-turn 12s ease-in-out infinite alternate;
+}
+
+/* Timeline Glowing Flowing Beam */
+@keyframes timeline-beam {
+  0% {
+    top: -160px;
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  85% {
+    opacity: 0.95;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+.animate-timeline-beam {
+  animation: timeline-beam 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes timeline-node-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(243, 109, 69, 0.6), 0 0 14px rgba(243, 109, 69, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(243, 109, 69, 0), 0 0 24px rgba(243, 109, 69, 0.8);
+  }
+}
+
+.animate-node-pulse {
+  animation: timeline-node-pulse 2.2s ease-in-out infinite;
+}
+
+/* Accessible reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* Restrained pointer ambience inspired by 21st.dev glow treatments. */
+.hero-pointer-spotlight {
+  background: radial-gradient(
+    360px circle at var(--hero-glow-x, 50%) var(--hero-glow-y, 38%),
+    rgba(243, 109, 69, 0.105),
+    transparent 78%
+  );
+  opacity: var(--hero-glow-opacity, 0);
+  transition: opacity 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero-portrait-stage {
+  --portrait-scale: 1;
+  transform: perspective(1100px)
+    translate3d(calc(-50% + var(--portrait-x, 0px)), var(--portrait-y, 0px), 0)
+    rotateX(var(--portrait-rx, 0deg))
+    rotateY(var(--portrait-ry, 0deg));
+  scale: var(--portrait-scale, 1);
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  will-change: transform, scale;
+  transition: scale 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 767px) {
+  .hero-portrait-stage {
+    --portrait-scale: 0.95;
+    transform: translate3d(-50%, 0, 0);
+    will-change: auto;
+  }
+
+  .hero-pointer-spotlight {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-pointer-spotlight {
+    display: none !important;
+  }
+
+  .hero-portrait-stage {
+    transform: translate3d(-50%, 0, 0) !important;
+    scale: 1 !important;
+    transition: none !important;
+    will-change: auto;
+  }
+}
