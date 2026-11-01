@@ -198,11 +198,24 @@ export async function writeLocalPortfolio(data: PortfolioContent): Promise<void>
   await fs.writeFile(LOCAL_PORTFOLIO_PATH, JSON.stringify(compatiblePayload, null, 2), 'utf-8');
 }
 
+function withTimeout<T>(promise: Promise<T>, ms = 4000, label = 'Firestore fetch'): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 export async function getPortfolioContent(): Promise<{ source: 'firestore' | 'local'; data: PortfolioContent }> {
   const db = getFirestoreDb();
   if (db) {
     try {
-      const doc = await db.collection('content').doc('portfolio').get();
+      const doc = await withTimeout(
+        db.collection('content').doc('portfolio').get(),
+        4000,
+        'Firestore portfolio get'
+      );
       if (doc.exists) {
         const raw = doc.data();
         const normalized = normalizePortfolio(raw);

@@ -38,6 +38,15 @@ function generateSlug(title: string): string {
     .slice(0, 80);
 }
 
+function withTimeout<T>(promise: Promise<T>, ms = 4000, label = 'Firestore operation'): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 // ---------------------------------------------------------------------------
 // Read
 // ---------------------------------------------------------------------------
@@ -49,7 +58,11 @@ export async function getAllBlogArticles(): Promise<{
   const db = getFirestoreDb();
   if (db) {
     try {
-      const snapshot = await db.collection('blogs').orderBy('publishedAt', 'desc').get();
+      const snapshot = await withTimeout(
+        db.collection('blogs').orderBy('publishedAt', 'desc').get(),
+        4000,
+        'Firestore blogs query'
+      );
       if (!snapshot.empty) {
         const articles: BlogArticle[] = [];
         snapshot.forEach((doc) => {
@@ -64,7 +77,7 @@ export async function getAllBlogArticles(): Promise<{
   }
 
   try {
-    const devToArticles = await getArticles();
+    const devToArticles = await withTimeout(getArticles(), 4000, 'DEV.to articles fetch');
     return { source: 'devto', articles: devToArticles.map(devToToBlogArticle) };
   } catch (err) {
     console.error('[blogController] Failed to fetch articles:', err);
@@ -76,7 +89,11 @@ export async function getBlogArticleBySlug(slug: string): Promise<BlogArticle | 
   const db = getFirestoreDb();
   if (db) {
     try {
-      const snapshot = await db.collection('blogs').where('slug', '==', slug).limit(1).get();
+      const snapshot = await withTimeout(
+        db.collection('blogs').where('slug', '==', slug).limit(1).get(),
+        4000,
+        'Firestore blog slug query'
+      );
       if (!snapshot.empty) {
         const parsed = BlogArticleSchema.safeParse(snapshot.docs[0].data());
         if (parsed.success) return parsed.data;
@@ -88,10 +105,10 @@ export async function getBlogArticleBySlug(slug: string): Promise<BlogArticle | 
 
   // Fallback to DEV.to
   try {
-    const list = await getArticles();
+    const list = await withTimeout(getArticles(), 4000, 'DEV.to articles fetch');
     const meta = list.find((a) => a.slug === slug);
     if (!meta) return null;
-    const full = await getArticle(meta.id);
+    const full = await withTimeout(getArticle(meta.id), 4000, 'DEV.to single article fetch');
     return devToToBlogArticle(full);
   } catch (err) {
     console.error(`[blogController] Error fetching blog slug "${slug}":`, err);
