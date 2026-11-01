@@ -13,7 +13,6 @@ const dmMono = DM_Mono({
 });
 
 const manrope = Manrope({
-  weight: ['400', '500', '600', '700', '800'],
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',

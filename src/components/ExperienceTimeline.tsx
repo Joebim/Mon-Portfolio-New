@@ -33,7 +33,7 @@ const enrichedExperience: ExperienceItem[] = [
   },
   {
     company: 'Glimere',
-    role: 'Frontend Engineer',
+    role: 'Fullstack Engineer',
     dates: '2023 — 2025',
     location: 'Akure, Ondo State',
     type: 'Product Studio & Interactive Web',
@@ -97,10 +97,32 @@ const enrichedExperience: ExperienceItem[] = [
   }
 ];
 
-export function ExperienceTimeline() {
+export function ExperienceTimeline({ experiences }: { experiences?: any[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Merge live API / Firestore experiences with enriched presentation data
+  const timelineItems: ExperienceItem[] = (experiences && experiences.length > 0)
+    ? experiences.map((exp: any, i: number) => {
+        const enriched = enrichedExperience.find(
+          (e) => e.company.toLowerCase() === exp.company.toLowerCase()
+        ) || enrichedExperience[i];
+
+        return {
+          company: exp.company,
+          role: exp.role,
+          dates: exp.dates,
+          location: exp.location,
+          type: enriched?.type || 'Engineering & Development',
+          summary: exp.achievements?.[0] || enriched?.summary || 'Designed and implemented core software features.',
+          highlights: (exp.achievements && exp.achievements.length > 1)
+            ? exp.achievements.slice(1)
+            : (enriched?.highlights || exp.achievements || []),
+          technologies: enriched?.technologies || ['TypeScript', 'React', 'Node.js', 'REST APIs'],
+        };
+      })
+    : enrichedExperience;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -193,7 +215,7 @@ export function ExperienceTimeline() {
 
       {/* Timeline entries list */}
       <div className="flex flex-col gap-10 md:gap-14">
-        {enrichedExperience.map((item, index) => {
+        {timelineItems.map((item, index) => {
           const isItemActive = index <= activeIndex;
           const isCurrentFocus = index === activeIndex;
           const indexNum = String(index + 1).padStart(2, '0');

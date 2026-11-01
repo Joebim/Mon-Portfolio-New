@@ -1,14 +1,12 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import josephPortraitCropped from '../../public/joseph-portrait-cropped.png';
-import { josephPortraitCroppedBlurDataURL } from '../lib/image-placeholders';
 import { Reveal } from './Reveal';
-import { ParticleCanvas } from './ParticleCanvas';
 import { Magnetic } from './Magnetic';
 import { TechText } from './TechText';
-import { portfolio } from '../data';
+import DitherVeil from './DitherVeil';
+import { portfolio as defaultPortfolio } from '../data';
+import type { PortfolioContent } from '../lib/schemas';
 
 function DownArrow() {
   return (
@@ -47,181 +45,60 @@ function useSyncFontSize(ref: React.RefObject<HTMLDivElement | null>, defaultSiz
   return size;
 }
 
-export function Hero() {
+export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioContent | any }) {
   const desktopEngineerRef = useRef<HTMLDivElement>(null);
   const desktopFontSize = useSyncFontSize(desktopEngineerRef, 108);
 
   const mobileEngineerRef = useRef<HTMLDivElement>(null);
   const mobileFontSize = useSyncFontSize(mobileEngineerRef, 44);
-  const heroRef = useRef<HTMLElement>(null);
-  const portraitRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const hero = heroRef.current;
-    const portrait = portraitRef.current;
-    if (!hero || !portrait) return;
-
-    const finePointer = window.matchMedia('(min-width: 769px) and (pointer: fine)');
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (!finePointer.matches || reducedMotion.matches) return;
-
-    const current = { x: 0, y: 0, glowX: 0, glowY: 0, opacity: 0 };
-    const target = { ...current };
-    let frame = 0;
-
-    const animate = () => {
-      current.x += (target.x - current.x) * 0.14;
-      current.y += (target.y - current.y) * 0.14;
-      current.glowX += (target.glowX - current.glowX) * 0.14;
-      current.glowY += (target.glowY - current.glowY) * 0.14;
-      current.opacity += (target.opacity - current.opacity) * 0.14;
-
-      portrait.style.setProperty('--portrait-x', `${current.x * 8}px`);
-      portrait.style.setProperty('--portrait-y', `${current.y * 5}px`);
-      portrait.style.setProperty('--portrait-rx', `${-current.y * 1.6}deg`);
-      portrait.style.setProperty('--portrait-ry', `${current.x * 1.9}deg`);
-      hero.style.setProperty('--hero-glow-x', `${current.glowX}px`);
-      hero.style.setProperty('--hero-glow-y', `${current.glowY}px`);
-      hero.style.setProperty('--hero-glow-opacity', `${current.opacity}`);
-
-      const distance =
-        Math.abs(target.x - current.x) +
-        Math.abs(target.y - current.y) +
-        Math.abs(target.glowX - current.glowX) / Math.max(1, hero.clientWidth) +
-        Math.abs(target.glowY - current.glowY) / Math.max(1, hero.clientHeight) +
-        Math.abs(target.opacity - current.opacity);
-
-      if (distance < 0.003) {
-        Object.assign(current, target);
-        frame = 0;
-        return;
-      }
-      frame = window.requestAnimationFrame(animate);
-    };
-
-    const schedule = () => {
-      if (!frame) frame = window.requestAnimationFrame(animate);
-    };
-
-    const reset = () => {
-      target.x = 0;
-      target.y = 0;
-      target.opacity = 0;
-      portrait.style.setProperty('--portrait-scale', '1');
-      schedule();
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (reducedMotion.matches || !finePointer.matches) return;
-      if (event.pointerType !== 'mouse' && event.pointerType !== 'pen') return;
-
-      const eventTarget = event.target;
-      if (eventTarget instanceof Element && eventTarget.closest('a, button, [role="button"]')) {
-        reset();
-        return;
-      }
-
-      const heroBounds = hero.getBoundingClientRect();
-      if (!heroBounds.width || !heroBounds.height) return;
-      target.x = ((event.clientX - heroBounds.left) / heroBounds.width - 0.5) * 2;
-      target.y = ((event.clientY - heroBounds.top) / heroBounds.height - 0.5) * 2;
-      target.glowX = event.clientX - heroBounds.left;
-      target.glowY = event.clientY - heroBounds.top;
-      target.opacity = 0.9;
-
-      const portraitBounds = portrait.getBoundingClientRect();
-      const faceX = (event.clientX - portraitBounds.left) / portraitBounds.width;
-      const faceY = (event.clientY - portraitBounds.top) / portraitBounds.height;
-      const overFace = faceX > 0.34 && faceX < 0.69 && faceY > 0.08 && faceY < 0.52;
-      portrait.style.setProperty('--portrait-scale', overFace ? '1.025' : '1');
-      schedule();
-    };
-
-    const handleMotionPreference = () => {
-      if (reducedMotion.matches || !finePointer.matches) reset();
-    };
-
-    const handleVisibility = () => {
-      if (document.hidden) reset();
-    };
-
-    hero.addEventListener('pointermove', handlePointerMove, { passive: true });
-    hero.addEventListener('pointerleave', reset);
-    window.addEventListener('blur', reset);
-    document.addEventListener('visibilitychange', handleVisibility);
-    finePointer.addEventListener('change', handleMotionPreference);
-    reducedMotion.addEventListener('change', handleMotionPreference);
-
-    return () => {
-      hero.removeEventListener('pointermove', handlePointerMove);
-      hero.removeEventListener('pointerleave', reset);
-      window.removeEventListener('blur', reset);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      finePointer.removeEventListener('change', handleMotionPreference);
-      reducedMotion.removeEventListener('change', handleMotionPreference);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, []);
 
   return (
     <section
-      ref={heroRef}
-      className="relative isolate h-[100svh] min-h-[600px] md:h-[max(800px,100svh)] md:min-h-[min(1050px,max(750px,100svh))] overflow-hidden border-b border-[rgba(238,234,229,0.13)] bg-[#0b0b0b] bg-[radial-gradient(ellipse_at_50%_40%,rgba(243,109,69,0.12),transparent_60%),radial-gradient(ellipse_at_20%_80%,rgba(30,20,16,0.6),transparent_60%)]"
+      className="relative isolate h-[100svh] min-h-[600px] md:h-[max(800px,100svh)] md:min-h-[min(1050px,max(750px,100svh))] overflow-hidden border-b border-[rgba(238,234,229,0.13)] bg-[#0B0B0B]"
       id="home"
       aria-labelledby="hero-title"
     >
-      {/* Precision architectural background grid */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(236,215,195,0.032)_1px,transparent_1px),linear-gradient(90deg,rgba(236,215,195,0.032)_1px,transparent_1px)] bg-[size:93px_93px] [mask-image:linear-gradient(to_bottom,transparent,#000_15%,#000_80%,transparent)]"
-        aria-hidden="true"
-      />
-
-      {/* Fluid interactive particle constellation canvas */}
-      <ParticleCanvas />
-
       {/* Desktop Top Left: Editorial Context / Greeting (md+) */}
-      <div className="hidden md:block absolute z-20 md:top-[220px] lg:top-[250px] md:left-12 lg:left-16 max-w-[320px]">
+      <div className="hidden md:block absolute z-20 md:top-[220px] lg:top-[250px] md:left-12 lg:left-16 max-w-[380px] lg:max-w-[420px]">
         <Reveal delay={120}>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-[0.2em] text-[#ffb490] mb-2.5">
-            <span className="text-base leading-none text-[#f36d45]">*</span>
+          <div className="flex items-center gap-2 text-[13px] md:text-sm lg:text-[15px] font-mono uppercase tracking-[0.2em] text-[#ffb490] mb-3">
+            <span className="text-lg lg:text-xl leading-none text-[#f36d45]">*</span>
             <span>HELLO, I’M JOSEPH</span>
           </div>
-          <p className="font-mono text-[10px] sm:text-[11px] uppercase tracking-[0.12em] leading-[1.65] text-[#9e9690]">
-            SPECIALIZING IN PRODUCTION-GRADE FINANCIAL TOOLS, HIGH-AVAILABILITY CLOUD APIS, AND POLISHED USER INTERFACES.
+          <p className="font-mono text-[12px] md:text-[13px] lg:text-[14px] uppercase tracking-[0.1em] leading-[1.65] text-[#a8a19b]">
+            I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.
           </p>
-          <div className="mt-3 flex items-center gap-2 font-mono text-[9px] uppercase tracking-widest text-[#736c66]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45]" />
+          <div className="mt-3.5 flex items-center gap-2 font-mono text-[11px] lg:text-[12px] uppercase tracking-widest text-[#736c66]">
+            <span className="w-2 h-2 rounded-full bg-[#f36d45]" />
             ONDO, NIGERIA • WORLDWIDE
           </div>
         </Reveal>
       </div>
 
-      {/* Soft atmospheric radial halo behind portrait, blending seamlessly through navbar */}
+      {/* Middle Portrait: Interactive DitherVeil on desktop; atmospheric on mobile */}
       <div
-        className="absolute inset-0 z-[2] pointer-events-none bg-[radial-gradient(ellipse_at_50%_38%,rgba(243,109,69,0.36),rgba(32,18,14,0.65)_46%,transparent_72%)]"
-        aria-hidden="true"
-      />
-
-      {/* Fine-pointer ember light, inspired by 21st.dev spotlight hero treatments */}
-      <div className="hero-pointer-spotlight absolute inset-0 z-[3] pointer-events-none" aria-hidden="true" />
-
-      {/* Middle Portrait: Towering on desktop; crisp atmospheric portrait on mobile */}
-      <div
-        ref={portraitRef}
-        className="hero-portrait-stage absolute z-[5] bottom-0 left-1/2 h-[calc(100%-52px)] sm:h-[calc(100%-56px)] md:h-[calc(100%-60px)] lg:h-[calc(100%-64px)] max-h-[1200px] aspect-[2351/1916] pointer-events-none select-none flex items-end justify-center origin-bottom max-md:opacity-40"
-        aria-hidden="true"
+        className="hero-portrait-stage absolute z-[5] bottom-0 left-1/2 h-[calc(100%-52px)] sm:h-[calc(100%-56px)] md:h-[calc(100%-60px)] lg:h-[calc(100%-64px)] max-h-[1200px] aspect-[2351/1916] pointer-events-auto select-none flex items-end justify-center origin-bottom max-md:opacity-60"
       >
-        {/* Cutout Portrait centered and towering toward nav links */}
-        <Image
-          src={josephPortraitCropped}
-          placeholder="blur"
-          blurDataURL={josephPortraitCroppedBlurDataURL}
-          alt="Joseph Akinwole — Full Stack Engineer"
-          width={2351}
-          height={1916}
-          priority
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
-          className="relative z-10 w-full h-full object-contain object-bottom filter drop-shadow-[0_28px_80px_rgba(0,0,0,0.95)] transition-all duration-700 animate-[hero-line-in_1.1s_cubic-bezier(0.16,1,0.3,1)_0.15s_both]"
+        <DitherVeil
+          src="/joseph-portrait-textured-new.png"
+          pattern="floyd"
+          pixelSize={2}
+          inkColor="#0B0B0B"
+          paperColor="#f4f1ea"
+          revealRadius={200}
+          softness={0.6}
+          linger={1}
+          fit="contain"
+          rimColor="#a78bfa"
+          palette="duotone"
+          levels={2}
+          contrast={1.15}
+          brightness={0}
+          rim={0}
+          reverse={false}
+          wander={false}
+          clickBurst={true}
+          className="relative z-10 w-full h-full filter"
         />
 
         {/* Bottom grounding vignette so torso dissolves seamlessly into base border and text */}
@@ -231,22 +108,55 @@ export function Hero() {
         />
       </div>
 
-      {/* Desktop Right Column: Intro text + Explore The Work Button (md+) */}
-      <div className="hidden md:flex absolute z-20 md:top-[22%] lg:top-[26%] md:right-12 lg:right-16 xl:right-24 max-w-[360px] flex-col items-center">
+      {/* Desktop Right Column: Latest Article Card + Explore The Work Button (md+) */}
+      <div className="hidden md:flex absolute z-20 md:top-[16%] lg:top-[18%] xl:top-[20%] md:right-12 lg:right-16 xl:right-24 max-w-[340px] lg:max-w-[360px] flex-col items-center">
         <Reveal delay={240}>
-          <div className="w-full">
-            <p className="text-[18px] lg:text-[20px] font-semibold text-[#ece8e3] tracking-tight leading-[1.35] mb-2.5">
-              {portfolio.profile.heroIntro}
-            </p>
-            <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.2em] uppercase text-[#f36d45]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45] inline-block animate-pulse" />
-              <span>ENGINEERED FOR SCALE</span>
+          <a
+            href={portfolio.latestArticle?.url ?? 'https://dev.to/joebim'}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-cursor="READ"
+            className="group block w-full text-left rounded-xl border border-[rgba(238,234,229,0.12)] bg-[#121110]/85 backdrop-blur-md p-4 transition-all duration-300 hover:border-[#f36d45]/60 hover:bg-[#161413] hover:shadow-[0_16px_36px_rgba(0,0,0,0.7),0_0_30px_rgba(243,109,69,0.12)] hover:-translate-y-0.5"
+            aria-label={`Read article: ${portfolio.latestArticle?.title ?? 'Latest article'}`}
+          >
+            {/* Header row: badge + date */}
+            <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-[rgba(238,234,229,0.08)]">
+              <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45] inline-block animate-pulse" />
+                <span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#ffb490] font-semibold">
+                  LATEST ARTICLE
+                </span>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-wider text-[#736c66]">
+                {(portfolio.latestArticle?.date || portfolio.latestArticle?.publishedAt || 'LATEST')} • {(portfolio.latestArticle?.readingTime || '3 MIN READ')}
+              </span>
             </div>
-          </div>
+
+            {/* Title */}
+            <h3 className="text-[14.5px] lg:text-[15.5px] font-bold text-[#ece8e3] tracking-tight leading-[1.3] group-hover:text-[#f36d45] transition-colors">
+              {portfolio.latestArticle?.title}
+            </h3>
+
+            {/* Synopsis */}
+            <p className="mt-2 text-[11.5px] leading-[1.55] text-[#9e9690] line-clamp-2">
+              {portfolio.latestArticle?.description}
+            </p>
+
+            {/* Footer row: platform + link callout */}
+            <div className="mt-3 pt-2.5 border-t border-[rgba(238,234,229,0.08)] flex items-center justify-between font-mono text-[9.5px]">
+              <span className="text-[#736c66] uppercase tracking-widest flex items-center gap-1.5">
+                ON <span className="text-[#a8a19b] font-semibold">{portfolio.latestArticle?.platform}</span>
+              </span>
+              <span className="text-[#f36d45] uppercase tracking-wider font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                READ POST
+                <span className="text-xs leading-none">↗</span>
+              </span>
+            </div>
+          </a>
         </Reveal>
 
         {/* Circular Explore Button */}
-        <div className="mt-10 lg:mt-12 flex items-center justify-center w-full">
+        <div className="mt-8 lg:mt-10 flex items-center justify-center w-full">
           <Magnetic strength={0.42}>
             <a
               href="#work"
@@ -317,21 +227,17 @@ export function Hero() {
       {/* Mobile Unified Bottom Layout (< md): Details UI just above Frontend Engineer, with Explore opposite */}
       <div className="md:hidden absolute z-20 bottom-4 left-4 right-4 xs:left-5 xs:right-5 flex flex-col gap-3 pointer-events-auto select-none">
         {/* Details UI: just above frontend engineer */}
-        <div className="flex flex-col gap-1 max-w-[320px] xs:max-w-[340px]">
-          <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.2em] text-[#ffb490]">
+        <div className="flex flex-col gap-1.5 max-w-[330px] xs:max-w-[360px]">
+          <div className="flex items-center gap-2 text-xs xs:text-[13px] font-mono uppercase tracking-[0.2em] text-[#ffb490]">
             <span className="text-base leading-none text-[#f36d45]">*</span>
             <span>HELLO, I’M JOSEPH</span>
           </div>
-          <div className="flex items-center gap-2 font-mono text-[8px] xs:text-[8.5px] uppercase tracking-widest text-[#88817a]">
+          <p className="font-mono text-[11px] xs:text-[12px] uppercase tracking-[0.09em] leading-[1.5] text-[#b0a8a0]">
+            I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.
+          </p>
+          <div className="flex items-center gap-2 font-mono text-[9.5px] xs:text-[10.5px] uppercase tracking-widest text-[#88817a]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45]" />
             <span>ONDO, NIGERIA • WORLDWIDE</span>
-          </div>
-          <p className="text-[13px] xs:text-[14px] font-medium text-[#ece8e3] tracking-tight leading-[1.3] pt-0.5">
-            {portfolio.profile.heroIntro}
-          </p>
-          <div className="flex items-center gap-2 font-mono text-[8.5px] xs:text-[9px] tracking-[0.2em] uppercase text-[#f36d45] pt-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45] inline-block animate-pulse" />
-            <span>ENGINEERED FOR SCALE</span>
           </div>
         </div>
 

@@ -15,7 +15,15 @@ const GradientWaves = dynamic(() => import('./GradientWaves'), {
   loading: () => <div className="absolute inset-0 bg-[#0d0c0b]" />,
 });
 
-export function ContactSection() {
+export function ContactSection({
+  contact,
+  portfolio: propPortfolio,
+}: {
+  contact?: any;
+  portfolio?: any;
+}) {
+  const activeEmail = contact?.email || propPortfolio?.contact?.email || EMAIL;
+  const activePhone = contact?.phone || propPortfolio?.contact?.phone || portfolio.contact.phone;
   return (
     <section
       className="relative min-h-[640px] max-sm:min-h-0 overflow-hidden border-t border-white/13 bg-[#0d0c0b]"
@@ -74,18 +82,20 @@ export function ContactSection() {
           </p>
           <a
             className="group inline-flex min-w-[215px] items-center justify-between gap-8 py-3.5 px-4 border border-ember/70 text-[#f2ebe3] font-mono text-[8px] tracking-[0.1em] transition-all duration-300 hover:border-ember hover:bg-ember hover:text-ink focus-visible:outline-2 focus-visible:outline-ember-soft"
-            href={`mailto:${EMAIL}?subject=Hello%20Joseph`}
+            href={`mailto:${activeEmail}?subject=Hello%20Joseph`}
           >
             <span>EMAIL JOSEPH</span>
             <Arrow className="text-ember-soft group-hover:text-ink" />
           </a>
-          <a
-            className="block mt-4 text-[#9e968f] font-mono text-[8px] tracking-[0.08em] hover:text-paper transition-colors"
-            href={`tel:${portfolio.contact.phone.replace(/\s+/g, '')}`}
-          >
-            OR CALL {portfolio.contact.phone}
-          </a>
-          <SocialLinks />
+          {activePhone && (
+            <a
+              className="block mt-4 text-[#9e968f] font-mono text-[8px] tracking-[0.08em] hover:text-paper transition-colors"
+              href={`tel:${String(activePhone).replace(/\s+/g, '')}`}
+            >
+              OR CALL {activePhone}
+            </a>
+          )}
+          <SocialLinks links={propPortfolio?.contact?.profiles || contact?.profiles} />
         </Reveal>
 
         <Reveal delay={130} className="flex items-center justify-center lg:justify-end max-sm:pt-8 max-sm:border-t max-sm:border-white/13">

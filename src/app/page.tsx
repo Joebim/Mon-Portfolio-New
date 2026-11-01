@@ -4,15 +4,58 @@ import { Reveal } from '../components/Reveal';
 import { BorderGlow } from '../components/BorderGlow';
 import { ExperienceTimeline } from '../components/ExperienceTimeline';
 import { ContactSection } from '../components/ContactSection';
+import { BlogSection } from '../components/BlogSection';
 import { Arrow, BrandMark, ProjectLabel } from '../components/SiteNavigation';
-import { EMAIL, GITHUB_URL, portfolio, projects, skillGroups, smallWorks, softSkills } from '../data';
+import {
+  EMAIL as defaultEmail,
+  GITHUB_URL as defaultGithub,
+  portfolio as defaultPortfolio,
+  projects as defaultProjects,
+  skillGroups as defaultSkillGroups,
+  smallWorks as defaultSmallWorks,
+  softSkills as defaultSoftSkills,
+  type Project,
+  type AdditionalProject,
+  type SkillGroup,
+} from '../data';
+import { getPortfolioContent } from '../lib/controllers/portfolioController';
+import { getAllBlogArticles } from '../lib/controllers/blogController';
 
-export default function HomePage() {
+export const revalidate = 60;
+
+export default async function HomePage() {
+  let portfolio: any = defaultPortfolio;
+  try {
+    const content = await getPortfolioContent();
+    if (content?.data) {
+      portfolio = content.data;
+    }
+  } catch (err) {
+    console.warn('[HomePage] Failed to fetch live portfolio, using local fallback:', err);
+  }
+
+  const projects: Project[] = (portfolio.projects || defaultProjects) as Project[];
+  const smallWorks: AdditionalProject[] = (portfolio.smallWorks || portfolio.additionalProjects || defaultSmallWorks) as AdditionalProject[];
+  const skillGroups: SkillGroup[] = (portfolio.skillGroups || defaultSkillGroups) as SkillGroup[];
+  const softSkills: string[] = (portfolio.softSkills || defaultSoftSkills) as string[];
+  const aboutParagraphs: string[] = (portfolio.profile?.aboutParagraphs || defaultPortfolio.profile.aboutParagraphs || []) as string[];
+  const experiences: any[] = portfolio.experiences || portfolio.experience || [];
+  const EMAIL = portfolio.contact?.email || defaultEmail;
+  const GITHUB_URL = portfolio.contact?.github || defaultGithub;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let articles: any[] = [];
+  try {
+    const blogRes = await getAllBlogArticles();
+    articles = blogRes.articles || [];
+  } catch {
+    // articles stays empty – BlogSection renders a fallback
+  }
   return (
     <>
       <main id="main">
         {/* Hero Section */}
-        <Hero />
+        <Hero portfolio={portfolio} />
 
         {/* Selected Work Section */}
         <section
@@ -70,7 +113,7 @@ export default function HomePage() {
               </p>
             </div>
             <div className="border-t border-white/13">
-              {smallWorks.map((work, index) => (
+              {smallWorks.map((work: any, index: number) => (
                 <a
                   key={work.name}
                   href={work.url ?? GITHUB_URL}
@@ -112,9 +155,9 @@ export default function HomePage() {
             </Reveal>
             <Reveal delay={100} className="pt-6 max-sm:pt-0">
               <p className="text-paper text-[clamp(17px,1.8vw,22px)] max-sm:text-[18px] font-medium leading-[1.6] tracking-[-0.035em] mb-4">
-                {portfolio.profile.aboutLead}
+                {portfolio.profile?.aboutLead || defaultPortfolio.profile.aboutLead}
               </p>
-              {portfolio.profile.aboutParagraphs.map((paragraph) => (
+              {aboutParagraphs.map((paragraph: string) => (
                 <p key={paragraph} className="max-w-[410px] m-0 mb-4 text-[#a7a09a] text-xs max-sm:text-[11px] leading-[1.9]">
                   {paragraph}
                 </p>
@@ -277,11 +320,12 @@ export default function HomePage() {
             </Reveal>
           </div>
 
-          <ExperienceTimeline />
+          <ExperienceTimeline experiences={experiences} />
         </section>
 
         {/* Contact Section */}
-        <ContactSection />
+        <BlogSection articles={articles} />
+        <ContactSection contact={portfolio.contact} portfolio={portfolio} />
       </main>
 
       {/* Footer */}

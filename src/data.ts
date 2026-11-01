@@ -47,6 +47,14 @@ export type PortfolioContent = {
     profiles: { label: string; short: string; url: string }[];
   };
   profile: { heroIntro: string; aboutLead: string; aboutParagraphs: string[] };
+  latestArticle?: {
+    title: string;
+    description: string;
+    date: string;
+    readingTime: string;
+    platform: string;
+    url: string;
+  };
   projects: Project[];
   additionalProjects: AdditionalProject[];
   experience: Experience[];

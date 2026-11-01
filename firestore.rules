@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: content
+    // Document ID: portfolio
+    // Fields:
+    //   - profile: map (required, max 20 keys) - Author bio, role, headline, paragraphs
+    //   - contact: map (required, max 20 keys) - Contact details, location, social links
+    //   - projects: list (required, max 100 items) - Showcase projects portfolio
+    //   - smallWorks: list (required, max 100 items) - Secondary or open source projects
+    //   - experiences: list (required, max 100 items) - Career and employment history
+    //   - skillGroups: list (required, max 100 items) - Grouped technical skills
+    //   - softSkills: list (required, max 100 items) - Non-technical interpersonal skills
+    //   - heroIntro: string (optional, max 5000 chars) - Intro tagline/pitch
+    //   - latestArticle: map (optional, max 20 keys) - Teaser for latest article
+    //
+    // Collection: blogs
+    // Document ID: {blogId} (slug or article identifier)
+    // Fields:
+    //   - title: string (required, 1-300 chars) - Post title
+    //   - slug: string (required, 1-200 chars, immutable) - URL-friendly slug
+    //   - description: string (required, 1-2000 chars) - Post summary or excerpt
+    //   - publishedAt: string (required, 1-100 chars) - Publication date timestamp string
+    //   - id: string | number (optional) - Identifier from external sync or system
+    //   - coverImage: string (optional, max 1000 chars) - Banner image URL or asset path
+    //   - socialImage: string (optional, max 1000 chars) - OpenGraph card image URL
+    //   - readingTimeMinutes: number (optional, >= 0) - Estimated reading duration
+    //   - tagList: list of strings (optional, max 30 items) - Categorization tags
+    //   - url: string (optional, max 1000 chars) - External article link
+    //   - canonicalUrl: string (optional, max 1000 chars) - Canonical link
+    //   - bodyMarkdown: string (optional, max 200000 chars) - Article content in markdown
+    //   - isDraft: bool (optional) - Draft flag; drafts are private to admins
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated with Firebase Auth
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user has admin claim
+    function isAdmin() {
+      return isAuthenticated() &&
+        'admin' in request.auth.token &&
+        request.auth.token.admin == true;
+    }
+
+    // Verify presence of all required fields
+    function hasRequiredFields(data, fields) {
+      return data.keys().hasAll(fields);
+    }
+
+    // Verify document contains only recognized fields
+    function hasOnlyAllowedFields(data, fields) {
+      return data.keys().hasOnly(fields);
+    }
+
+    // Validate immutable fields are not modified during update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Domain validator for content/portfolio document
+    function isValidPortfolio(data) {
+      let requiredFields = [
+        'profile', 'contact', 'projects', 'smallWorks',
+        'experiences', 'skillGroups', 'softSkills'
+      ];
+      let allowedFields = [
+        'profile', 'contact', 'projects', 'smallWorks',
+        'experiences', 'skillGroups', 'softSkills',
+        'heroIntro', 'latestArticle'
+      ];
+
+      return hasRequiredFields(data, requiredFields) &&
+        hasOnlyAllowedFields(data, allowedFields) &&
+        data.profile is map && data.profile.size() <= 20 &&
+        data.contact is map && data.contact.size() <= 20 &&
+        data.projects is list && data.projects.size() <= 100 &&
+        data.smallWorks is list && data.smallWorks.size() <= 100 &&
+        data.experiences is list && data.experiences.size() <= 100 &&
+        data.skillGroups is list && data.skillGroups.size() <= 100 &&
+        data.softSkills is list && data.softSkills.size() <= 100 &&
+        (!('heroIntro' in data) || (data.heroIntro is string && data.heroIntro.size() <= 5000)) &&
+        (!('latestArticle' in data) || (data.latestArticle is map && data.latestArticle.size() <= 20));
+    }
+
+    // Domain validator for blogs/{blogId} documents
+    function isValidBlogArticle(data) {
+      let requiredFields = ['title', 'slug', 'description', 'publishedAt'];
+      let allowedFields = [
+        'id', 'slug', 'title', 'description', 'coverImage',
+        'socialImage', 'publishedAt', 'readingTimeMinutes',
+        'tagList', 'url', 'canonicalUrl', 'bodyMarkdown', 'isDraft'
+      ];
+
+      return hasRequiredFields(data, requiredFields) &&
+        hasOnlyAllowedFields(data, allowedFields) &&
+        data.title is string && data.title.size() > 0 && data.title.size() <= 300 &&
+        data.slug is string && data.slug.size() > 0 && data.slug.size() <= 200 &&
+        data.description is string && data.description.size() > 0 && data.description.size() <= 2000 &&
+        data.publishedAt is string && data.publishedAt.size() > 0 && data.publishedAt.size() <= 100 &&
+        (!('id' in data) || data.id is string || data.id is number) &&
+        (!('coverImage' in data) || (data.coverImage is string && data.coverImage.size() <= 1000)) &&
+        (!('socialImage' in data) || (data.socialImage is string && data.socialImage.size() <= 1000)) &&
+        (!('readingTimeMinutes' in data) || (data.readingTimeMinutes is number && data.readingTimeMinutes >= 0)) &&
+        (!('tagList' in data) || (data.tagList is list && data.tagList.size() <= 30)) &&
+        (!('url' in data) || (data.url is string && data.url.size() <= 1000)) &&
+        (!('canonicalUrl' in data) || (data.canonicalUrl is string && data.canonicalUrl.size() <= 1000)) &&
+        (!('bodyMarkdown' in data) || (data.bodyMarkdown is string && data.bodyMarkdown.size() <= 200000)) &&
+        (!('isDraft' in data) || data.isDraft is bool);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Portfolio content document
+    match /content/portfolio {
+      // Public read access for portfolio content
+      allow read: if true;
+
+      // Only authenticated admin users can create, update, or delete portfolio content
+      allow create: if isAdmin() && isValidPortfolio(request.resource.data);
+      allow update: if isAdmin() && isValidPortfolio(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Blog articles collection
+    match /blogs/{blogId} {
+      // Public read access if published; draft articles readable only by admins
+      allow read: if resource.data.isDraft != true || isAdmin();
+
+      // Only authenticated admin users can create, update, or delete blog articles
+      allow create: if isAdmin() && isValidBlogArticle(request.resource.data);
+      allow update: if isAdmin() && isValidBlogArticle(request.resource.data) && areImmutableFieldsUnchanged(['slug']);
+      allow delete: if isAdmin();
+    }
+
+    // Default deny for all other collections and documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

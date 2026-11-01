@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { EMAIL, GITHUB_URL, professionalLinks } from '../data';
 
 type IconProps = { className?: string };
@@ -39,18 +40,24 @@ export function BrandMark() {
   );
 }
 
-export function SocialLinks({ className = '' }: { className?: string }) {
+export function SocialLinks({
+  className = '',
+  links = professionalLinks,
+}: {
+  className?: string;
+  links?: any[];
+}) {
   return (
     <div className={`flex flex-wrap gap-2.5 max-sm:gap-1.5 mt-6 ${className}`.trim()}>
-      {professionalLinks.map((link) => (
+      {(links || []).map((link) => (
         <a
-          key={link.label}
+          key={link.label || link.platform || link.url}
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
           className="py-2 px-2.5 max-sm:py-1.5 max-sm:px-2 border border-white/15 text-[#d1c9c1] font-mono text-[7px] max-sm:text-[6px] tracking-[0.08em] transition-colors duration-200 hover:border-ember hover:bg-ember/10 hover:text-ember-soft focus-visible:outline-2 focus-visible:outline-ember-soft"
         >
-          {link.short} ↗
+          {link.short || link.username || link.label || link.platform} ↗
         </a>
       ))}
     </div>
@@ -70,11 +77,15 @@ export const navigation = [
   { id: 'home', label: 'Home' },
   { id: 'work', label: 'Selected work' },
   { id: 'about', label: 'About' },
+  { id: 'writing', label: 'Writing' },
   { id: 'experience', label: 'Experience' },
   { id: 'contact', label: 'Contact' },
 ];
 
 export function SiteNavigation() {
+  const pathname = usePathname();
+  const isAdmin = pathname?.startsWith('/admin');
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeSection, setActiveSection] = useState('home');
@@ -82,6 +93,8 @@ export function SiteNavigation() {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
+    if (isAdmin) return;
+
     let frame = 0;
     const heroStage = document.querySelector<HTMLElement>('.hero__stage');
     const updateProgress = () => {
@@ -113,7 +126,9 @@ export function SiteNavigation() {
       window.removeEventListener('scroll', updateProgress);
       observer.disconnect();
     };
-  }, []);
+  }, [isAdmin]);
+
+  if (isAdmin) return null;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -180,7 +195,7 @@ export function SiteNavigation() {
             return (
               <a
                 key={id}
-                data-cursor={id === 'work' ? 'EXPLORE' : id === 'about' ? 'ABOUT' : id === 'experience' ? 'CAREER' : 'TALK'}
+                data-cursor={id === 'work' ? 'EXPLORE' : id === 'about' ? 'ABOUT' : id === 'writing' ? 'WRITING' : id === 'experience' ? 'CAREER' : 'TALK'}
                 className={`relative py-2.5 font-mono text-[10px] tracking-[0.055em] uppercase transition-colors duration-250 hover:text-paper after:absolute after:inset-x-0 after:bottom-1 after:h-[1px] after:bg-ember after:origin-left after:transition-transform after:duration-300 ${
                   isActive ? 'text-paper after:scale-x-100' : 'text-[#b6b1ac] after:scale-x-0 hover:after:scale-x-100'
                 }`}
@@ -239,7 +254,7 @@ export function SiteNavigation() {
         />
 
         <div className="relative z-10 flex items-center justify-between text-quiet font-mono text-[9px] max-sm:text-[7px] tracking-[0.11em]">
-          <span>MENU / 01—05</span>
+          <span>MENU / 01—06</span>
           <span>JOSEPH AKINWOLE®</span>
         </div>
 
