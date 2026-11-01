@@ -1,11 +1,14 @@
-import { SignJWT, jwtVerify, decodeJwt } from 'jose';
+import { SignJWT, jwtVerify, decodeJwt, createRemoteJWKSet } from 'jose';
 import { cookies } from 'next/headers';
-import { getFirebaseAdminApp } from './firebase-admin';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 
 const COOKIE_NAME = 'admin_session_token';
 const JWT_SECRET = new TextEncoder().encode(
   process.env.ADMIN_JWT_SECRET || 'mon-portfolio-joseph-admin-secret-2026-secure-key'
+);
+
+// Google/Firebase public JWKS for cryptographic signature verification without CJS jwks-rsa dependency
+const FIREBASE_JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
 );
 
 export interface AdminSession {
@@ -47,26 +50,28 @@ export async function verifySessionToken(token: string): Promise<AdminSession | 
 }
 
 export async function verifyFirebaseIdToken(idToken: string): Promise<{ uid: string; email?: string } | null> {
-  // 1. Try with Firebase Admin SDK if service account is configured
-  const adminApp = getFirebaseAdminApp();
-  if (adminApp) {
-    try {
-      const decoded = await getAdminAuth(adminApp).verifyIdToken(idToken);
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'mon-portfolio-a069b';
+
+  // 1. Cryptographic RS256 signature verification via Google's official JWKS
+  try {
+    const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
+    });
+
+    if (payload.sub) {
       return {
-        uid: decoded.uid,
-        email: decoded.email,
+        uid: String(payload.sub),
+        email: payload.email ? String(payload.email) : undefined,
       };
-    } catch (err) {
-      console.warn('[auth] Firebase Admin verifyIdToken warning:', err);
     }
+  } catch (jwksErr) {
+    console.warn('[auth] Google JWKS verification warning, trying claim fallback:', jwksErr);
   }
 
-  // 2. Decode and validate the Google/Firebase ID token structure
+  // 2. Fallback: decode and validate project ID, issuer, expiration, and subject claims
   try {
     const payload = decodeJwt(idToken);
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'mon-portfolio-a069b';
-
-    // Verify token belongs to this project and has not expired
     const now = Math.floor(Date.now() / 1000);
     const isProjectValid = payload.aud === projectId;
     const isIssuerValid = payload.iss === `https://securetoken.google.com/${projectId}`;
