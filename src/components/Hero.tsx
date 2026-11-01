@@ -100,6 +100,7 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
           clickBurst={true}
           className="relative z-10 w-full h-full filter"
         />
+        
         {/* Bottom grounding vignette so torso dissolves seamlessly into base border and text */}
         <div
           className="absolute z-20 inset-x-0 bottom-0 h-80 md:h-32 bg-gradient-to-t from-[#0b0b0b] via-[#0b0b0b]/92 to-transparent pointer-events-none"
