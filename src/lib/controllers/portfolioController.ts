@@ -122,8 +122,10 @@ export function normalizePortfolio(raw: unknown): PortfolioContent {
     ? {
         title: String(latestRaw.title || ''),
         description: String(latestRaw.description || ''),
+        platform: latestRaw.platform ? String(latestRaw.platform) : 'DEV.TO',
         readingTime: latestRaw.readingTime ? String(latestRaw.readingTime) : undefined,
         publishedAt: latestRaw.publishedAt || latestRaw.date ? String(latestRaw.publishedAt || latestRaw.date) : undefined,
+        date: latestRaw.date ? String(latestRaw.date) : undefined,
         url: latestRaw.url ? String(latestRaw.url) : undefined,
       }
     : undefined;
@@ -136,6 +138,13 @@ export function normalizePortfolio(raw: unknown): PortfolioContent {
       status,
       aboutLead,
       aboutParagraphs,
+      heroGreeting: profile.heroGreeting ? String(profile.heroGreeting) : undefined,
+      heroIntro: profile.heroIntro || data.heroIntro ? String(profile.heroIntro || data.heroIntro) : undefined,
+      heroLocation: profile.heroLocation ? String(profile.heroLocation) : undefined,
+      heroTitleWord1: profile.heroTitleWord1 ? String(profile.heroTitleWord1) : undefined,
+      heroTitleWord2: profile.heroTitleWord2 ? String(profile.heroTitleWord2) : undefined,
+      heroCtaLabel: profile.heroCtaLabel ? String(profile.heroCtaLabel) : undefined,
+      heroPortraitUrl: profile.heroPortraitUrl ? String(profile.heroPortraitUrl) : undefined,
     },
     contact: {
       email: String(contact.email || 'joseph.akinwole.me@gmail.com'),
@@ -150,6 +159,7 @@ export function normalizePortfolio(raw: unknown): PortfolioContent {
     experiences,
     skillGroups,
     softSkills,
+    heroIntro: profile.heroIntro || data.heroIntro ? String(profile.heroIntro || data.heroIntro) : undefined,
     latestArticle,
   };
 
@@ -191,7 +201,7 @@ export async function writeLocalPortfolio(data: PortfolioContent): Promise<void>
     },
     profile: {
       ...validated.profile,
-      heroIntro: validated.profile.headline,
+      heroIntro: validated.profile.heroIntro || validated.profile.headline,
     },
   };
 

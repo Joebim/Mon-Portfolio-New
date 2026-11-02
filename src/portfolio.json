@@ -9,7 +9,13 @@
       "At Precise Financial Systems, I work on core modules for financial management software used by banks and government institutions. My experience spans server-rendered UI, secure APIs, real-time transaction workflows, and reliable high-availability applications.",
       "Previously, I built client-facing applications at Glimere, worked across a 15-person product team at HNG, and contributed to web projects at CORS and JDLab. I care about clear interfaces, maintainable components, performance, and the details that make software easier to use."
     ],
-    "heroIntro": "Turning complex systems into calm, dependable software that people genuinely enjoy using."
+    "heroIntro": "I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.",
+    "heroGreeting": "HELLO, I’M JOSEPH",
+    "heroLocation": "ONDO, NIGERIA • WORLDWIDE",
+    "heroTitleWord1": "FRONTEND",
+    "heroTitleWord2": "ENGINEER",
+    "heroCtaLabel": "EXPLORE\nTHE WORK",
+    "heroPortraitUrl": "/joseph-portrait-textured-new.png"
   },
   "contact": {
     "email": "joseph.akinwole.me@gmail.com",
@@ -435,6 +441,8 @@
     "description": "A practical look at architecture, learning curves, and deciding between component freedom and structured enterprise scale.",
     "readingTime": "3 MIN READ",
     "publishedAt": "JUN 2024",
+    "date": "JUN 2024",
+    "platform": "DEV.TO",
     "url": "https://dev.to/joebim/react-vs-angular-tips-to-help-you-choose-49ca"
   },
   "additionalProjects": [

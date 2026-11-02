@@ -52,6 +52,43 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
   const mobileEngineerRef = useRef<HTMLDivElement>(null);
   const mobileFontSize = useSyncFontSize(mobileEngineerRef, 44);
 
+  const profile = portfolio?.profile || {};
+  const contact = portfolio?.contact || {};
+  const latestArticle = portfolio?.latestArticle || {};
+
+  // Dynamic texts configured by admin
+  const greeting =
+    profile.heroGreeting ||
+    (profile.name
+      ? `HELLO, I’M ${profile.name.trim().split(' ')[0].toUpperCase()}`
+      : 'HELLO, I’M JOSEPH');
+
+  const intro =
+    profile.heroIntro ||
+    portfolio?.heroIntro ||
+    profile.headline ||
+    'I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.';
+
+  const location =
+    profile.heroLocation ||
+    (contact.location
+      ? `${contact.location.toUpperCase()} • WORLDWIDE`
+      : 'ONDO, NIGERIA • WORLDWIDE');
+
+  const titleWord1 = (profile.heroTitleWord1 || 'FRONTEND').toUpperCase();
+  const titleWord2 = (profile.heroTitleWord2 || 'ENGINEER').toUpperCase();
+  const ctaLabel = profile.heroCtaLabel || 'EXPLORE\nTHE WORK';
+  const portraitSrc = profile.heroPortraitUrl || '/joseph-portrait-textured-new.png';
+
+  const articleTitle = latestArticle.title || 'React vs Angular: Tips to help you choose ⚔️';
+  const articleDesc =
+    latestArticle.description ||
+    'A practical look at architecture, learning curves, and deciding between component freedom and structured enterprise scale.';
+  const articleUrl = latestArticle.url || 'https://dev.to/joebim';
+  const articleDate = latestArticle.date || latestArticle.publishedAt || 'LATEST';
+  const articleTime = latestArticle.readingTime || '3 MIN READ';
+  const articlePlatform = latestArticle.platform || 'DEV.TO';
+
   return (
     <section
       className="relative isolate h-[100svh] min-h-[600px] md:h-[max(800px,100svh)] md:min-h-[min(1050px,max(750px,100svh))] overflow-hidden border-b border-[rgba(238,234,229,0.13)] bg-[#0B0B0B]"
@@ -63,14 +100,14 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
         <Reveal delay={120}>
           <div className="flex items-center gap-2 text-[13px] md:text-sm lg:text-[15px] font-mono uppercase tracking-[0.2em] text-[#ffb490] mb-3">
             <span className="text-lg lg:text-xl leading-none text-[#f36d45]">*</span>
-            <span>HELLO, I’M JOSEPH</span>
+            <span>{greeting}</span>
           </div>
           <p className="font-mono text-[12px] md:text-[13px] lg:text-[14px] uppercase tracking-[0.1em] leading-[1.65] text-[#a8a19b]">
-            I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.
+            {intro}
           </p>
           <div className="mt-3.5 flex items-center gap-2 font-mono text-[11px] lg:text-[12px] uppercase tracking-widest text-[#736c66]">
             <span className="w-2 h-2 rounded-full bg-[#f36d45]" />
-            ONDO, NIGERIA • WORLDWIDE
+            {location}
           </div>
         </Reveal>
       </div>
@@ -80,7 +117,7 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
         className="hero-portrait-stage absolute z-[5] bottom-0 left-1/2 h-[calc(100%-52px)] sm:h-[calc(100%-56px)] md:h-[calc(100%-60px)] lg:h-[calc(100%-64px)] max-h-[1200px] aspect-[2351/1916] pointer-events-auto select-none flex items-end justify-center origin-bottom max-md:opacity-60"
       >
         <DitherVeil
-          src="/joseph-portrait-textured-new.png"
+          src={portraitSrc}
           pattern="floyd"
           pixelSize={2}
           inkColor="#0B0B0B"
@@ -112,12 +149,12 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
       <div className="hidden md:flex absolute z-20 md:top-[16%] lg:top-[18%] xl:top-[20%] md:right-12 lg:right-16 xl:right-24 max-w-[340px] lg:max-w-[360px] flex-col items-center">
         <Reveal delay={240}>
           <a
-            href={portfolio.latestArticle?.url ?? 'https://dev.to/joebim'}
+            href={articleUrl}
             target="_blank"
             rel="noopener noreferrer"
             data-cursor="READ"
             className="group block w-full text-left rounded-xl border border-[rgba(238,234,229,0.12)] bg-[#121110]/85 backdrop-blur-md p-4 transition-all duration-300 hover:border-[#f36d45]/60 hover:bg-[#161413] hover:shadow-[0_16px_36px_rgba(0,0,0,0.7),0_0_30px_rgba(243,109,69,0.12)] hover:-translate-y-0.5"
-            aria-label={`Read article: ${portfolio.latestArticle?.title ?? 'Latest article'}`}
+            aria-label={`Read article: ${articleTitle}`}
           >
             {/* Header row: badge + date */}
             <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-[rgba(238,234,229,0.08)]">
@@ -128,24 +165,24 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
                 </span>
               </div>
               <span className="font-mono text-[9px] uppercase tracking-wider text-[#736c66]">
-                {(portfolio.latestArticle?.date || portfolio.latestArticle?.publishedAt || 'LATEST')} • {(portfolio.latestArticle?.readingTime || '3 MIN READ')}
+                {articleDate} • {articleTime}
               </span>
             </div>
 
             {/* Title */}
             <h3 className="text-[14.5px] lg:text-[15.5px] font-bold text-[#ece8e3] tracking-tight leading-[1.3] group-hover:text-[#f36d45] transition-colors">
-              {portfolio.latestArticle?.title}
+              {articleTitle}
             </h3>
 
             {/* Synopsis */}
             <p className="mt-2 text-[11.5px] leading-[1.55] text-[#9e9690] line-clamp-2">
-              {portfolio.latestArticle?.description}
+              {articleDesc}
             </p>
 
             {/* Footer row: platform + link callout */}
             <div className="mt-3 pt-2.5 border-t border-[rgba(238,234,229,0.08)] flex items-center justify-between font-mono text-[9.5px]">
               <span className="text-[#736c66] uppercase tracking-widest flex items-center gap-1.5">
-                ON <span className="text-[#a8a19b] font-semibold">{portfolio.latestArticle?.platform}</span>
+                ON <span className="text-[#a8a19b] font-semibold">{articlePlatform}</span>
               </span>
               <span className="text-[#f36d45] uppercase tracking-wider font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                 READ POST
@@ -164,8 +201,8 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
               className="w-44 h-44 lg:w-48 lg:h-48 xl:w-52 xl:h-52 rounded-full bg-[#eeeae5] text-[#0b0b0b] font-mono text-xs md:text-sm uppercase tracking-widest font-bold flex flex-col items-center justify-center gap-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.8)] hover:bg-[#f36d45] hover:text-[#0b0b0b] hover:shadow-[0_0_60px_rgba(243,109,69,0.6)] transition-all duration-300 hover:scale-105 group"
               aria-label="Explore the work"
             >
-              <span className="text-center px-4 leading-tight group-hover:scale-105 transition-transform">
-                EXPLORE<br />THE WORK
+              <span className="text-center px-4 leading-tight group-hover:scale-105 transition-transform whitespace-pre-line">
+                {ctaLabel}
               </span>
               <DownArrow />
             </a>
@@ -173,19 +210,19 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
         </div>
       </div>
 
-      {/* Desktop Bottom Left: TechText on "FRONTEND" alone + Crisp Typography on "ENGINEER." (md+) */}
+      {/* Desktop Bottom Left: TechText on Word 1 + Crisp Typography on Word 2 (md+) */}
       <div
         id="hero-title"
         className="hidden md:flex absolute z-20 md:bottom-8 lg:bottom-10 md:left-12 lg:left-16 flex-col pointer-events-auto select-none"
-        aria-label="Frontend Engineer"
+        aria-label={`${titleWord1} ${titleWord2}`}
       >
-        {/* "FRONTEND" with interactive TechText blueprint effect - exact same font size as ENGINEER. */}
+        {/* Word 1 with interactive TechText blueprint effect */}
         <div
           className="md:w-[580px] lg:w-[680px] xl:w-[780px]"
           style={{ height: `${desktopFontSize * 1.12}px` }}
         >
           <TechText
-            text="FRONTEND"
+            text={titleWord1}
             fontWeight={900}
             fontSize={desktopFontSize}
             useExactFontSize
@@ -215,12 +252,12 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
           />
         </div>
 
-        {/* "ENGINEER." in matching crisp, bold architectural typography */}
+        {/* Word 2 in matching crisp, bold architectural typography */}
         <div
           ref={desktopEngineerRef}
           className="md:text-[clamp(76px,7.5vw,110px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.88] select-none md:-mt-3"
         >
-          ENGINEER<span className="text-[#f36d45]">.</span>
+          {titleWord2}<span className="text-[#f36d45]">.</span>
         </div>
       </div>
 
@@ -230,27 +267,27 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
         <div className="flex flex-col gap-1.5 max-w-[330px] xs:max-w-[360px]">
           <div className="flex items-center gap-2 text-xs xs:text-[13px] font-mono uppercase tracking-[0.2em] text-[#ffb490]">
             <span className="text-base leading-none text-[#f36d45]">*</span>
-            <span>HELLO, I’M JOSEPH</span>
+            <span>{greeting}</span>
           </div>
           <p className="font-mono text-[11px] xs:text-[12px] uppercase tracking-[0.09em] leading-[1.5] text-[#b0a8a0]">
-            I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES.
+            {intro}
           </p>
           <div className="flex items-center gap-2 font-mono text-[9.5px] xs:text-[10.5px] uppercase tracking-widest text-[#88817a]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45]" />
-            <span>ONDO, NIGERIA • WORLDWIDE</span>
+            <span>{location}</span>
           </div>
         </div>
 
-        {/* Bottom Row: Frontend Engineer on Left, Explore The Work on Right (opposite) */}
+        {/* Bottom Row: Word 1 & Word 2 on Left, Explore The Work on Right (opposite) */}
         <div className="flex items-end justify-between gap-2.5 w-full">
-          {/* Left: Frontend Engineer with TechText on FRONTEND - exact same font size as ENGINEER. */}
+          {/* Left: Word 1 with TechText + Word 2 */}
           <div className="flex flex-col select-none flex-1 min-w-0">
             <div
               className="w-full"
               style={{ height: `${mobileFontSize * 1.1}px` }}
             >
               <TechText
-                text="FRONTEND"
+                text={titleWord1}
                 fontWeight={900}
                 fontSize={mobileFontSize}
                 useExactFontSize
@@ -283,11 +320,11 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
               ref={mobileEngineerRef}
               className="text-[clamp(38px,11vw,50px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.85] select-none -mt-1"
             >
-              ENGINEER<span className="text-[#f36d45]">.</span>
+              {titleWord2}<span className="text-[#f36d45]">.</span>
             </div>
           </div>
 
-          {/* Right: Circular Explore The Work Button opposite Frontend Engineer */}
+          {/* Right: Circular Explore The Work Button opposite Word 1 & 2 */}
           <div className="flex-none pb-0.5">
             <Magnetic strength={0.35}>
               <a
@@ -296,8 +333,8 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
                 className="w-[72px] h-[72px] xs:w-[80px] xs:h-[80px] sm:w-[88px] sm:h-[88px] rounded-full bg-[#eeeae5] text-[#0b0b0b] font-mono text-[7px] xs:text-[7.5px] uppercase tracking-wider font-bold flex flex-col items-center justify-center gap-1 shadow-[0_8px_24px_rgba(0,0,0,0.85)] hover:bg-[#f36d45] hover:text-[#0b0b0b] hover:shadow-[0_0_36px_rgba(243,109,69,0.6)] transition-all duration-300 active:scale-95 group"
                 aria-label="Explore the work"
               >
-                <span className="text-center px-1 leading-tight group-hover:scale-105 transition-transform">
-                  EXPLORE<br />THE WORK
+                <span className="text-center px-1 leading-tight group-hover:scale-105 transition-transform whitespace-pre-line">
+                  {ctaLabel}
                 </span>
                 <DownArrow />
               </a>

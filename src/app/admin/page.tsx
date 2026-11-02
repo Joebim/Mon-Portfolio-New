@@ -37,14 +37,19 @@ const labelCls = 'block font-mono text-[8px] text-[#888] uppercase mb-1 tracking
 
 function Field({
   label,
+  helper,
   children,
 }: {
   label: string;
+  helper?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className={labelCls}>{label}</label>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <label className="block font-mono text-[8px] text-[#888] uppercase tracking-[0.08em]">{label}</label>
+        {helper && <span className="font-mono text-[8px] text-[#666] tracking-wide">{helper}</span>}
+      </div>
       {children}
     </div>
   );
@@ -527,6 +532,283 @@ export default function AdminDashboardPage() {
         ══════════════════════════════════════ */}
         {activeTab === 'profile' && portfolio && (
           <div className="space-y-8 max-w-[800px]">
+
+            {/* Hero Section (Homepage) */}
+            <section className="p-6 rounded-2xl bg-[#111110] border border-ember/30 space-y-4 shadow-[0_0_24px_rgba(243,109,69,0.06)]">
+              <div className="flex justify-between items-center mb-1">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-ember inline-block animate-pulse" />
+                    <h2 className="text-lg font-medium tracking-tight">Hero Section (Homepage Hero)</h2>
+                  </div>
+                  <p className="font-mono text-[9px] text-[#777] mt-1">
+                    All texts and elements displayed on the landing page hero section.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
+                <Field label="Greeting Badge" helper="e.g. HELLO, I’M JOSEPH">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="HELLO, I’M JOSEPH"
+                    value={portfolio.profile.heroGreeting ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        profile: { ...portfolio.profile, heroGreeting: e.target.value },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Location Status Tag" helper="e.g. ONDO, NIGERIA • WORLDWIDE">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="ONDO, NIGERIA • WORLDWIDE"
+                    value={portfolio.profile.heroLocation ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        profile: { ...portfolio.profile, heroLocation: e.target.value },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+
+              <Field
+                label="Hero Intro / Pitch Paragraph"
+                helper="The prominent uppercase paragraph under the greeting"
+              >
+                <textarea
+                  rows={2}
+                  className={inputCls}
+                  placeholder="I BUILD SECURE FINANCIAL TOOLS, THOUGHTFUL PRODUCT INTERFACES, AND USEFUL WEB EXPERIENCES."
+                  value={portfolio.profile.heroIntro ?? ''}
+                  onChange={(e) =>
+                    setPortfolio({
+                      ...portfolio,
+                      profile: { ...portfolio.profile, heroIntro: e.target.value },
+                      heroIntro: e.target.value,
+                    })
+                  }
+                />
+              </Field>
+
+              <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
+                <Field
+                  label="Hero Title — Word 1 (Interactive TechText)"
+                  helper="First kinetic blueprint word (e.g. FRONTEND)"
+                >
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="FRONTEND"
+                    value={portfolio.profile.heroTitleWord1 ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        profile: { ...portfolio.profile, heroTitleWord1: e.target.value },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Hero Title — Word 2 (Architectural Bold)"
+                  helper="Second bold typography word (e.g. ENGINEER)"
+                >
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="ENGINEER"
+                    value={portfolio.profile.heroTitleWord2 ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        profile: { ...portfolio.profile, heroTitleWord2: e.target.value },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+
+              <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
+                <Field
+                  label="Circular Explore Button Label"
+                  helper="Text inside the circular magnetic button"
+                >
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="EXPLORE\nTHE WORK"
+                    value={portfolio.profile.heroCtaLabel ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        profile: { ...portfolio.profile, heroCtaLabel: e.target.value },
+                      })
+                    }
+                  />
+                </Field>
+                <Field
+                  label="Hero Portrait Image"
+                  helper="Texture dither portrait image URL or file upload"
+                >
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      className={inputCls}
+                      placeholder="/joseph-portrait-textured-new.png"
+                      value={portfolio.profile.heroPortraitUrl ?? ''}
+                      onChange={(e) =>
+                        setPortfolio({
+                          ...portfolio,
+                          profile: { ...portfolio.profile, heroPortraitUrl: e.target.value },
+                        })
+                      }
+                    />
+                    <label className="shrink-0 px-3 py-2 rounded-lg bg-white/5 border border-white/10 hover:border-ember text-xs font-mono cursor-pointer transition-colors">
+                      {uploadingImage === 'hero-portrait' ? 'UPLOADING...' : 'UPLOAD'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={uploadingImage === 'hero-portrait'}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          handleUploadFile(file, 'portfolio/hero', 'hero-portrait', (url: string) => {
+                            setPortfolio({
+                              ...portfolio,
+                              profile: { ...portfolio.profile, heroPortraitUrl: url },
+                            });
+                          });
+                        }}
+                      />
+                    </label>
+                  </div>
+                </Field>
+              </div>
+            </section>
+
+            {/* Hero Featured Article Card */}
+            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+              <div className="flex justify-between items-center mb-1">
+                <div>
+                  <h2 className="text-lg font-medium tracking-tight">Hero Featured Article Card</h2>
+                  <p className="font-mono text-[9px] text-[#777] mt-1">
+                    Controls the article card preview shown on the top-right of the desktop hero section.
+                  </p>
+                </div>
+              </div>
+              <Field label="Article Title">
+                <input
+                  type="text"
+                  className={inputCls}
+                  placeholder="React vs Angular: Tips to help you choose ⚔️"
+                  value={portfolio.latestArticle?.title ?? ''}
+                  onChange={(e) =>
+                    setPortfolio({
+                      ...portfolio,
+                      latestArticle: {
+                        ...(portfolio.latestArticle || { description: '' }),
+                        title: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </Field>
+              <Field label="Synopsis / Description">
+                <textarea
+                  rows={2}
+                  className={inputCls}
+                  placeholder="A practical look at architecture, learning curves, and deciding between component freedom and structured enterprise scale."
+                  value={portfolio.latestArticle?.description ?? ''}
+                  onChange={(e) =>
+                    setPortfolio({
+                      ...portfolio,
+                      latestArticle: {
+                        ...(portfolio.latestArticle || { title: '' }),
+                        description: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </Field>
+              <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
+                <Field label="Article URL">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="https://dev.to/joebim/..."
+                    value={portfolio.latestArticle?.url ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        latestArticle: {
+                          ...(portfolio.latestArticle || { title: '', description: '' }),
+                          url: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Platform Name (e.g. DEV.TO, MEDIUM)">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="DEV.TO"
+                    value={portfolio.latestArticle?.platform ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        latestArticle: {
+                          ...(portfolio.latestArticle || { title: '', description: '' }),
+                          platform: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Published Date (e.g. JUN 2024)">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="JUN 2024"
+                    value={portfolio.latestArticle?.date ?? portfolio.latestArticle?.publishedAt ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        latestArticle: {
+                          ...(portfolio.latestArticle || { title: '', description: '' }),
+                          date: e.target.value,
+                          publishedAt: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+                <Field label="Reading Time (e.g. 3 MIN READ)">
+                  <input
+                    type="text"
+                    className={inputCls}
+                    placeholder="3 MIN READ"
+                    value={portfolio.latestArticle?.readingTime ?? ''}
+                    onChange={(e) =>
+                      setPortfolio({
+                        ...portfolio,
+                        latestArticle: {
+                          ...(portfolio.latestArticle || { title: '', description: '' }),
+                          readingTime: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </Field>
+              </div>
+            </section>
 
             {/* General Identity */}
             <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">

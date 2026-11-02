@@ -11,12 +11,19 @@ function normalisePortfolioData(raw: typeof portfolioJson) {
 
   return {
     profile: {
-      name: (contact.name as string) || '',
-      role: (contact.role as string) || '',
-      headline: (raw.profile as Record<string, unknown>).heroIntro as string || '',
-      status: 'Available for new opportunities',
+      name: (contact.name as string) || (raw.profile as Record<string, unknown>).name as string || '',
+      role: (contact.role as string) || (raw.profile as Record<string, unknown>).role as string || '',
+      headline: (raw.profile as Record<string, unknown>).headline as string || (raw.profile as Record<string, unknown>).heroIntro as string || '',
+      status: (raw.profile as Record<string, unknown>).status as string || 'Available for new opportunities',
       aboutLead: (raw.profile as Record<string, unknown>).aboutLead as string || '',
       aboutParagraphs: (raw.profile as Record<string, unknown>).aboutParagraphs as string[] || [],
+      heroGreeting: (raw.profile as Record<string, unknown>).heroGreeting as string || undefined,
+      heroIntro: (raw.profile as Record<string, unknown>).heroIntro as string || undefined,
+      heroLocation: (raw.profile as Record<string, unknown>).heroLocation as string || undefined,
+      heroTitleWord1: (raw.profile as Record<string, unknown>).heroTitleWord1 as string || undefined,
+      heroTitleWord2: (raw.profile as Record<string, unknown>).heroTitleWord2 as string || undefined,
+      heroCtaLabel: (raw.profile as Record<string, unknown>).heroCtaLabel as string || undefined,
+      heroPortraitUrl: (raw.profile as Record<string, unknown>).heroPortraitUrl as string || undefined,
     },
     contact: {
       email: (contact.email as string) || '',
@@ -65,8 +72,10 @@ function normalisePortfolioData(raw: typeof portfolioJson) {
       ? {
           title: raw.latestArticle.title,
           description: raw.latestArticle.description,
+          platform: (raw.latestArticle as Record<string, unknown>).platform as string || 'DEV.TO',
           readingTime: (raw.latestArticle as Record<string, unknown>).readingTime as string | undefined,
-          publishedAt: (raw.latestArticle as Record<string, unknown>).date as string | undefined,
+          publishedAt: (raw.latestArticle as Record<string, unknown>).date as string || (raw.latestArticle as Record<string, unknown>).publishedAt as string || undefined,
+          date: (raw.latestArticle as Record<string, unknown>).date as string || undefined,
           url: raw.latestArticle.url,
         }
       : undefined,

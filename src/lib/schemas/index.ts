@@ -22,6 +22,13 @@ export const ProfileSchema = z.object({
   status: z.string().min(1),
   aboutLead: z.string().min(1),
   aboutParagraphs: z.array(z.string().min(1)),
+  heroGreeting: z.string().optional(),
+  heroIntro: z.string().optional(),
+  heroLocation: z.string().optional(),
+  heroTitleWord1: z.string().optional(),
+  heroTitleWord2: z.string().optional(),
+  heroCtaLabel: z.string().optional(),
+  heroPortraitUrl: z.string().optional(),
 });
 
 export const ProjectSchema = z.object({
@@ -71,12 +78,14 @@ export const SkillGroupSchema = z.object({
 });
 
 export const LatestArticleSchema = z.object({
-  id: z.number().optional(),
+  id: z.union([z.string(), z.number()]).optional(),
   slug: z.string().optional(),
   title: z.string().min(1),
   description: z.string().min(1),
+  platform: z.string().optional(),
   readingTime: z.string().optional(),
   publishedAt: z.string().optional(),
+  date: z.string().optional(),
   tags: z.array(z.string()).optional(),
   url: z.string().url().optional(),
   coverImage: z.string().optional(),
