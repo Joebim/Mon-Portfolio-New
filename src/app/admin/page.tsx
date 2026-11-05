@@ -16,7 +16,7 @@ import type {
 } from '../../lib/schemas';
 import { Arrow } from '../../components/SiteNavigation';
 import { signOutUser } from '../../lib/firebase';
-import { AdminDashboardSkeleton } from '../../components/Skeleton';
+import { PrismaticLoader } from '../../components/PrismaticLoader';
 import { portfolio as defaultPortfolio } from '../../data';
 
 // Rich-text editor is client-only (Tiptap)
@@ -389,7 +389,13 @@ export default function AdminDashboardPage() {
 
   /* ─── loading state ─── */
   if (loading) {
-    return <AdminDashboardSkeleton />;
+    return (
+      <PrismaticLoader
+        label="ADMIN CONSOLE"
+        sublabel="Authenticating session & loading workspace..."
+        colors={["#A855F7", "#7C3AED", "#6366F1"]}
+      />
+    );
   }
 
   /* ─── helpers for portfolio state mutations ─── */

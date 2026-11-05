@@ -82,3 +82,4 @@ export default function RootError({
     </div>
   );
 }
+
