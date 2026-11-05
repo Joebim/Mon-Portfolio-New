@@ -1365,7 +1365,7 @@ export const FlexCarousel = ({
       <style>{STYLE}</style>
       {captions && current && revealed && (
         <div
-          className="pointer-events-none absolute inset-x-0 top-[calc(50%_+_var(--flex-carousel-half)_*_var(--flex-carousel-lift,1)_+_22px)] flex flex-col items-center gap-1.5 px-4 text-center animate-[flex-carousel-reveal_900ms_ease_both] motion-reduce:animate-none"
+          className="pointer-events-none absolute inset-x-0 top-[calc(50%_+_var(--flex-carousel-half)_*_var(--flex-carousel-lift,1)_+_clamp(10px,2.5vw,22px))] flex flex-col items-center gap-1.5 px-4 text-center animate-[flex-carousel-reveal_900ms_ease_both] motion-reduce:animate-none"
           aria-hidden="true"
         >
           <span

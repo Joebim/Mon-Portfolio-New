@@ -58,14 +58,14 @@ export function BlogSection({ articles }: BlogSectionProps) {
       id="writing"
       aria-labelledby="writing-title"
     >
-      {/* Header */}
-      <div className="w-full max-w-[calc(1512px+clamp(24px,6.4vw,105px)*2)] mx-auto px-[clamp(24px,6.4vw,105px)] max-sm:px-6 pt-[clamp(100px,12vw,160px)] max-sm:pt-24 pb-14 max-sm:pb-10">
-        <div className="grid grid-cols-[1.15fr_0.75fr] max-sm:grid-cols-1 items-end gap-[4vw] max-sm:gap-5 mb-14 max-sm:mb-9">
+      {/* Header — compact spacing on mobile to eliminate excessive dead space above carousel */}
+      <div className="w-full max-w-[calc(1512px+clamp(24px,6.4vw,105px)*2)] mx-auto px-[clamp(24px,6.4vw,105px)] max-sm:px-6 pt-[clamp(100px,12vw,160px)] max-sm:pt-14 pb-14 max-sm:pb-0">
+        <div className="grid grid-cols-[1.15fr_0.75fr] max-sm:grid-cols-1 items-end gap-[4vw] max-sm:gap-3 mb-14 max-sm:mb-2">
           <Reveal>
             <ProjectLabel>FROM THE BLOG / 05</ProjectLabel>
             <h2
               id="writing-title"
-              className="mt-7 max-sm:mt-5 text-[clamp(62px,8.5vw,118px)] max-sm:text-[clamp(62px,15vw,90px)] font-medium leading-[0.84] tracking-[-0.103em] -ml-[0.05em]"
+              className="mt-7 max-sm:mt-4 text-[clamp(62px,8.5vw,118px)] max-sm:text-[clamp(54px,13vw,78px)] font-medium leading-[0.84] tracking-[-0.103em] -ml-[0.05em]"
             >
               Words I've<br />
               <span className="text-[#8e8883]">
@@ -74,8 +74,8 @@ export function BlogSection({ articles }: BlogSectionProps) {
             </h2>
           </Reveal>
 
-          <Reveal delay={120} className="justify-self-end max-sm:justify-self-start max-w-[340px] max-sm:max-w-[355px] pb-2">
-            <p className="max-w-[330px] m-0 mb-7 max-sm:mb-5 text-[#aaa39e] text-[13px] max-sm:text-xs leading-[1.8]">
+          <Reveal delay={120} className="justify-self-end max-sm:justify-self-start max-w-[340px] max-sm:max-w-[355px] pb-2 max-sm:pb-0">
+            <p className="max-w-[330px] m-0 mb-7 max-sm:mb-3 text-[#aaa39e] text-[13px] max-sm:text-xs leading-[1.8]">
               Thoughts on frontend craft, financial tooling, and the things I've learned building software people use.
             </p>
             <a
@@ -88,28 +88,28 @@ export function BlogSection({ articles }: BlogSectionProps) {
         </div>
       </div>
 
-      {/* Carousel — height reduced on mobile screens to prevent vertical squishing and allow wide cards */}
-      <div className="w-full relative h-[320px] sm:h-[390px] md:h-[540px]">
+      {/* Carousel — height and proportions calibrated for mobile */}
+      <div className="w-full relative h-[300px] sm:h-[380px] md:h-[540px]">
         {items.length > 0 ? (
           <FlexCarousel
             items={items}
             preset="liquid"
             intro="rise"
-            cardHeight={isMobile ? 0.4 : 0.5}
-            gap={isMobile ? 16 : 12}
-            squeeze={isMobile ? 0.06 : 0.2}
+            cardHeight={isMobile ? 0.54 : 0.5}
+            gap={isMobile ? 14 : 12}
+            squeeze={isMobile ? 0.05 : 0.2}
             focusOnClick
             captions
             fit="natural"
             radius={0}
-            lensWidth={isMobile ? 0.92 : 0.74}
-            lensHeight={isMobile ? 0.95 : 1.18}
-            tilt={isMobile ? 26 : 62}
+            lensWidth={isMobile ? 0.94 : 0.74}
+            lensHeight={isMobile ? 0.92 : 1.18}
+            tilt={isMobile ? 22 : 62}
             roundness={1}
-            bend={isMobile ? 0.16 : 0.34}
-            reach={isMobile ? 0.3 : 0.38}
+            bend={isMobile ? 0.14 : 0.34}
+            reach={isMobile ? 0.28 : 0.38}
             curl="twist"
-            dispersion={isMobile ? 0.25 : 0.45}
+            dispersion={isMobile ? 0.22 : 0.45}
             liquid={0}
             followCursor={false}
             autoplay={false}
@@ -138,8 +138,8 @@ export function BlogSection({ articles }: BlogSectionProps) {
         )}
       </div>
 
-      {/* Bottom padding */}
-      <div className="h-[clamp(80px,10vw,140px)] max-sm:h-20" />
+      {/* Bottom padding — compact on mobile */}
+      <div className="h-[clamp(80px,10vw,140px)] max-sm:h-6" />
     </section>
   );
 }
