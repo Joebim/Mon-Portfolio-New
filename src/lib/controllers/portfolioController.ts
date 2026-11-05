@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import staticPortfolioFallback from '../../portfolio.json';
 import { getFirestoreDb } from '../firebase-admin';
 import {
   PortfolioContentSchema,
@@ -173,9 +174,14 @@ export function normalizePortfolio(raw: unknown): PortfolioContent {
 }
 
 export async function readLocalPortfolio(): Promise<PortfolioContent> {
-  const file = await fs.readFile(LOCAL_PORTFOLIO_PATH, 'utf-8');
-  const json = JSON.parse(file);
-  return normalizePortfolio(json);
+  try {
+    const file = await fs.readFile(LOCAL_PORTFOLIO_PATH, 'utf-8');
+    const json = JSON.parse(file);
+    return normalizePortfolio(json);
+  } catch (err) {
+    console.warn('[portfolioController] Local file read failed, using embedded fallback:', err);
+    return normalizePortfolio(staticPortfolioFallback);
+  }
 }
 
 export async function writeLocalPortfolio(data: PortfolioContent): Promise<void> {
@@ -205,7 +211,11 @@ export async function writeLocalPortfolio(data: PortfolioContent): Promise<void>
     },
   };
 
-  await fs.writeFile(LOCAL_PORTFOLIO_PATH, JSON.stringify(compatiblePayload, null, 2), 'utf-8');
+  try {
+    await fs.writeFile(LOCAL_PORTFOLIO_PATH, JSON.stringify(compatiblePayload, null, 2), 'utf-8');
+  } catch (writeErr) {
+    console.warn('[portfolioController] writeLocalPortfolio write failed (non-fatal in serverless environments):', writeErr);
+  }
 }
 
 function withTimeout<T>(promise: Promise<T>, ms = 4000, label = 'Firestore fetch'): Promise<T> {
@@ -226,18 +236,25 @@ export async function getPortfolioContent(): Promise<{ source: 'firestore' | 'lo
         4000,
         'Firestore portfolio get'
       );
-      if (doc.exists) {
+      if (doc && doc.exists) {
         const raw = doc.data();
-        const normalized = normalizePortfolio(raw);
-        return { source: 'firestore', data: normalized };
+        if (raw) {
+          const normalized = normalizePortfolio(raw);
+          return { source: 'firestore', data: normalized };
+        }
       }
     } catch (err) {
       console.warn('[portfolioController] Firestore fetch failed, falling back to local file:', err);
     }
   }
 
-  const localData = await readLocalPortfolio();
-  return { source: 'local', data: localData };
+  try {
+    const localData = await readLocalPortfolio();
+    return { source: 'local', data: localData };
+  } catch (err) {
+    console.warn('[portfolioController] readLocalPortfolio failed, falling back to static embed:', err);
+    return { source: 'local', data: normalizePortfolio(staticPortfolioFallback) };
+  }
 }
 
 /**

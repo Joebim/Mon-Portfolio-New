@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '../../../../lib/auth';
-import { getPortfolioContent, updatePortfolioContent } from '../../../../lib/controllers/portfolioController';
+import { getPortfolioContent, readLocalPortfolio, updatePortfolioContent } from '../../../../lib/controllers/portfolioController';
 
 export async function GET() {
   const session = await getSession();
@@ -12,8 +12,13 @@ export async function GET() {
     const result = await getPortfolioContent();
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[API /api/admin/portfolio] GET error:', error);
-    return NextResponse.json({ error: 'Failed to retrieve portfolio data' }, { status: 500 });
+    console.error('[API /api/admin/portfolio] GET error, serving fallback:', error);
+    try {
+      const fallback = await readLocalPortfolio();
+      return NextResponse.json({ source: 'local', data: fallback, warning: 'Failed to retrieve live data' });
+    } catch {
+      return NextResponse.json({ error: 'Failed to retrieve portfolio data' }, { status: 500 });
+    }
   }
 }
 

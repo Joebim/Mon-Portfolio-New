@@ -44,6 +44,7 @@ export async function getArticles(): Promise<DevToArticle[]> {
   const res = await fetch(`${BASE}/articles?username=${username}&per_page=30`, {
     headers: getDevToHeaders(),
     next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(4000),
   });
   if (!res.ok) throw new Error(`DEV.to API error: ${res.status}`);
   const list = (await res.json()) as any[];
@@ -57,6 +58,7 @@ export async function getArticle(idOrSlug: string | number): Promise<DevToArticl
   const res = await fetch(`${BASE}/articles/${idOrSlug}`, {
     headers: getDevToHeaders(),
     next: { revalidate: 3600 },
+    signal: AbortSignal.timeout(4000),
   });
   if (!res.ok) throw new Error(`DEV.to API error: ${res.status}`);
   const data = (await res.json()) as any;

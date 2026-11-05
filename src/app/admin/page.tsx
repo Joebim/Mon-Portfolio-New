@@ -17,6 +17,7 @@ import type {
 import { Arrow } from '../../components/SiteNavigation';
 import { signOutUser } from '../../lib/firebase';
 import { AdminDashboardSkeleton } from '../../components/Skeleton';
+import { portfolio as defaultPortfolio } from '../../data';
 
 // Rich-text editor is client-only (Tiptap)
 const RichTextEditor = dynamic_import(() => import('../../components/admin/RichTextEditor'), {
@@ -112,17 +113,26 @@ export default function AdminDashboardPage() {
         ]);
 
         if (portfolioRes.ok) {
-          const pData = await portfolioRes.json();
-          setPortfolio(pData.data);
-          setDataSource(pData.source);
+          const pData = await portfolioRes.json().catch(() => ({}));
+          if (pData?.data) {
+            setPortfolio(pData.data);
+            setDataSource(pData.source || 'firestore');
+          } else {
+            setPortfolio(defaultPortfolio as any);
+            setDataSource('local');
+          }
         } else {
           const errData = await portfolioRes.json().catch(() => ({}));
           console.error('[Admin] Portfolio load error:', errData);
-          showToast(`Error loading portfolio: ${errData.error || portfolioRes.statusText}`, 'error');
+          setPortfolio(defaultPortfolio as any);
+          setDataSource('local');
+          showToast('Loaded local portfolio backup (remote endpoint unavailable)', 'error');
         }
         if (blogsRes.ok) {
-          const bData = await blogsRes.json();
-          setBlogs(bData.articles || []);
+          const bData = await blogsRes.json().catch(() => ({}));
+          setBlogs(Array.isArray(bData?.articles) ? bData.articles : []);
+        } else {
+          setBlogs([]);
         }
 
         try {
@@ -140,7 +150,9 @@ export default function AdminDashboardPage() {
         }
       } catch (err) {
         console.error('Failed to load admin data:', err);
-        showToast('Error loading dashboard data', 'error');
+        setPortfolio((prev) => prev || (defaultPortfolio as any));
+        setDataSource('local');
+        showToast('Error connecting to backend services — offline mode active', 'error');
       } finally {
         setLoading(false);
       }

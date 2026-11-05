@@ -1,4 +1,5 @@
 import { getAllBlogArticles } from '../../lib/controllers/blogController';
+import type { BlogArticle } from '../../lib/schemas';
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Arrow, ProjectLabel } from '../../components/SiteNavigation';
@@ -34,7 +35,13 @@ function formatDate(dateStr: string): string {
 }
 
 export default async function BlogIndexPage() {
-  const { articles } = await getAllBlogArticles();
+  let articles: BlogArticle[] = [];
+  try {
+    const res = await getAllBlogArticles();
+    articles = res?.articles || [];
+  } catch (err) {
+    console.error('[BlogIndexPage] Error retrieving articles:', err);
+  }
 
   return (
     <main className="min-h-screen bg-[#0B0B0B] text-paper">
@@ -85,7 +92,7 @@ export default async function BlogIndexPage() {
               {/* Content */}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {(Array.isArray(article.tagList) ? article.tagList : []).slice(0, 3).map((tag) => (
+                  {(Array.isArray(article.tagList) ? article.tagList : []).slice(0, 3).map((tag: string) => (
                     <span
                       key={tag}
                       className="font-mono text-[7px] tracking-[0.1em] px-2 py-0.5 rounded-full border"

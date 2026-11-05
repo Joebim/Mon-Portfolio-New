@@ -68,8 +68,13 @@ function tagColor(tag: string): string {
 }
 
 export default async function BlogArticlePage({ params }: Props) {
-  const { slug } = await params;
-  const article = await getBlogArticleBySlug(slug);
+  let article = null;
+  try {
+    const { slug } = await params;
+    article = await getBlogArticleBySlug(slug);
+  } catch (err) {
+    console.error('[BlogArticlePage] Error finding article:', err);
+  }
 
   if (!article) {
     return (

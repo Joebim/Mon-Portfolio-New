@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getPortfolioContent } from '../../../lib/controllers/portfolioController';
+import { getPortfolioContent, normalizePortfolio } from '../../../lib/controllers/portfolioController';
+import staticPortfolioFallback from '../../../portfolio.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,10 +13,19 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error('[API /api/portfolio] GET error:', error);
+    console.error('[API /api/portfolio] GET error, serving fallback:', error);
     return NextResponse.json(
-      { error: 'Failed to retrieve portfolio data' },
-      { status: 500 }
+      {
+        source: 'local',
+        data: normalizePortfolio(staticPortfolioFallback),
+        warning: 'Fallback portfolio served due to server exception',
+      },
+      {
+        status: 200,
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      }
     );
   }
 }

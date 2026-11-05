@@ -202,7 +202,7 @@ export default async function HomePage() {
                   </p>
                 </div>
                 <span className="relative z-20 self-end text-right text-[#9e968f] font-mono text-[8px] max-sm:text-[7px] tracking-[0.1em] max-[365px]:hidden">
-                  BASED IN<br />{portfolio.contact.location.toUpperCase()}
+                  BASED IN<br />{(portfolio.contact?.location || defaultPortfolio.contact?.location || 'Nigeria').toUpperCase()}
                 </span>
               </div>
             </BorderGlow>
@@ -343,7 +343,7 @@ export default async function HomePage() {
           <a href={GITHUB_URL} target="_blank" rel="noopener noreferrer" className="hover:text-ember-soft transition-colors">GITHUB ↗</a>
         </div>
         <span className="text-[#88817a] font-mono text-[7px] max-sm:text-[6px] tracking-[0.1em] text-right max-sm:col-start-2 max-sm:row-start-1">
-          JOSEPH AKINWOLE®<br />{portfolio.contact.location.toUpperCase()}
+          JOSEPH AKINWOLE®<br />{(portfolio.contact?.location || defaultPortfolio.contact?.location || 'Nigeria').toUpperCase()}
         </span>
       </footer>
     </>
