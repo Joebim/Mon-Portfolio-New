@@ -60,6 +60,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<AdminTab>('profile');
   const [loading, setLoading] = useState(true);
+  const [fadingOut, setFadingOut] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [syncingDevTo, setSyncingDevTo] = useState(false);
@@ -154,7 +155,10 @@ export default function AdminDashboardPage() {
         setDataSource('local');
         showToast('Error connecting to backend services — offline mode active', 'error');
       } finally {
-        setLoading(false);
+        setFadingOut(true);
+        setTimeout(() => {
+          setLoading(false);
+        }, 800);
       }
     }
     loadData();
@@ -388,8 +392,8 @@ export default function AdminDashboardPage() {
   };
 
   /* ─── loading state ─── */
-  if (loading) {
-    return <PrismaticLoader />;
+  if (loading && !portfolio) {
+    return <PrismaticLoader isFadingOut={fadingOut} fadeDuration={800} />;
   }
 
   /* ─── helpers for portfolio state mutations ─── */
@@ -423,7 +427,11 @@ export default function AdminDashboardPage() {
 
   /* ─────────────────────────────────────────── RENDER ─── */
   return (
-    <div className="min-h-screen bg-[#0B0B0B] text-paper font-sans">
+    <>
+      {loading && (
+        <PrismaticLoader isFadingOut={fadingOut} fadeDuration={800} />
+      )}
+      <div className="min-h-screen bg-[#0B0B0B] text-paper font-sans">
       {/* Toast */}
       {toast && (
         <div
@@ -1786,5 +1794,6 @@ export default function AdminDashboardPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

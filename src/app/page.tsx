@@ -6,6 +6,7 @@ import { ExperienceTimeline } from '../components/ExperienceTimeline';
 import { ContactSection } from '../components/ContactSection';
 import { BlogSection } from '../components/BlogSection';
 import { Arrow, BrandMark, ProjectLabel } from '../components/SiteNavigation';
+import { PrismaticLoader } from '../components/PrismaticLoader';
 import {
   EMAIL as defaultEmail,
   GITHUB_URL as defaultGithub,
@@ -53,6 +54,7 @@ export default async function HomePage() {
   }
   return (
     <>
+      <PrismaticLoader autoFadeOut minDuration={1000} fadeDuration={800} />
       <main id="main">
         {/* Hero Section */}
         <Hero portfolio={portfolio} />

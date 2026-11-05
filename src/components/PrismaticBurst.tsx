@@ -445,8 +445,10 @@ const link = (gl: WebGL2RenderingContext, fragmentSource: string): Program | nul
   return { program, uniforms };
 };
 
+const DEFAULT_BURST_COLORS = ['#f36d45', '#ff8c5a', '#ffb490', '#c2410c'];
+
 export const PrismaticBurst = ({
-  colors,
+  colors = DEFAULT_BURST_COLORS,
   intensity = 2,
   speed = 0.5,
   animationType = 'rotate3d',
@@ -481,7 +483,7 @@ export const PrismaticBurst = ({
   const settingsRef = useRef<Settings>(null as unknown as Settings);
   const [generation, setGeneration] = useState(0);
   settingsRef.current = {
-    colors: Array.isArray(colors) ? colors.slice(0, 64).map(String) : [],
+    colors: Array.isArray(colors) && colors.length > 0 ? colors.slice(0, 64).map(String) : DEFAULT_BURST_COLORS,
     intensity: Math.max(0, intensity),
     speed,
     animation: ANIMATIONS[animationType] ?? ANIMATIONS.rotate3d,
