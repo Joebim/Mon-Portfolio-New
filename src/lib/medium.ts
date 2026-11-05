@@ -1,120 +1,194 @@
 /**
- * Medium API v1 client
- * Docs: https://github.com/Medium/medium-api-docs
- *
- * Setup:
- *  1. Medium → Settings → Security and apps → Integration tokens → Generate
- *  2. Add MEDIUM_INTEGRATION_TOKEN to .env.local
- *  3. The first call auto-fetches and caches your authorId
+ * Medium RSS & Feed client (Pull / Sync only)
+ * Medium deprecated programmatic post creation for individual accounts.
+ * This client pulls public published articles via Medium's RSS feed.
  */
 
-const BASE = 'https://api.medium.com/v1';
+import { BlogArticleSchema, type BlogArticle } from './schemas';
 
-export type MediumPublishStatus = 'public' | 'draft' | 'unlisted';
-
-export interface MediumPost {
-  id: string;
+export interface MediumFeedItem {
   title: string;
-  authorId: string;
-  url: string;
-  canonicalUrl?: string;
-  publishStatus: MediumPublishStatus;
-  publishedAt?: string;
-  tags?: string[];
+  link: string;
+  guid?: string;
+  pubDate: string;
+  author?: string;
+  thumbnail?: string;
+  description?: string;
+  content?: string;
+  categories?: string[];
 }
 
-export interface MediumPublishOptions {
-  title: string;
-  contentFormat: 'markdown' | 'html';
-  content: string;
-  tags?: string[];
-  canonicalUrl?: string;
-  publishStatus?: MediumPublishStatus;
-  /** Portfolio slug to use as canonical URL if canonicalUrl not set */
-  portfolioSlug?: string;
+export function getMediumUsername(): string {
+  const raw = process.env.MEDIUM_USERNAME || 'joebim';
+  return raw.replace(/^@/, '').trim();
 }
 
-function getMediumToken(): string | null {
-  return process.env.MEDIUM_INTEGRATION_TOKEN ?? null;
-}
-
-function getMediumHeaders(): HeadersInit {
-  const token = getMediumToken();
-  if (!token) throw new Error('MEDIUM_INTEGRATION_TOKEN is not set');
+export async function getMediumStatus(): Promise<{ connected: boolean; username: string }> {
+  const username = getMediumUsername();
   return {
-    Authorization: `Bearer ${token}`,
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
+    connected: Boolean(username),
+    username,
   };
 }
 
-/** Cached author ID to avoid repeated /me calls */
-let _cachedAuthorId: string | null = null;
+function cleanHtmlToText(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-export async function getMediumAuthorId(): Promise<string> {
-  if (_cachedAuthorId) return _cachedAuthorId;
+function extractFirstImage(html: string): string | undefined {
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+  return match ? match[1] : undefined;
+}
 
-  const res = await fetch(`${BASE}/me`, { headers: getMediumHeaders() });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Medium /me error (${res.status}): ${body}`);
-  }
-  const json = await res.json() as { data: { id: string; username: string } };
-  _cachedAuthorId = json.data.id;
-  return _cachedAuthorId;
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 80);
 }
 
 /**
- * Publish a post to Medium.
- * Returns null if MEDIUM_INTEGRATION_TOKEN is not set (graceful no-op).
+ * Fetch published Medium articles for the specified (or environment) username.
+ * Tries rss2json first for clean structured data, then falls back to direct RSS XML parsing.
  */
-export async function publishToMedium(opts: MediumPublishOptions): Promise<MediumPost | null> {
-  if (!getMediumToken()) return null;
+export async function getMediumArticles(customUsername?: string): Promise<BlogArticle[]> {
+  const username = (customUsername || getMediumUsername()).replace(/^@/, '').trim();
+  if (!username) return [];
 
-  const authorId = await getMediumAuthorId();
+  const feedUrl = `https://medium.com/feed/@${username}`;
+  const articles: BlogArticle[] = [];
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.dev';
-  const canonicalUrl =
-    opts.canonicalUrl ||
-    (opts.portfolioSlug ? `${siteUrl}/blog/${opts.portfolioSlug}` : undefined);
-
-  const body: Record<string, unknown> = {
-    title: opts.title,
-    contentFormat: opts.contentFormat,
-    content: opts.content,
-    publishStatus: opts.publishStatus ?? 'public',
-  };
-  if (opts.tags?.length) body.tags = opts.tags.slice(0, 5); // Medium max 5 tags
-  if (canonicalUrl) body.canonicalUrl = canonicalUrl;
-
-  const res = await fetch(`${BASE}/users/${authorId}/posts`, {
-    method: 'POST',
-    headers: getMediumHeaders(),
-    body: JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Medium publish error (${res.status}): ${errorText}`);
-  }
-
-  const json = await res.json() as { data: MediumPost };
-  return json.data;
-}
-
-/**
- * Verify the Medium token is valid and return basic user info.
- * Useful for admin dashboard status checks.
- */
-export async function getMediumStatus(): Promise<{ connected: boolean; username?: string; id?: string }> {
-  if (!getMediumToken()) return { connected: false };
+  // Attempt 1: rss2json public endpoint
   try {
-    const authorId = await getMediumAuthorId();
-    const res = await fetch(`${BASE}/me`, { headers: getMediumHeaders() });
-    const json = await res.json() as { data: { id: string; username: string } };
-    return { connected: true, username: json.data.username, id: authorId };
-  } catch {
-    return { connected: false };
-  }
-}
+    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, {
+      headers: { Accept: 'application/json' },
+      next: { revalidate: 3600 },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { status: string; items: MediumFeedItem[] };
+      if (data.status === 'ok' && Array.isArray(data.items)) {
+        for (const item of data.items) {
+          const rawContent = item.content || item.description || '';
+          const plainText = cleanHtmlToText(rawContent);
+          const coverImage = item.thumbnail || extractFirstImage(rawContent);
+          const title = item.title || 'Untitled Article';
+          const slug = slugify(title);
 
+          const article: BlogArticle = {
+            id: `medium-${slug}`,
+            slug,
+            title,
+            description: plainText.slice(0, 240) + (plainText.length > 240 ? '…' : ''),
+            coverImage: coverImage || undefined,
+            publishedAt: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
+            readingTimeMinutes: Math.max(1, Math.ceil(plainText.split(/\s+/).length / 200)),
+            tagList: item.categories || [],
+            url: item.link,
+            canonicalUrl: item.link,
+            bodyMarkdown: rawContent,
+            isDraft: false,
+            mediumId: item.guid || slug,
+            mediumUrl: item.link,
+            publishedTo: ['medium'],
+          };
+
+          const validated = BlogArticleSchema.safeParse(article);
+          if (validated.success) {
+            articles.push(validated.data);
+          }
+        }
+        if (articles.length > 0) return articles;
+      }
+    }
+  } catch (err) {
+    console.warn('[medium] rss2json fetch failed, falling back to direct RSS:', err);
+  }
+
+  // Attempt 2: Direct RSS fetch + lightweight regex parser
+  try {
+    const res = await fetch(feedUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        Accept: 'application/rss+xml, application/xml, text/xml',
+      },
+      next: { revalidate: 3600 },
+    });
+
+    if (!res.ok) {
+      console.warn(`[medium] Direct RSS feed returned status ${res.status}`);
+      return [];
+    }
+
+    const xml = await res.text();
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = itemRegex.exec(xml)) !== null) {
+      const itemContent = match[1];
+
+      const titleMatch = itemContent.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
+      const linkMatch = itemContent.match(/<link>([\s\S]*?)<\/link>/);
+      const pubDateMatch = itemContent.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
+      const contentMatch = itemContent.match(/<content:encoded>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/content:encoded>/);
+      const guidMatch = itemContent.match(/<guid[^>]*>([\s\S]*?)<\/guid>/);
+
+      const title = (titleMatch ? titleMatch[1].trim() : 'Untitled Article')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&#39;/g, "'")
+        .replace(/&quot;/g, '"');
+
+      const link = linkMatch ? linkMatch[1].trim() : '';
+      const rawContent = contentMatch ? contentMatch[1].trim() : '';
+      const plainText = cleanHtmlToText(rawContent);
+      const coverImage = extractFirstImage(rawContent);
+      const pubDate = pubDateMatch ? pubDateMatch[1].trim() : '';
+      const guid = guidMatch ? guidMatch[1].trim() : '';
+      const slug = slugify(title);
+
+      // Collect categories/tags
+      const categories: string[] = [];
+      const catRegex = /<category>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/category>/g;
+      let catMatch: RegExpExecArray | null;
+      while ((catMatch = catRegex.exec(itemContent)) !== null) {
+        categories.push(catMatch[1].trim());
+      }
+
+      const article: BlogArticle = {
+        id: `medium-${slug}`,
+        slug,
+        title,
+        description: plainText.slice(0, 240) + (plainText.length > 240 ? '…' : ''),
+        coverImage: coverImage || undefined,
+        publishedAt: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),
+        readingTimeMinutes: Math.max(1, Math.ceil(plainText.split(/\s+/).length / 200)),
+        tagList: categories,
+        url: link,
+        canonicalUrl: link,
+        bodyMarkdown: rawContent,
+        isDraft: false,
+        mediumId: guid || slug,
+        mediumUrl: link,
+        publishedTo: ['medium'],
+      };
+
+      const validated = BlogArticleSchema.safeParse(article);
+      if (validated.success) {
+        articles.push(validated.data);
+      }
+    }
+  } catch (err) {
+    console.error('[medium] Failed to parse Medium RSS feed:', err);
+  }
+
+  return articles;
+}

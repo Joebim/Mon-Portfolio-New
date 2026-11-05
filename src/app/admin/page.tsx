@@ -62,6 +62,7 @@ export default function AdminDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [syncingDevTo, setSyncingDevTo] = useState(false);
+  const [syncingMedium, setSyncingMedium] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [dataSource, setDataSource] = useState<'firestore' | 'local'>('local');
 
@@ -86,7 +87,7 @@ export default function AdminDashboardPage() {
     tagList: '',
     coverImage: '',
     isDraft: false,
-    publishTo: { devto: true, medium: true },
+    publishTo: { devto: true },
   });
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -210,6 +211,25 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleSyncMedium = async () => {
+    setSyncingMedium(true);
+    try {
+      const res = await fetch('/api/admin/sync-medium', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Medium sync failed');
+      const bRes = await fetch('/api/admin/blogs');
+      if (bRes.ok) {
+        const bData = await bRes.json();
+        setBlogs(bData.articles || []);
+      }
+      showToast(`Synced ${data.count} articles from Medium!`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Medium sync failed', 'error');
+    } finally {
+      setSyncingMedium(false);
+    }
+  };
+
   const handleUploadFile = async (
     file: File,
     folder: string,
@@ -243,7 +263,6 @@ export default function AdminDashboardPage() {
     try {
       const publishTo: string[] = [];
       if (newBlog.publishTo.devto) publishTo.push('devto');
-      if (newBlog.publishTo.medium) publishTo.push('medium');
 
       const res = await fetch('/api/admin/blogs', {
         method: 'POST',
@@ -271,12 +290,11 @@ export default function AdminDashboardPage() {
         tagList: '',
         coverImage: '',
         isDraft: false,
-        publishTo: { devto: true, medium: true },
+        publishTo: { devto: true },
       });
 
       const msgs: string[] = ['Article created ✓'];
       if (data.devto?.success) msgs.push('DEV.to ✓');
-      if (data.medium?.success) msgs.push('Medium ✓');
       showToast(msgs.join(' · '));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Create failed', 'error');
@@ -285,7 +303,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleCrossPost = async (slug: string, platform: 'devto' | 'medium') => {
+  const handleCrossPost = async (slug: string, platform: 'devto') => {
     const key = `${slug}-${platform}`;
     setCrossPosting((prev) => ({ ...prev, [key]: true }));
     try {
@@ -301,13 +319,13 @@ export default function AdminDashboardPage() {
           b.slug === slug
             ? {
                 ...b,
-                ...(platform === 'devto' ? { devtoUrl: data.url } : { mediumUrl: data.url }),
-                publishedTo: [...new Set([...(b.publishedTo ?? []), platform])],
+                devtoUrl: data.url,
+                publishedTo: Array.from(new Set([...(b.publishedTo ?? []), 'devto' as const])) as Array<'devto' | 'medium' | 'portfolio'>,
               }
             : b
         )
       );
-      showToast(`Posted to ${platform === 'devto' ? 'DEV.to' : 'Medium'} ✓`);
+      showToast('Posted to DEV.to ✓');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `${platform} cross-post failed`, 'error');
     } finally {
@@ -699,115 +717,179 @@ export default function AdminDashboardPage() {
                 <div>
                   <h2 className="text-lg font-medium tracking-tight">Hero Featured Article Card</h2>
                   <p className="font-mono text-[9px] text-[#777] mt-1">
-                    Controls the article card preview shown on the top-right of the desktop hero section.
+                    Select which article from your database is highlighted on the desktop homepage hero.
                   </p>
                 </div>
+                <div className="flex items-center gap-2">
+                  {blogs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const latest = blogs[0];
+                        if (!latest) return;
+                        const dateStr = latest.publishedAt
+                          ? new Date(latest.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()
+                          : 'LATEST';
+                        const platformStr = latest.devtoUrl ? 'DEV.TO' : latest.mediumUrl ? 'MEDIUM' : 'PORTFOLIO';
+                        setPortfolio({
+                          ...portfolio,
+                          latestArticle: {
+                            id: latest.id,
+                            slug: latest.slug,
+                            title: latest.title,
+                            description: latest.description,
+                            url: latest.url || (latest.slug ? `/blog/${latest.slug}` : undefined),
+                            platform: platformStr,
+                            date: dateStr,
+                            publishedAt: latest.publishedAt,
+                            readingTime: `${latest.readingTimeMinutes || 3} MIN READ`,
+                            coverImage: latest.coverImage || undefined,
+                          },
+                        });
+                        showToast(`Selected latest article: "${latest.title.slice(0, 32)}…"`);
+                      }}
+                      className="px-3 py-1 rounded bg-ember/15 border border-ember/30 text-ember hover:bg-ember/25 font-mono text-[8.5px] uppercase tracking-wider transition-colors cursor-pointer"
+                    >
+                      ★ Pick Latest
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/admin/blogs');
+                        if (res.ok) {
+                          const data = await res.json();
+                          setBlogs(data.articles || []);
+                          showToast(`Refreshed ${data.articles?.length || 0} articles from DB`);
+                        }
+                      } catch {
+                        showToast('Failed to refresh blogs', 'error');
+                      }
+                    }}
+                    className="px-3 py-1 rounded bg-white/5 border border-white/10 text-[#aaa] hover:text-paper hover:bg-white/10 font-mono text-[8.5px] uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    ↻ Refresh List
+                  </button>
+                </div>
               </div>
-              <Field label="Article Title">
-                <input
-                  type="text"
-                  className={inputCls}
-                  placeholder="React vs Angular: Tips to help you choose ⚔️"
-                  value={portfolio.latestArticle?.title ?? ''}
-                  onChange={(e) =>
-                    setPortfolio({
-                      ...portfolio,
-                      latestArticle: {
-                        ...(portfolio.latestArticle || { description: '' }),
-                        title: e.target.value,
-                      },
-                    })
-                  }
-                />
-              </Field>
-              <Field label="Synopsis / Description">
-                <textarea
-                  rows={2}
-                  className={inputCls}
-                  placeholder="A practical look at architecture, learning curves, and deciding between component freedom and structured enterprise scale."
-                  value={portfolio.latestArticle?.description ?? ''}
-                  onChange={(e) =>
-                    setPortfolio({
-                      ...portfolio,
-                      latestArticle: {
-                        ...(portfolio.latestArticle || { title: '' }),
-                        description: e.target.value,
-                      },
-                    })
-                  }
-                />
-              </Field>
-              <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
-                <Field label="Article URL">
-                  <input
-                    type="text"
+
+              {blogs.length === 0 ? (
+                <div className="p-4 rounded-xl border border-white/10 bg-[#161413] text-center space-y-2">
+                  <p className="font-mono text-xs text-[#8e8883]">
+                    No articles loaded from database yet.
+                  </p>
+                  <p className="font-mono text-[9px] text-[#666]">
+                    Create an article or sync from DEV.to in Tab 06 (Blog Engine) to feature it here.
+                  </p>
+                </div>
+              ) : (
+                <Field
+                  label="Select Article from Database"
+                  helper={`${blogs.length} article${blogs.length === 1 ? '' : 's'} available in DB`}
+                >
+                  <select
                     className={inputCls}
-                    placeholder="https://dev.to/joebim/..."
-                    value={portfolio.latestArticle?.url ?? ''}
-                    onChange={(e) =>
-                      setPortfolio({
-                        ...portfolio,
-                        latestArticle: {
-                          ...(portfolio.latestArticle || { title: '', description: '' }),
-                          url: e.target.value,
-                        },
-                      })
+                    value={
+                      blogs.find(
+                        (b) =>
+                          (portfolio.latestArticle?.slug && b.slug === portfolio.latestArticle.slug) ||
+                          (portfolio.latestArticle?.id && String(b.id) === String(portfolio.latestArticle.id)) ||
+                          (portfolio.latestArticle?.title && b.title.trim().toLowerCase() === portfolio.latestArticle.title.trim().toLowerCase())
+                      )?.slug || ''
                     }
-                  />
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const selected = blogs.find((b) => b.slug === val || String(b.id) === val);
+                      if (selected) {
+                        const dateStr = selected.publishedAt
+                          ? new Date(selected.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }).toUpperCase()
+                          : 'LATEST';
+                        const platformStr = selected.devtoUrl ? 'DEV.TO' : selected.mediumUrl ? 'MEDIUM' : 'PORTFOLIO';
+                        setPortfolio({
+                          ...portfolio,
+                          latestArticle: {
+                            id: selected.id,
+                            slug: selected.slug,
+                            title: selected.title,
+                            description: selected.description,
+                            url: selected.url || (selected.slug ? `/blog/${selected.slug}` : undefined),
+                            platform: platformStr,
+                            date: dateStr,
+                            publishedAt: selected.publishedAt,
+                            readingTime: `${selected.readingTimeMinutes || 3} MIN READ`,
+                            coverImage: selected.coverImage || undefined,
+                          },
+                        });
+                        showToast(`Hero featured article updated to "${selected.title.slice(0, 32)}…"`);
+                      }
+                    }}
+                  >
+                    <option value="" disabled>
+                      — Choose an article from database —
+                    </option>
+                    {blogs.map((b) => {
+                      const d = b.publishedAt
+                        ? new Date(b.publishedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                        : 'Draft';
+                      return (
+                        <option key={b.slug || b.id} value={b.slug || b.id}>
+                          [{d}] {b.title} {b.devtoUrl ? '(DEV.to)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </Field>
-                <Field label="Platform Name (e.g. DEV.TO, MEDIUM)">
-                  <input
-                    type="text"
-                    className={inputCls}
-                    placeholder="DEV.TO"
-                    value={portfolio.latestArticle?.platform ?? ''}
-                    onChange={(e) =>
-                      setPortfolio({
-                        ...portfolio,
-                        latestArticle: {
-                          ...(portfolio.latestArticle || { title: '', description: '' }),
-                          platform: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Published Date (e.g. JUN 2024)">
-                  <input
-                    type="text"
-                    className={inputCls}
-                    placeholder="JUN 2024"
-                    value={portfolio.latestArticle?.date ?? portfolio.latestArticle?.publishedAt ?? ''}
-                    onChange={(e) =>
-                      setPortfolio({
-                        ...portfolio,
-                        latestArticle: {
-                          ...(portfolio.latestArticle || { title: '', description: '' }),
-                          date: e.target.value,
-                          publishedAt: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-                <Field label="Reading Time (e.g. 3 MIN READ)">
-                  <input
-                    type="text"
-                    className={inputCls}
-                    placeholder="3 MIN READ"
-                    value={portfolio.latestArticle?.readingTime ?? ''}
-                    onChange={(e) =>
-                      setPortfolio({
-                        ...portfolio,
-                        latestArticle: {
-                          ...(portfolio.latestArticle || { title: '', description: '' }),
-                          readingTime: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </Field>
-              </div>
+              )}
+
+              {/* Read-only Live Preview Card */}
+              {portfolio.latestArticle?.title ? (
+                <div className="mt-4 p-4 rounded-xl border border-white/10 bg-[#161413] space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-ember inline-block animate-pulse" />
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#ffb490] font-semibold">
+                        HERO CARD PREVIEW
+                      </span>
+                    </div>
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#777]">
+                      {portfolio.latestArticle.date || portfolio.latestArticle.publishedAt || 'LATEST'} • {portfolio.latestArticle.readingTime || '3 MIN READ'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-paper tracking-tight">
+                      {portfolio.latestArticle.title}
+                    </h3>
+                    <p className="mt-1 text-xs text-[#999] leading-relaxed line-clamp-2">
+                      {portfolio.latestArticle.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/10 flex items-center justify-between font-mono text-[9px]">
+                    <span className="text-[#777] uppercase tracking-widest">
+                      PLATFORM:{' '}
+                      <span className="text-paper font-semibold">
+                        {portfolio.latestArticle.platform || 'DEV.TO'}
+                      </span>
+                    </span>
+                    {portfolio.latestArticle.url && (
+                      <a
+                        href={portfolio.latestArticle.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-ember hover:underline flex items-center gap-1 font-semibold"
+                      >
+                        VIEW ARTICLE ↗
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <p className="font-mono text-[9px] text-[#666] italic">
+                  No article currently selected for hero display. Choose one from the dropdown above.
+                </p>
+              )}
             </section>
 
             {/* General Identity */}
@@ -1396,7 +1478,7 @@ export default function AdminDashboardPage() {
               <div>
                 <h2 className="text-xl font-medium tracking-tight">Blog Engine ({blogs.length})</h2>
                 <p className="text-xs text-[#8e8883] font-mono mt-1">
-                  Write once · publish to DEV.to, Medium & your portfolio.
+                  Manage articles · sync with DEV.to and Medium RSS · publish to portfolio.
                 </p>
                 {platformStatus && (
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -1404,7 +1486,7 @@ export default function AdminDashboardPage() {
                       {platformStatus.devto.connected ? `● DEV.TO @${platformStatus.devto.username}` : '○ DEV.TO NOT CONNECTED'}
                     </span>
                     <span className={`font-mono text-[7px] px-2 py-0.5 rounded-full border ${platformStatus.medium.connected ? 'border-green-500/40 text-green-400 bg-green-500/10' : 'border-white/10 text-[#555]'}`}>
-                      {platformStatus.medium.connected ? `● MEDIUM @${platformStatus.medium.username}` : '○ MEDIUM NOT CONNECTED'}
+                      {platformStatus.medium.connected ? `● MEDIUM FEED @${platformStatus.medium.username}` : '○ MEDIUM USERNAME NOT SET'}
                     </span>
                   </div>
                 )}
@@ -1416,7 +1498,15 @@ export default function AdminDashboardPage() {
                   className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
                 >
                   <span className={syncingDevTo ? 'animate-spin inline-block' : ''}>↺</span>
-                  {syncingDevTo ? 'SYNCING...' : 'SYNC FROM DEV.TO'}
+                  {syncingDevTo ? 'SYNCING DEV.TO...' : 'SYNC FROM DEV.TO'}
+                </button>
+                <button
+                  onClick={handleSyncMedium}
+                  disabled={syncingMedium}
+                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  <span className={syncingMedium ? 'animate-spin inline-block' : ''}>↺</span>
+                  {syncingMedium ? 'SYNCING MEDIUM...' : 'SYNC FROM MEDIUM'}
                 </button>
                 <button
                   onClick={() => setIsCreatingBlog(true)}
@@ -1497,14 +1587,6 @@ export default function AdminDashboardPage() {
                           onChange={(e) => setNewBlog({ ...newBlog, publishTo: { ...newBlog.publishTo, devto: e.target.checked } })} />
                         <span className="font-mono text-[9px] text-paper">DEV.TO</span>
                         {platformStatus && !platformStatus.devto.connected && (
-                          <span className="font-mono text-[7px] text-yellow-500">(token missing)</span>
-                        )}
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="accent-ember" checked={newBlog.publishTo.medium}
-                          onChange={(e) => setNewBlog({ ...newBlog, publishTo: { ...newBlog.publishTo, medium: e.target.checked } })} />
-                        <span className="font-mono text-[9px] text-paper">MEDIUM</span>
-                        {platformStatus && !platformStatus.medium.connected && (
                           <span className="font-mono text-[7px] text-yellow-500">(token missing)</span>
                         )}
                       </label>
@@ -1653,15 +1735,6 @@ export default function AdminDashboardPage() {
                           className="font-mono text-[7px] text-emerald-400 hover:underline">
                           ● DEV.TO ↗
                         </a>
-                      )}
-                      {!article.mediumUrl && (
-                        <button
-                          onClick={() => handleCrossPost(article.slug, 'medium')}
-                          disabled={crossPosting[`${article.slug}-medium`]}
-                          className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper hover:border-white/30 disabled:opacity-50 transition-colors cursor-pointer"
-                        >
-                          {crossPosting[`${article.slug}-medium`] ? '...' : '→ MEDIUM'}
-                        </button>
                       )}
                       {article.mediumUrl && (
                         <a href={article.mediumUrl} target="_blank" rel="noopener noreferrer"

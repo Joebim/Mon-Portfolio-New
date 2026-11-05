@@ -14,6 +14,8 @@ export type Project = {
   kind: 'realty' | 'health' | 'language' | 'links' | 'interior' | 'fashion' | 'type' | 'impact' | 'meme';
   url?: string;
   linkLabel?: string;
+  mediaSrc?: string;
+  mediaAlt?: string;
 };
 
 export type AdditionalProject = {

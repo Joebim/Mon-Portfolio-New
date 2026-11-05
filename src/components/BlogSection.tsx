@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import type { FlexCarouselItem } from './FlexCarousel';
@@ -16,6 +17,16 @@ interface BlogSectionProps {
 
 export function BlogSection({ articles }: BlogSectionProps) {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const items: FlexCarouselItem[] = (articles || []).map((a) => {
     const rawTags = a.tag_list || a.tagList || [];
@@ -77,28 +88,28 @@ export function BlogSection({ articles }: BlogSectionProps) {
         </div>
       </div>
 
-      {/* Carousel */}
-      <div className="w-full" style={{ height: '540px', position: 'relative' }}>
+      {/* Carousel — height reduced on mobile screens to prevent vertical squishing and allow wide cards */}
+      <div className="w-full relative h-[320px] sm:h-[390px] md:h-[540px]">
         {items.length > 0 ? (
           <FlexCarousel
             items={items}
             preset="liquid"
             intro="rise"
-            cardHeight={0.5}
-            gap={12}
-            squeeze={0.2}
+            cardHeight={isMobile ? 0.4 : 0.5}
+            gap={isMobile ? 16 : 12}
+            squeeze={isMobile ? 0.06 : 0.2}
             focusOnClick
             captions
             fit="natural"
             radius={0}
-            lensWidth={0.74}
-            lensHeight={1.18}
-            tilt={62}
+            lensWidth={isMobile ? 0.92 : 0.74}
+            lensHeight={isMobile ? 0.95 : 1.18}
+            tilt={isMobile ? 26 : 62}
             roundness={1}
-            bend={0.34}
-            reach={0.38}
+            bend={isMobile ? 0.16 : 0.34}
+            reach={isMobile ? 0.3 : 0.38}
             curl="twist"
-            dispersion={0.45}
+            dispersion={isMobile ? 0.25 : 0.45}
             liquid={0}
             followCursor={false}
             autoplay={false}

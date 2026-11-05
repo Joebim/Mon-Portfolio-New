@@ -1,6 +1,6 @@
 import { getFirestoreDb } from '../firebase-admin';
 import { getArticles, getArticle, articleCover, publishToDevTo, type DevToArticle } from '../devto';
-import { publishToMedium } from '../medium';
+import { getMediumArticles } from '../medium';
 import { BlogArticleSchema, type BlogArticle } from '../schemas';
 
 // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ export async function getBlogArticleBySlug(slug: string): Promise<BlogArticle | 
 }
 
 // ---------------------------------------------------------------------------
-// Create — cross-posts to DEV.to + Medium
+// Create — cross-posts to DEV.to (Medium creation disabled; pull only)
 // ---------------------------------------------------------------------------
 
 export interface CreateBlogInput {
@@ -130,13 +130,12 @@ export interface CreateBlogInput {
   /** Override slug (auto-generated from title if omitted) */
   slug?: string;
   /** Which platforms to publish to in addition to Firestore */
-  publishTo?: Array<'devto' | 'medium'>;
+  publishTo?: Array<'devto'>;
 }
 
 export interface CreateBlogResult {
   article: BlogArticle;
   devto: { success: boolean; url?: string; error?: string };
-  medium: { success: boolean; url?: string; error?: string };
 }
 
 export async function createBlogArticle(input: CreateBlogInput): Promise<CreateBlogResult> {
@@ -149,7 +148,7 @@ export async function createBlogArticle(input: CreateBlogInput): Promise<CreateB
 
   const slug = input.slug || generateSlug(input.title);
   const now = new Date().toISOString();
-  const publishTo = input.publishTo ?? ['devto', 'medium'];
+  const publishTo = input.publishTo ?? ['devto'];
   const shouldPublish = !input.isDraft;
 
   const article: BlogArticle = {
@@ -169,7 +168,6 @@ export async function createBlogArticle(input: CreateBlogInput): Promise<CreateB
   const result: CreateBlogResult = {
     article,
     devto: { success: false },
-    medium: { success: false },
   };
 
   // --- DEV.to ---
@@ -195,31 +193,6 @@ export async function createBlogArticle(input: CreateBlogInput): Promise<CreateB
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[blogController] DEV.to publish failed:', msg);
       result.devto = { success: false, error: msg };
-    }
-  }
-
-  // --- Medium ---
-  if (publishTo.includes('medium')) {
-    try {
-      const mediumPost = await publishToMedium({
-        title: input.title,
-        contentFormat: 'markdown',
-        content: input.bodyMarkdown,
-        tags: input.tagList?.slice(0, 5),
-        portfolioSlug: slug,
-        canonicalUrl: article.canonicalUrl,
-        publishStatus: shouldPublish ? 'public' : 'draft',
-      });
-      if (mediumPost) {
-        article.mediumId = mediumPost.id;
-        article.mediumUrl = mediumPost.url;
-        article.publishedTo = [...(article.publishedTo ?? []), 'medium'];
-        result.medium = { success: true, url: mediumPost.url };
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[blogController] Medium publish failed:', msg);
-      result.medium = { success: false, error: msg };
     }
   }
 
@@ -284,23 +257,10 @@ export async function crossPostArticle(
   }
 
   if (platform === 'medium') {
-    if (!article.bodyMarkdown) throw new Error('Blog has no markdown body');
-    const post = await publishToMedium({
-      title: article.title,
-      contentFormat: 'markdown',
-      content: article.bodyMarkdown,
-      tags: article.tagList?.slice(0, 5),
-      portfolioSlug: slug,
-      canonicalUrl: article.canonicalUrl,
-      publishStatus: article.isDraft ? 'draft' : 'public',
-    });
-    if (!post) return { success: false, error: 'MEDIUM_INTEGRATION_TOKEN not configured' };
-    await db.collection('blogs').doc(slug).update({
-      mediumId: post.id,
-      mediumUrl: post.url,
-      publishedTo: [...new Set([...(article.publishedTo ?? []), 'medium'])],
-    });
-    return { success: true, url: post.url };
+    return {
+      success: false,
+      error: 'Publishing directly to Medium is disabled. Use "Sync Medium" to pull your published Medium articles.',
+    };
   }
 
   throw new Error(`Unknown platform: ${platform}`);
@@ -336,6 +296,25 @@ export async function syncFromDevTo(): Promise<{ count: number; articles: BlogAr
 
   const db = getFirestoreDb();
   if (db) {
+    const batch = db.batch();
+    for (const article of articles) {
+      const ref = db.collection('blogs').doc(article.slug);
+      batch.set(ref, JSON.parse(JSON.stringify(article)), { merge: true });
+    }
+    await batch.commit();
+  }
+
+  return { count: articles.length, articles };
+}
+
+// ---------------------------------------------------------------------------
+// Sync from Medium → Firestore (Pull only)
+// ---------------------------------------------------------------------------
+
+export async function syncFromMedium(username?: string): Promise<{ count: number; articles: BlogArticle[] }> {
+  const articles = await getMediumArticles(username);
+  const db = getFirestoreDb();
+  if (db && articles.length > 0) {
     const batch = db.batch();
     for (const article of articles) {
       const ref = db.collection('blogs').doc(article.slug);
