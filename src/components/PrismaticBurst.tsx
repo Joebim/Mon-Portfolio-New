@@ -362,7 +362,7 @@ void main() {
     outColor = vec4(pigment * coverage, coverage);
   } else {
     col *= mask;
-    outColor = vec4(col, max(col.r, max(col.g, col.b)));
+    outColor = vec4(col, 1.0);
   }
 }`;
 
@@ -415,6 +415,7 @@ const compile = (gl: WebGL2RenderingContext, type: number, source: string) => {
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
   if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
+  console.error('[PrismaticBurst] Shader compile error:', gl.getShaderInfoLog(shader));
   gl.deleteShader(shader);
   return null;
 };
@@ -431,6 +432,7 @@ const link = (gl: WebGL2RenderingContext, fragmentSource: string): Program | nul
   gl.deleteShader(vertex);
   gl.deleteShader(fragment);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error('[PrismaticBurst] Program link error:', gl.getProgramInfoLog(program));
     gl.deleteProgram(program);
     return null;
   }
@@ -956,3 +958,4 @@ export const PrismaticBurst = ({
 };
 
 export default PrismaticBurst;
+

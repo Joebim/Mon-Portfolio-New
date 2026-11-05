@@ -389,13 +389,7 @@ export default function AdminDashboardPage() {
 
   /* ─── loading state ─── */
   if (loading) {
-    return (
-      <PrismaticLoader
-        label="ADMIN CONSOLE"
-        sublabel="Authenticating session & loading workspace..."
-        colors={["#A855F7", "#7C3AED", "#6366F1"]}
-      />
-    );
+    return <PrismaticLoader />;
   }
 
   /* ─── helpers for portfolio state mutations ─── */
