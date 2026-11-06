@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic_import from 'next/dynamic';
@@ -53,6 +53,142 @@ function Field({
       </div>
       {children}
     </div>
+  );
+}
+
+function CommaSeparatedInput({
+  value = [],
+  onChange,
+  className,
+  placeholder,
+  showPills = true,
+}: {
+  value: string[];
+  onChange: (items: string[]) => void;
+  className?: string;
+  placeholder?: string;
+  showPills?: boolean;
+}) {
+  const [text, setText] = useState(() => (Array.isArray(value) ? value.join(', ') : ''));
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      const nextText = Array.isArray(value) ? value.join(', ') : '';
+      setText((prev) => (prev === nextText ? prev : nextText));
+    }
+  }, [value]);
+
+  const handleRemove = (indexToRemove: number) => {
+    const updated = (value || []).filter((_, i) => i !== indexToRemove);
+    onChange(updated);
+    setText(updated.join(', '));
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <input
+        type="text"
+        className={className}
+        placeholder={placeholder}
+        value={text}
+        onFocus={() => {
+          isFocusedRef.current = true;
+        }}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setText(raw);
+          const parsed = raw
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          onChange(parsed);
+        }}
+        onBlur={() => {
+          isFocusedRef.current = false;
+          const parsed = text
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          onChange(parsed);
+          setText(parsed.join(', '));
+        }}
+      />
+      {showPills && Array.isArray(value) && value.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {value.map((item, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-white/[0.06] text-white/80 border border-white/10"
+            >
+              {item}
+              <button
+                type="button"
+                onClick={() => handleRemove(i)}
+                className="text-white/40 hover:text-ember text-xs font-bold leading-none cursor-pointer"
+                title={`Remove ${item}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MultilineArrayInput({
+  value = [],
+  onChange,
+  className,
+  rows = 5,
+  placeholder,
+}: {
+  value: string[];
+  onChange: (items: string[]) => void;
+  className?: string;
+  rows?: number;
+  placeholder?: string;
+}) {
+  const [text, setText] = useState(() => (Array.isArray(value) ? value.join('\n\n') : ''));
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      const nextText = Array.isArray(value) ? value.join('\n\n') : '';
+      setText((prev) => (prev === nextText ? prev : nextText));
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      rows={rows}
+      className={className}
+      placeholder={placeholder}
+      value={text}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        const parsed = raw
+          .split('\n\n')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        onChange(parsed);
+      }}
+      onBlur={() => {
+        isFocusedRef.current = false;
+        const parsed = text
+          .split('\n\n')
+          .map((s) => s.trim())
+          .filter(Boolean);
+        onChange(parsed);
+        setText(parsed.join('\n\n'));
+      }}
+    />
   );
 }
 
@@ -938,12 +1074,15 @@ export default function AdminDashboardPage() {
                   onChange={(e) => setPortfolio({ ...portfolio, profile: { ...portfolio.profile, aboutLead: e.target.value } })} />
               </Field>
               <Field label="About Paragraphs (one per blank line)">
-                <textarea rows={5} className={inputCls}
-                  value={(portfolio.profile.aboutParagraphs || []).join('\n\n')}
-                  onChange={(e) =>
+                <MultilineArrayInput
+                  rows={5}
+                  className={inputCls}
+                  value={portfolio.profile.aboutParagraphs || []}
+                  placeholder="First paragraph...&#10;&#10;Second paragraph..."
+                  onChange={(aboutParagraphs) =>
                     setPortfolio({
                       ...portfolio,
-                      profile: { ...portfolio.profile, aboutParagraphs: e.target.value.split('\n\n').filter(Boolean) },
+                      profile: { ...portfolio.profile, aboutParagraphs },
                     })
                   }
                 />
@@ -1144,8 +1283,12 @@ export default function AdminDashboardPage() {
                   </div>
 
                   <Field label="Technologies (comma-separated)">
-                    <input type="text" className={inputCls} value={proj.technologies.join(', ')}
-                      onChange={(e) => setProj(idx, { technologies: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />
+                    <CommaSeparatedInput
+                      className={inputCls}
+                      value={proj.technologies}
+                      placeholder="React, TypeScript, Node.js"
+                      onChange={(technologies) => setProj(idx, { technologies })}
+                    />
                   </Field>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1681,8 +1824,12 @@ export default function AdminDashboardPage() {
                       onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, readingTimeMinutes: parseInt(e.target.value) || 1 })} />
                   </Field>
                   <Field label="Tags (comma-separated)">
-                    <input type="text" className={inputCls} value={activeBlogEdit.tagList.join(', ')}
-                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, tagList: e.target.value.split(',').map((t) => t.trim()).filter(Boolean) })} />
+                    <CommaSeparatedInput
+                      className={inputCls}
+                      value={activeBlogEdit.tagList}
+                      placeholder="react, typescript, webdev"
+                      onChange={(tagList) => setActiveBlogEdit({ ...activeBlogEdit, tagList })}
+                    />
                   </Field>
                 </div>
 
