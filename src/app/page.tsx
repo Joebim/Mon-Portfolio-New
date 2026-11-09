@@ -95,7 +95,7 @@ export default async function HomePage() {
 
           <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-x-7 gap-y-17 max-md:gap-y-14 max-sm:gap-y-11">
             {projects.map((project, index) => (
-              <Reveal key={project.title} delay={(index % 2) * 110} className="min-w-0 h-full">
+              <Reveal key={`${project.title}-${index}`} delay={(index % 2) * 110} className="min-w-0 h-full">
                 <ProjectCard project={project} index={index} total={projects.length} />
               </Reveal>
             ))}
@@ -117,7 +117,7 @@ export default async function HomePage() {
             <div className="border-t border-white/13">
               {smallWorks.map((work: any, index: number) => (
                 <a
-                  key={work.name}
+                  key={`${work.name}-${index}`}
                   href={work.url ?? GITHUB_URL}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -159,8 +159,8 @@ export default async function HomePage() {
               <p className="text-paper text-[clamp(17px,1.8vw,22px)] max-sm:text-[18px] font-medium leading-[1.6] tracking-[-0.035em] mb-4">
                 {portfolio.profile?.aboutLead || defaultPortfolio.profile.aboutLead}
               </p>
-              {aboutParagraphs.map((paragraph: string) => (
-                <p key={paragraph} className="max-w-[410px] m-0 mb-4 text-[#a7a09a] text-xs max-sm:text-[11px] leading-[1.9]">
+              {aboutParagraphs.map((paragraph: string, idx: number) => (
+                <p key={idx} className="max-w-[410px] m-0 mb-4 text-[#a7a09a] text-xs max-sm:text-[11px] leading-[1.9]">
                   {paragraph}
                 </p>
               ))}
@@ -263,7 +263,7 @@ export default async function HomePage() {
                   <div className="grid grid-cols-4 max-md:grid-cols-2 max-sm:grid-cols-2 m-0 p-0 border-t border-l border-white/13 list-none" role="list">
                     {group.items.map((skill, index) => (
                       <Reveal
-                        key={skill.name}
+                        key={`${skill.name}-${index}`}
                         role="listitem"
                         delay={(index % 4) * 40}
                         className="group relative flex min-h-[176px] max-md:min-h-[145px] max-sm:min-h-[135px] flex-col items-start justify-center p-5 max-md:p-3.5 border-r border-b border-white/13 transition-colors duration-300 hover:bg-[#1a1714]"
@@ -289,8 +289,8 @@ export default async function HomePage() {
 
             <div className="flex flex-wrap items-center gap-3 mt-12 pt-6 border-t border-white/10 text-quiet font-mono text-[8px] tracking-[0.1em]">
               <span>ALSO HOW I WORK</span>
-              {softSkills.map((skill) => (
-                <i key={skill} className="not-italic px-3 py-1 border border-white/10 rounded-full text-[#c4beb8]">
+              {softSkills.map((skill, index) => (
+                <i key={`${skill}-${index}`} className="not-italic px-3 py-1 border border-white/10 rounded-full text-[#c4beb8]">
                   {skill}
                 </i>
               ))}

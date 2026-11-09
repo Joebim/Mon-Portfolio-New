@@ -213,9 +213,9 @@ export function ProjectCard({ project, index, total }: { project: Project; index
             </h3>
             <p className="max-w-[465px] m-0 text-[#9b9490] text-[11px] leading-[1.8]">{project.description}</p>
             <ul className="flex flex-wrap gap-1.5 mt-3 p-0 text-[#b5aea8] font-mono text-[7px] leading-[1.4] tracking-[0.015em] list-none" aria-label="Technologies used">
-              {project.technologies.map((technology) => (
+              {project.technologies.map((technology, techIdx) => (
                 <li
-                  key={technology}
+                  key={`${technology}-${techIdx}`}
                   className="py-1 px-2 border border-white/15 rounded-full transition-colors duration-250 group-hover:border-[var(--project-accent)]/50"
                 >
                   {technology}
