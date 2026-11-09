@@ -626,7 +626,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   height: 100%; 
   display: flex; 
   flex-direction: column; 
-  padding: clamp(5.5em, 11vh, 8em) clamp(24px, 6.4vw, 105px) clamp(24px, 4vh, 48px) clamp(24px, 6.4vw, 105px); 
+  padding: clamp(4.25em, 8vh, 6em) clamp(24px, 6.4vw, 105px) clamp(1.5em, 3vh, 2.5em) clamp(24px, 6.4vw, 105px); 
   overflow-y: auto; 
   z-index: 10; 
 }
@@ -659,20 +659,20 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   padding: 0; 
   display: flex; 
   flex-direction: column; 
-  gap: clamp(0.5rem, 1.4vh, 1.5rem); 
+  gap: clamp(0.35rem, 1vh, 0.85rem); 
 }
 .sm-scope .sm-panel-item { 
   position: relative; 
   font-weight: 500; 
-  font-size: clamp(3.2rem, 6.5vw, 6.8rem); 
+  font-size: clamp(2.2rem, min(4.2vw, 5.4vh), 4.2rem); 
   cursor: pointer; 
-  line-height: 1.05; 
+  line-height: 1.06; 
   letter-spacing: -0.04em; 
   text-transform: uppercase; 
   transition: color 0.25s ease; 
   display: inline-block; 
   text-decoration: none; 
-  padding-right: 1.6em; 
+  padding-right: 1.5em; 
 }
 .sm-scope .sm-panel-itemLabel { display: inline-block; will-change: transform; transform-origin: 50% 100%; }
 .sm-scope .sm-panel-item:hover { color: var(--sm-accent, #f36d45); }
@@ -682,8 +682,8 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   content: counter(smItem, decimal-leading-zero); 
   position: absolute; 
   top: 0.15em; 
-  right: 0.2em; 
-  font-size: clamp(14px, 1.5vw, 22px); 
+  right: 0.15em; 
+  font-size: clamp(12px, 1.2vw, 16px); 
   font-family: monospace; 
   font-weight: 500; 
   color: var(--sm-accent, #f36d45); 
@@ -693,8 +693,8 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   opacity: var(--sm-num-opacity, 0); 
 }
 @media (max-width: 768px) { 
-  .sm-scope .staggered-menu-panel { padding: 5.5em 1.5em 2em 1.5em; } 
-  .sm-scope .sm-panel-item { font-size: clamp(2.4rem, 10vw, 3.8rem); } 
+  .sm-scope .staggered-menu-panel { padding: 5em 1.5em 2em 1.5em; } 
+  .sm-scope .sm-panel-item { font-size: clamp(2rem, 8.5vw, 3rem); } 
 }
       `}</style>
     </div>
