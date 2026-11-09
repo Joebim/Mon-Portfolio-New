@@ -54,8 +54,6 @@ export function ProjectCard({ project, index, total }: { project: Project; index
             <span className="flex items-center">
               <img src="/joseph-logo-light.svg" alt="Joseph mark" className="w-4 h-4 object-contain" />
             </span>
-            <span className="px-2 py-0.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10">{project.category}</span>
-            <span className="tracking-[0.3em]">•••</span>
           </div>
 
           {hasMedia ? (

@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 
 interface RichTextEditorProps {
   value: string;
@@ -176,24 +176,50 @@ export default function RichTextEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
+  const [urlModal, setUrlModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    placeholder?: string;
+    initialValue?: string;
+    confirmLabel?: string;
+    onConfirm: (val: string) => void;
+  } | null>(null);
+
   const addLink = useCallback(() => {
     if (!editor) return;
-    const prev = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Enter URL:', prev || 'https://');
-    if (url === null) return;
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-    } else {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
-    }
+    const prev = (editor.getAttributes('link').href as string | undefined) || 'https://';
+    setUrlModal({
+      isOpen: true,
+      title: 'Insert Link',
+      placeholder: 'https://example.com',
+      initialValue: prev,
+      confirmLabel: 'INSERT LINK',
+      onConfirm: (url) => {
+        setUrlModal(null);
+        if (!url.trim()) {
+          editor.chain().focus().extendMarkRange('link').unsetLink().run();
+        } else {
+          editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
+        }
+      },
+    });
   }, [editor]);
 
   const addImage = useCallback(() => {
     if (!editor) return;
-    const url = window.prompt('Image URL:');
-    if (url) {
-      editor.chain().focus().setImage({ src: url, alt: '' }).run();
-    }
+    setUrlModal({
+      isOpen: true,
+      title: 'Insert Image URL',
+      placeholder: 'https://.../image.png',
+      initialValue: '',
+      confirmLabel: 'INSERT IMAGE',
+      onConfirm: (url) => {
+        setUrlModal(null);
+        if (url.trim()) {
+          editor.chain().focus().setImage({ src: url.trim(), alt: '' }).run();
+        }
+      },
+    });
   }, [editor]);
 
   if (!editor) return null;
@@ -242,6 +268,100 @@ export default function RichTextEditor({
 
       {/* Editor area */}
       <EditorContent editor={editor} />
+
+      {/* Custom URL prompt modal */}
+      {urlModal && (
+        <UrlPromptModal
+          isOpen={urlModal.isOpen}
+          title={urlModal.title}
+          placeholder={urlModal.placeholder}
+          initialValue={urlModal.initialValue}
+          confirmLabel={urlModal.confirmLabel}
+          onConfirm={urlModal.onConfirm}
+          onCancel={() => setUrlModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function UrlPromptModal({
+  isOpen,
+  title,
+  placeholder,
+  initialValue = '',
+  confirmLabel = 'INSERT',
+  onConfirm,
+  onCancel,
+}: {
+  isOpen: boolean;
+  title: string;
+  placeholder?: string;
+  initialValue?: string;
+  confirmLabel?: string;
+  onConfirm: (val: string) => void;
+  onCancel: () => void;
+}) {
+  const [val, setVal] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setVal(initialValue);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [isOpen, initialValue]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-2xl bg-[#141210] border border-white/15 p-5 shadow-2xl space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold text-paper tracking-tight">{title}</h3>
+        <input
+          ref={inputRef}
+          type="text"
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onConfirm(val);
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              onCancel();
+            }
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper focus:border-ember outline-none font-mono"
+        />
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[9px] hover:text-paper hover:bg-white/5 cursor-pointer"
+          >
+            CANCEL
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(val)}
+            className="px-3 py-1.5 rounded-lg bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold shadow cursor-pointer"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

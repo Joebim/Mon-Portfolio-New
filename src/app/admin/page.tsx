@@ -17,6 +17,7 @@ import type {
 import { Arrow } from '../../components/SiteNavigation';
 import { signOutUser } from '../../lib/firebase';
 import { PrismaticLoader } from '../../components/PrismaticLoader';
+import { ConfirmModal } from '../../components/admin/ConfirmModal';
 import { portfolio as defaultPortfolio } from '../../data';
 
 // Rich-text editor is client-only (Tiptap)
@@ -208,6 +209,18 @@ export default function AdminDashboardPage() {
   const [blogs, setBlogs] = useState<BlogArticle[]>([]);
   const [activeBlogEdit, setActiveBlogEdit] = useState<BlogArticle | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Global confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    itemTitle?: string;
+    itemType?: string;
+    confirmLabel?: string;
+    variant?: 'danger' | 'warning' | 'info';
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
 
   // Blog creation / cross-posting state
   const [isCreatingBlog, setIsCreatingBlog] = useState(false);
@@ -513,18 +526,30 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleDeleteBlogArticle = async (slug: string) => {
-    if (!confirm(`Delete article "${slug}"?`)) return;
-    try {
-      const res = await fetch(`/api/admin/blogs?slug=${encodeURIComponent(slug)}`, {
-        method: 'DELETE',
-      });
-      if (!res.ok) throw new Error('Delete failed');
-      setBlogs((prev) => prev.filter((b) => b.slug !== slug));
-      showToast('Article deleted');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
-    }
+  const handleDeleteBlogArticle = (slug: string) => {
+    const article = blogs.find((b) => b.slug === slug);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Article',
+      message: 'Are you sure you want to permanently delete this article? This action cannot be undone.',
+      itemTitle: article?.title || slug,
+      itemType: 'ARTICLE',
+      confirmLabel: 'DELETE ARTICLE',
+      variant: 'danger',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          const res = await fetch(`/api/admin/blogs?slug=${encodeURIComponent(slug)}`, {
+            method: 'DELETE',
+          });
+          if (!res.ok) throw new Error('Delete failed');
+          setBlogs((prev) => prev.filter((b) => b.slug !== slug));
+          showToast('Article deleted');
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
+        }
+      },
+    });
   };
 
   /* ─── loading state ─── */
@@ -1236,8 +1261,20 @@ export default function AdminDashboardPage() {
                     </div>
                     <button
                       onClick={() => {
-                        if (!confirm(`Delete "${proj.title}"?`)) return;
-                        setPortfolio({ ...portfolio, projects: portfolio.projects.filter((_, i) => i !== idx) });
+                        setConfirmModal({
+                          isOpen: true,
+                          title: 'Delete Project',
+                          message: 'Are you sure you want to permanently remove this project from your portfolio works?',
+                          itemTitle: proj.title,
+                          itemType: proj.kind || 'PROJECT',
+                          confirmLabel: 'DELETE PROJECT',
+                          variant: 'danger',
+                          onConfirm: () => {
+                            setPortfolio({ ...portfolio, projects: portfolio.projects.filter((_, i) => i !== idx) });
+                            setConfirmModal(null);
+                            showToast(`Deleted "${proj.title}"`);
+                          },
+                        });
                       }}
                       className="text-red-400 font-mono text-[8px] hover:underline cursor-pointer"
                     >
@@ -1380,10 +1417,23 @@ export default function AdminDashboardPage() {
                     className="w-44 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-[10px] text-ember focus:border-ember outline-none" />
                   <button
                     onClick={() => {
-                      if (!confirm(`Remove "${work.name}"?`)) return;
-                      setPortfolio({ ...portfolio, smallWorks: portfolio.smallWorks.filter((_, i) => i !== idx) });
+                      setConfirmModal({
+                        isOpen: true,
+                        title: 'Remove Experiment',
+                        message: 'Are you sure you want to remove this experiment from Little Things?',
+                        itemTitle: work.name,
+                        itemType: work.stack || 'EXPERIMENT',
+                        confirmLabel: 'REMOVE',
+                        variant: 'danger',
+                        onConfirm: () => {
+                          setPortfolio({ ...portfolio, smallWorks: portfolio.smallWorks.filter((_, i) => i !== idx) });
+                          setConfirmModal(null);
+                          showToast(`Removed "${work.name}"`);
+                        },
+                      });
                     }}
                     className="text-red-400 font-mono text-[9px] hover:underline cursor-pointer flex-none"
+                    title="Remove experiment"
                   >
                     ×
                   </button>
@@ -1434,8 +1484,20 @@ export default function AdminDashboardPage() {
                   </div>
                   <button
                     onClick={() => {
-                      if (!confirm(`Delete position at "${exp.company}"?`)) return;
-                      setPortfolio({ ...portfolio, experiences: portfolio.experiences.filter((_, i) => i !== idx) });
+                      setConfirmModal({
+                        isOpen: true,
+                        title: 'Delete Position',
+                        message: 'Are you sure you want to remove this position from your career history?',
+                        itemTitle: `${exp.role} at ${exp.company}`,
+                        itemType: 'POSITION',
+                        confirmLabel: 'DELETE POSITION',
+                        variant: 'danger',
+                        onConfirm: () => {
+                          setPortfolio({ ...portfolio, experiences: portfolio.experiences.filter((_, i) => i !== idx) });
+                          setConfirmModal(null);
+                          showToast(`Deleted position at "${exp.company}"`);
+                        },
+                      });
                     }}
                     className="text-red-400 font-mono text-[8px] hover:underline cursor-pointer"
                   >
@@ -1549,8 +1611,20 @@ export default function AdminDashboardPage() {
                         </button>
                         <button
                           onClick={() => {
-                            if (!confirm(`Delete group "${group.title}"?`)) return;
-                            setPortfolio({ ...portfolio, skillGroups: portfolio.skillGroups.filter((_, i) => i !== gIdx) });
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Delete Skill Group',
+                              message: 'Are you sure you want to delete this skill group and all skills within it?',
+                              itemTitle: group.title,
+                              itemType: 'SKILL GROUP',
+                              confirmLabel: 'DELETE GROUP',
+                              variant: 'danger',
+                              onConfirm: () => {
+                                setPortfolio({ ...portfolio, skillGroups: portfolio.skillGroups.filter((_, i) => i !== gIdx) });
+                                setConfirmModal(null);
+                                showToast(`Deleted group "${group.title}"`);
+                              },
+                            });
                           }}
                           className="font-mono text-[8px] text-red-400 hover:underline cursor-pointer"
                         >
@@ -1941,6 +2015,21 @@ export default function AdminDashboardPage() {
         )}
       </div>
     </div>
+
+    {/* Global custom confirm & delete modal */}
+    {confirmModal && (
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        itemTitle={confirmModal.itemTitle}
+        itemType={confirmModal.itemType}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant || 'danger'}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(null)}
+      />
+    )}
     </>
   );
 }
