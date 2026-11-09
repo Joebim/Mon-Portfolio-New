@@ -187,7 +187,7 @@ export function SiteNavigation() {
 
       {/* Staggered Navigation Side Menu */}
       <StaggeredMenu
-        isFixed
+        isFixed={false}
         position="right"
         items={menuItems}
         socialItems={socialItems}
