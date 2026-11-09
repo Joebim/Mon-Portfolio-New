@@ -193,13 +193,13 @@ export function SiteNavigation() {
         socialItems={socialItems}
         displaySocials={true}
         displayItemNumbering={true}
-        colors={['#25201d', '#f36d45', '#141210']}
-        accentColor="#f36d45"
+        colors={['#B497CF', '#5227FF']}
+        accentColor="#5227FF"
         menuButtonColor="#ffffff"
-        openMenuButtonColor="#ffffff"
+        openMenuButtonColor="#000000"
+        changeMenuColorOnOpen={true}
         customLogo={<BrandMark />}
         headerCenter={desktopNav}
-        theme="dark"
       />
 
       {/* Floating Interactive CTA Button */}

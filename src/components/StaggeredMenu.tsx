@@ -3,6 +3,7 @@
 import React, { useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 
+// SSR-safe layout effect for Next.js
 const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
 export interface StaggeredMenuItem {
@@ -33,33 +34,30 @@ export interface StaggeredMenuProps {
   isFixed?: boolean;
   changeMenuColorOnOpen?: boolean;
   closeOnClickAway?: boolean;
-  theme?: 'dark' | 'light';
   onMenuOpen?: () => void;
   onMenuClose?: () => void;
 }
 
 export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   position = 'right',
-  colors = ['#25201d', '#f36d45', '#141210'],
+  colors = ['#B497CF', '#5227FF'],
   items = [],
   socialItems = [],
   displaySocials = true,
   displayItemNumbering = true,
   className,
-  logoUrl,
+  logoUrl = '/joseph-logo-light.svg',
   customLogo,
   headerCenter,
   menuButtonColor = '#ffffff',
-  openMenuButtonColor = '#ffffff',
+  openMenuButtonColor = '#000000',
   changeMenuColorOnOpen = true,
-  accentColor = '#f36d45',
+  accentColor = '#5227FF',
   isFixed = false,
   closeOnClickAway = true,
-  theme = 'dark',
   onMenuOpen,
   onMenuClose,
-}) => {
-  const isDark = theme === 'dark';
+}: StaggeredMenuProps) => {
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
 
@@ -172,7 +170,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
       tl.to(
         itemEls,
-        { yPercent: 0, rotate: 0, duration: 1, ease: 'power4.out', stagger: { each: 0.08, from: 'start' } },
+        { yPercent: 0, rotate: 0, duration: 1, ease: 'power4.out', stagger: { each: 0.1, from: 'start' } },
         itemsStart
       );
 
@@ -272,6 +270,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     spinTweenRef.current?.kill();
 
     if (opening) {
+      // ensure container never rotates
       gsap.set(icon, { rotate: 0, transformOrigin: '50% 50%' });
       spinTweenRef.current = gsap
         .timeline({ defaults: { ease: 'power4.out' } })
@@ -375,9 +374,10 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   }, [playClose, animateIcon, animateColor, animateText, onMenuClose]);
 
   useEffect(() => {
-    if (!closeOnClickAway || !open) return;
+    if (!open) return;
 
     const handleClickOutside = (event: MouseEvent) => {
+      if (!closeOnClickAway) return;
       if (
         panelRef.current &&
         !panelRef.current.contains(event.target as Node) &&
@@ -388,8 +388,8 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       }
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
         closeMenu();
       }
     };
@@ -404,36 +404,25 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
   return (
     <div
-      className={`sm-scope ${
-        isFixed ? 'fixed top-0 left-0 w-screen h-screen overflow-hidden pointer-events-none z-[85]' : 'relative w-full h-full'
+      className={`sm-scope z-40 pointer-events-none ${
+        isFixed ? 'fixed top-0 left-0 w-screen h-screen overflow-hidden' : 'w-full h-full'
       }`}
     >
-      {/* Backdrop overlay on open */}
-      {open && (
-        <div
-          className="sm-backdrop fixed inset-0 bg-black/60 backdrop-blur-[2px] z-[5] pointer-events-auto transition-opacity duration-300"
-          onClick={closeMenu}
-          aria-hidden="true"
-        />
-      )}
-
       <div
         className={
-          (className ? className + ' ' : '') +
-          'staggered-menu-wrapper pointer-events-none relative w-full h-full z-40'
+          (className ? className + ' ' : '') + 'staggered-menu-wrapper pointer-events-none relative w-full h-full z-40'
         }
         style={accentColor ? ({ ['--sm-accent' as any]: accentColor } as React.CSSProperties) : undefined}
         data-position={position}
         data-open={open || undefined}
-        data-theme={theme}
       >
         <div
           ref={preLayersRef}
-          className="sm-prelayers absolute top-0 right-0 bottom-0 pointer-events-none z-[15]"
+          className="sm-prelayers absolute top-0 right-0 bottom-0 pointer-events-none z-[5]"
           aria-hidden="true"
         >
           {(() => {
-            const raw = colors && colors.length ? colors.slice(0, 4) : ['#25201d', '#f36d45', '#141210'];
+            const raw = colors && colors.length ? colors.slice(0, 4) : ['#1e1e22', '#35353c'];
             let arr = [...raw];
             if (arr.length >= 3) {
               const mid = Math.floor(arr.length / 2);
@@ -450,40 +439,36 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         </div>
 
         <header
-          className="staggered-menu-header absolute top-0 left-0 w-full flex items-center justify-between py-8 max-sm:pt-5 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 bg-transparent pointer-events-none z-30"
+          className="staggered-menu-header absolute top-0 left-0 w-full flex items-center justify-between p-[2em] max-sm:p-[1.25em] bg-transparent pointer-events-none z-20"
           aria-label="Main navigation header"
         >
           <div className="sm-logo flex items-center select-none pointer-events-auto" aria-label="Logo">
             {customLogo ? (
               customLogo
-            ) : logoUrl ? (
+            ) : (
               <img
-                src={logoUrl}
+                src={logoUrl || '/joseph-logo-light.svg'}
                 alt="Logo"
                 className="sm-logo-img block h-8 w-auto object-contain"
                 draggable={false}
                 width={110}
                 height={24}
               />
-            ) : (
-              <span className="font-mono text-xs tracking-widest text-paper font-bold uppercase">
-                PORTFOLIO
-              </span>
             )}
           </div>
 
           {headerCenter && (
-            <div className="pointer-events-auto flex items-center">
+            <div className="pointer-events-auto flex items-center max-md:hidden">
               {headerCenter}
             </div>
           )}
 
           <button
             ref={toggleBtnRef}
-            className={`sm-toggle relative inline-flex items-center gap-[0.4rem] bg-transparent border-0 cursor-pointer font-mono text-[9px] uppercase tracking-[0.08em] leading-none overflow-visible pointer-events-auto select-none ${
-              open ? (isDark ? 'text-paper' : 'text-black') : 'text-paper'
+            className={`sm-toggle relative inline-flex items-center gap-[0.3rem] bg-transparent border-0 cursor-pointer font-medium leading-none overflow-visible pointer-events-auto ${
+              open ? 'text-black' : 'text-[#e9e9ef]'
             }`}
-            aria-label={open ? 'Close navigation' : 'Open navigation'}
+            aria-label={open ? 'Close menu' : 'Open menu'}
             aria-expanded={open}
             aria-controls="staggered-menu-panel"
             onClick={toggleMenu}
@@ -491,12 +476,12 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
           >
             <span
               ref={textWrapRef}
-              className="sm-toggle-textWrap relative inline-block h-[1em] overflow-hidden whitespace-nowrap"
+              className="sm-toggle-textWrap relative inline-block h-[1em] overflow-hidden whitespace-nowrap w-[var(--sm-toggle-width,auto)] min-w-[var(--sm-toggle-width,auto)]"
               aria-hidden="true"
             >
               <span ref={textInnerRef} className="sm-toggle-textInner flex flex-col leading-none">
                 {textLines.map((l, i) => (
-                  <span className="sm-toggle-line block h-[1em] leading-none font-bold" key={i}>
+                  <span className="sm-toggle-line block h-[1em] leading-none" key={i}>
                     {l}
                   </span>
                 ))}
@@ -523,30 +508,13 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         <aside
           id="staggered-menu-panel"
           ref={panelRef}
-          className={`staggered-menu-panel absolute top-0 right-0 h-full flex flex-col overflow-y-auto z-20 backdrop-blur-[16px] pointer-events-auto ${
-            isDark
-              ? 'bg-[#0f0e0c]/98 border-l border-white/10 text-paper'
-              : 'bg-white text-black'
-          }`}
-          style={{ WebkitBackdropFilter: 'blur(16px)' }}
+          className="staggered-menu-panel absolute top-0 right-0 h-full bg-white flex flex-col p-[6em_2em_2em_2em] overflow-y-auto z-10 backdrop-blur-[12px] pointer-events-auto"
+          style={{ WebkitBackdropFilter: 'blur(12px)' }}
           aria-hidden={!open}
         >
-          {/* Subtle warm glow inside dark panel */}
-          {isDark && (
-            <div
-              className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_85%_22%,rgba(243,109,69,0.14),transparent_50%)]"
-              aria-hidden="true"
-            />
-          )}
-
-          <div className="sm-panel-inner relative z-10 flex-1 flex flex-col justify-between gap-6 pt-12">
-            <div className="flex items-center justify-between text-quiet font-mono text-[9px] max-sm:text-[8px] tracking-[0.11em] border-b border-white/10 pb-4">
-              <span>NAVIGATION</span>
-              <span className="text-ember font-semibold">01—{String(items.length).padStart(2, '0')}</span>
-            </div>
-
+          <div className="sm-panel-inner flex-1 flex flex-col gap-5">
             <ul
-              className="sm-panel-list list-none m-0 p-0 flex flex-col gap-3 my-auto"
+              className="sm-panel-list list-none m-0 p-0 flex flex-col gap-2"
               role="list"
               data-numbering={displayItemNumbering || undefined}
             >
@@ -554,9 +522,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                 items.map((it, idx) => (
                   <li className="sm-panel-itemWrap relative overflow-hidden leading-none" key={it.label + idx}>
                     <a
-                      className={`sm-panel-item relative font-medium leading-[1.05] tracking-[-0.04em] uppercase transition-[color] duration-200 inline-block no-underline ${
-                        isDark ? 'text-paper hover:text-ember-soft' : 'text-black hover:text-[var(--sm-accent)]'
-                      }`}
+                      className="sm-panel-item relative text-black font-semibold text-[4rem] max-sm:text-[2.25rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]"
                       href={it.link}
                       aria-label={it.ariaLabel || it.label}
                       data-index={idx + 1}
@@ -572,7 +538,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                 ))
               ) : (
                 <li className="sm-panel-itemWrap relative overflow-hidden leading-none" aria-hidden="true">
-                  <span className="sm-panel-item relative font-medium leading-none tracking-[-2px] uppercase inline-block no-underline">
+                  <span className="sm-panel-item relative text-black font-semibold text-[4rem] max-sm:text-[2.25rem] cursor-pointer leading-none tracking-[-2px] uppercase transition-[background,color] duration-150 ease-linear inline-block no-underline pr-[1.4em]">
                     <span className="sm-panel-itemLabel inline-block [transform-origin:50%_100%] will-change-transform">
                       No items
                     </span>
@@ -582,12 +548,10 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
             </ul>
 
             {displaySocials && socialItems && socialItems.length > 0 && (
-              <div className="sm-socials mt-auto pt-6 border-t border-white/10 flex flex-col gap-3" aria-label="Social links">
-                <h3 className="sm-socials-title m-0 text-xs font-mono font-medium tracking-[0.08em] uppercase text-ember">
-                  Connect & Socials
-                </h3>
+              <div className="sm-socials mt-auto pt-8 flex flex-col gap-3" aria-label="Social links">
+                <h3 className="sm-socials-title m-0 text-base font-medium [color:var(--sm-accent,#5227FF)]">Socials</h3>
                 <ul
-                  className="sm-socials-list list-none m-0 p-0 flex flex-row items-center gap-3 flex-wrap"
+                  className="sm-socials-list list-none m-0 p-0 flex flex-row items-center gap-4 flex-wrap"
                   role="list"
                 >
                   {socialItems.map((s, i) => (
@@ -596,13 +560,9 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
                         href={s.link}
                         target={s.link.startsWith('mailto:') ? undefined : '_blank'}
                         rel={s.link.startsWith('mailto:') ? undefined : 'noopener noreferrer'}
-                        className={`sm-socials-link font-mono text-[10px] tracking-[0.06em] uppercase no-underline relative inline-block py-1 px-2.5 rounded-lg border transition-all duration-200 ${
-                          isDark
-                            ? 'text-[#d1c9c1] border-white/10 hover:border-ember/50 hover:bg-ember/10 hover:text-ember-soft'
-                            : 'text-[#222] border-black/10 hover:border-[var(--sm-accent)] hover:text-[var(--sm-accent)]'
-                        }`}
+                        className="sm-socials-link text-[1.2rem] font-medium text-[#111] no-underline relative inline-block py-[2px] transition-[color,opacity] duration-300 ease-linear"
                       >
-                        {s.label} ↗
+                        {s.label}
                       </a>
                     </li>
                   ))}
@@ -615,85 +575,49 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
       <style>{`
 .sm-scope .staggered-menu-wrapper { position: relative; width: 100%; height: 100%; z-index: 40; pointer-events: none; }
-.sm-scope .sm-toggle { position: relative; display: inline-flex; align-items: center; gap: 0.4rem; background: transparent; border: none; cursor: pointer; color: inherit; line-height: 1; overflow: visible; }
-.sm-scope .sm-toggle:focus-visible { outline: 2px solid var(--sm-accent, #f36d45); outline-offset: 4px; border-radius: 4px; }
-.sm-scope .sm-toggle-textWrap { position: relative; margin-right: 0.35em; display: inline-block; height: 1em; overflow: hidden; white-space: nowrap; width: var(--sm-toggle-width, auto); min-width: var(--sm-toggle-width, auto); }
+.sm-scope .staggered-menu-header { position: absolute; top: 0; left: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 2em; background: transparent; pointer-events: none; z-index: 20; }
+.sm-scope .staggered-menu-header > * { pointer-events: auto; }
+.sm-scope .sm-logo { display: flex; align-items: center; user-select: none; }
+.sm-scope .sm-logo-img { display: block; height: 32px; width: auto; object-fit: contain; }
+.sm-scope .sm-toggle { position: relative; display: inline-flex; align-items: center; gap: 0.3rem; background: transparent; border: none; cursor: pointer; color: #e9e9ef; font-weight: 500; line-height: 1; overflow: visible; }
+.sm-scope .sm-toggle:focus-visible { outline: 2px solid #ffffffaa; outline-offset: 4px; border-radius: 4px; }
+.sm-scope .sm-line:last-of-type { margin-top: 6px; }
+.sm-scope .sm-toggle-textWrap { position: relative; margin-right: 0.5em; display: inline-block; height: 1em; overflow: hidden; white-space: nowrap; width: var(--sm-toggle-width, auto); min-width: var(--sm-toggle-width, auto); }
 .sm-scope .sm-toggle-textInner { display: flex; flex-direction: column; line-height: 1; }
 .sm-scope .sm-toggle-line { display: block; height: 1em; line-height: 1; }
 .sm-scope .sm-icon { position: relative; width: 14px; height: 14px; flex: 0 0 14px; display: inline-flex; align-items: center; justify-content: center; will-change: transform; }
-.sm-scope .sm-panel-itemWrap { position: relative; overflow: hidden; line-height: 1.1; }
+.sm-scope .sm-panel-itemWrap { position: relative; overflow: hidden; line-height: 1; }
 .sm-scope .sm-icon-line { position: absolute; left: 50%; top: 50%; width: 100%; height: 2px; background: currentColor; border-radius: 2px; transform: translate(-50%, -50%); will-change: transform; }
-.sm-scope .staggered-menu-panel { 
-  position: absolute; 
-  top: 0; 
-  right: 0; 
-  width: clamp(320px, 42vw, 540px); 
-  height: 100%; 
-  display: flex; 
-  flex-direction: column; 
-  padding: 6em 2.5em 2.5em 2.5em; 
-  overflow-y: auto; 
-  z-index: 20; 
-  box-shadow: -10px 0 40px rgba(0,0,0,0.5);
-  transform: translateX(100%);
-}
-.sm-scope [data-position='left'] .staggered-menu-panel { right: auto; left: 0; transform: translateX(-100%); }
-.sm-scope .sm-prelayers { 
-  position: absolute; 
-  top: 0; 
-  right: 0; 
-  bottom: 0; 
-  width: clamp(320px, 42vw, 540px); 
-  pointer-events: none; 
-  z-index: 15; 
-  transform: translateX(100%);
-}
-.sm-scope [data-position='left'] .sm-prelayers { right: auto; left: 0; transform: translateX(-100%); }
+.sm-scope .sm-line { display: none !important; }
+.sm-scope .staggered-menu-panel { position: absolute; top: 0; right: 0; width: clamp(280px, 38vw, 440px); height: 100%; background: white; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; flex-direction: column; padding: 6em 2em 2em 2em; overflow-y: auto; z-index: 10; box-shadow: -10px 0 35px rgba(0,0,0,0.2); }
+.sm-scope [data-position='left'] .staggered-menu-panel { right: auto; left: 0; }
+.sm-scope .sm-prelayers { position: absolute; top: 0; right: 0; bottom: 0; width: clamp(280px, 38vw, 440px); pointer-events: none; z-index: 5; }
+.sm-scope [data-position='left'] .sm-prelayers { right: auto; left: 0; }
 .sm-scope .sm-prelayer { position: absolute; top: 0; right: 0; height: 100%; width: 100%; transform: translateX(0); }
-.sm-scope .sm-panel-inner { flex: 1; display: flex; flex-direction: column; }
-.sm-scope .sm-socials { margin-top: auto; display: flex; flex-direction: column; }
-.sm-scope .sm-socials-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: row; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-.sm-scope .sm-socials-list .sm-socials-link { opacity: 1; transition: opacity 0.3s ease, border-color 0.2s ease, background-color 0.2s ease; }
-.sm-scope .sm-socials-list:hover .sm-socials-link:not(:hover) { opacity: 0.45; }
-.sm-scope .sm-panel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
-.sm-scope .sm-panel-item { 
-  position: relative; 
-  font-weight: 500; 
-  font-size: clamp(2rem, 4.2vw, 3.4rem); 
-  cursor: pointer; 
-  line-height: 1.1; 
-  letter-spacing: -0.04em; 
-  text-transform: uppercase; 
-  display: inline-block; 
-  text-decoration: none; 
-  padding-right: 1.8em; 
-}
+.sm-scope .sm-panel-inner { flex: 1; display: flex; flex-direction: column; gap: 1.25rem; }
+.sm-scope .sm-socials { margin-top: auto; padding-top: 2rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.sm-scope .sm-socials-title { margin: 0; font-size: 1rem; font-weight: 500; color: var(--sm-accent, #5227FF); }
+.sm-scope .sm-socials-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: row; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.sm-scope .sm-socials-list .sm-socials-link { opacity: 1; transition: opacity 0.3s ease; }
+.sm-scope .sm-socials-list:hover .sm-socials-link:not(:hover) { opacity: 0.35; }
+.sm-scope .sm-socials-list:focus-within .sm-socials-link:not(:focus-visible) { opacity: 0.35; }
+.sm-scope .sm-socials-list .sm-socials-link:hover,
+.sm-scope .sm-socials-list .sm-socials-link:focus-visible { opacity: 1; }
+.sm-scope .sm-socials-link:focus-visible { outline: 2px solid var(--sm-accent, #5227FF); outline-offset: 3px; }
+.sm-scope .sm-socials-link { font-size: 1.2rem; font-weight: 500; color: #111; text-decoration: none; position: relative; padding: 2px 0; display: inline-block; transition: color 0.3s ease, opacity 0.3s ease; }
+.sm-scope .sm-socials-link:hover { color: var(--sm-accent, #5227FF); }
+.sm-scope .sm-panel-title { margin: 0; font-size: 1rem; font-weight: 600; color: #fff; text-transform: uppercase; }
+.sm-scope .sm-panel-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.sm-scope .sm-panel-item { position: relative; color: #000; font-weight: 600; font-size: 3.5rem; cursor: pointer; line-height: 1; letter-spacing: -2px; text-transform: uppercase; transition: background 0.25s, color 0.25s; display: inline-block; text-decoration: none; padding-right: 1.4em; }
 .sm-scope .sm-panel-itemLabel { display: inline-block; will-change: transform; transform-origin: 50% 100%; }
+.sm-scope .sm-panel-item:hover { color: var(--sm-accent, #5227FF); }
 .sm-scope .sm-panel-list[data-numbering] { counter-reset: smItem; }
-.sm-scope .sm-panel-list[data-numbering] .sm-panel-item::after { 
-  counter-increment: smItem; 
-  content: counter(smItem, decimal-leading-zero); 
-  position: absolute; 
-  top: 0.15em; 
-  right: 0.4em; 
-  font-size: 13px; 
-  font-family: monospace; 
-  font-weight: 400; 
-  color: var(--sm-accent, #f36d45); 
-  letter-spacing: 0.05em; 
-  pointer-events: none; 
-  user-select: none; 
-  opacity: var(--sm-num-opacity, 0); 
-}
-@media (max-width: 768px) { 
-  .sm-scope .staggered-menu-panel { width: 100%; left: 0; right: 0; padding: 5.5em 1.5em 2em 1.5em; } 
-  .sm-scope .sm-prelayers { width: 100%; left: 0; right: 0; } 
-  .sm-scope .sm-panel-item { font-size: clamp(1.8rem, 8.5vw, 2.6rem); }
-}
+.sm-scope .sm-panel-list[data-numbering] .sm-panel-item::after { counter-increment: smItem; content: counter(smItem, decimal-leading-zero); position: absolute; top: 0.1em; right: 2em; font-size: 18px; font-weight: 400; color: var(--sm-accent, #5227FF); letter-spacing: 0; pointer-events: none; user-select: none; opacity: var(--sm-num-opacity, 0); }
+@media (max-width: 1024px) { .sm-scope .staggered-menu-panel { width: 100%; left: 0; right: 0; padding: 5em 1.5em 2em 1.5em; } .sm-scope .sm-prelayers { width: 100%; } .sm-scope .staggered-menu-wrapper[data-open] .sm-logo-img { filter: invert(100%); } }
+@media (max-width: 640px) { .sm-scope .staggered-menu-panel { width: 100%; left: 0; right: 0; padding: 5em 1.5em 2em 1.5em; } .sm-scope .sm-prelayers { width: 100%; } .sm-scope .sm-panel-item { font-size: 2.25rem; } .sm-scope .staggered-menu-wrapper[data-open] .sm-logo-img { filter: invert(100%); } }
       `}</style>
     </div>
   );
 };
 
 export default StaggeredMenu;
-
