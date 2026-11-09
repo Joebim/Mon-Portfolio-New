@@ -193,11 +193,12 @@ export function SiteNavigation() {
         socialItems={socialItems}
         displaySocials={true}
         displayItemNumbering={true}
-        colors={['#B497CF', '#5227FF']}
-        accentColor="#5227FF"
+        colors={['#181614', '#f36d45']}
+        accentColor="#f36d45"
         menuButtonColor="#ffffff"
-        openMenuButtonColor="#000000"
+        openMenuButtonColor="#ffffff"
         changeMenuColorOnOpen={true}
+        theme="dark"
         customLogo={<BrandMark />}
         headerCenter={desktopNav}
       />
