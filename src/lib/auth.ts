@@ -1,4 +1,4 @@
-import { SignJWT, jwtVerify, decodeJwt, createRemoteJWKSet } from 'jose';
+import { SignJWT, jwtVerify, createRemoteJWKSet } from 'jose';
 import { cookies } from 'next/headers';
 
 const COOKIE_NAME = 'admin_session_token';
@@ -10,6 +10,33 @@ const JWT_SECRET = new TextEncoder().encode(
 const FIREBASE_JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
 );
+
+/**
+ * Checks whether the verified Firebase user email is authorized to access the Admin Console.
+ * Uses `ADMIN_ALLOWED_EMAILS` (comma-separated) if configured, otherwise falls back to
+ * `ADMIN_ALERT_EMAIL`, `GMAIL_USER`, and the owner's primary admin emails.
+ */
+export function isAuthorizedAdminEmail(email?: string): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+
+  const envAllowlist = (process.env.ADMIN_ALLOWED_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  const fallbackAllowlist = [
+    process.env.ADMIN_ALERT_EMAIL,
+    process.env.GMAIL_USER,
+    'joseph.akinwole.me@gmail.com',
+    'akinwolejoseph01@gmail.com',
+  ]
+    .filter((v): v is string => Boolean(v && v.trim()))
+    .map((e) => e.trim().toLowerCase());
+
+  const allowed = envAllowlist.length > 0 ? envAllowlist : fallbackAllowlist;
+  return allowed.includes(normalized);
+}
 
 export interface AdminSession {
   uid: string;
@@ -49,10 +76,13 @@ export async function verifySessionToken(token: string): Promise<AdminSession | 
   }
 }
 
-export async function verifyFirebaseIdToken(idToken: string): Promise<{ uid: string; email?: string } | null> {
+export async function verifyFirebaseIdToken(
+  idToken: string
+): Promise<{ uid: string; email?: string; emailVerified?: boolean } | null> {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'mon-portfolio-a069b';
 
-  // 1. Cryptographic RS256 signature verification via Google's official JWKS
+  // Cryptographic RS256 signature verification via Google's official JWKS
+  // (No unsigned JWT decode fallback — prevents forged token bypass)
   try {
     const { payload } = await jwtVerify(idToken, FIREBASE_JWKS, {
       issuer: `https://securetoken.google.com/${projectId}`,
@@ -63,28 +93,11 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<{ uid: str
       return {
         uid: String(payload.sub),
         email: payload.email ? String(payload.email) : undefined,
+        emailVerified: payload.email_verified === true,
       };
     }
   } catch (jwksErr) {
-    console.warn('[auth] Google JWKS verification warning, trying claim fallback:', jwksErr);
-  }
-
-  // 2. Fallback: decode and validate project ID, issuer, expiration, and subject claims
-  try {
-    const payload = decodeJwt(idToken);
-    const now = Math.floor(Date.now() / 1000);
-    const isProjectValid = payload.aud === projectId;
-    const isIssuerValid = payload.iss === `https://securetoken.google.com/${projectId}`;
-    const isNotExpired = payload.exp ? payload.exp > now : true;
-
-    if (isProjectValid && isIssuerValid && isNotExpired && payload.sub) {
-      return {
-        uid: String(payload.sub),
-        email: payload.email ? String(payload.email) : undefined,
-      };
-    }
-  } catch (err) {
-    console.error('[auth] ID token parse error:', err);
+    console.warn('[auth] Google JWKS verification failed:', jwksErr);
   }
 
   return null;

@@ -227,6 +227,7 @@ export default function AdminDashboardPage() {
     return 'profile';
   });
   const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
@@ -334,9 +335,14 @@ export default function AdminDashboardPage() {
         const sessionRes = await fetch('/api/auth/session');
         const session = await sessionRes.json();
         if (!session.authenticated) {
-          router.push('/admin/login');
+          const nextDest =
+            typeof window !== 'undefined'
+              ? `${window.location.pathname}${window.location.search}`
+              : '/admin';
+          router.replace(`/admin/login?next=${encodeURIComponent(nextDest)}`);
           return;
         }
+        setAuthenticated(true);
         if (session.user) setUserEmail(session.user);
 
         const [portfolioRes, blogsRes] = await Promise.all([
@@ -788,8 +794,8 @@ export default function AdminDashboardPage() {
     });
   };
 
-  /* ─── loading state ─── */
-  if (loading && !portfolio) {
+  /* ─── auth & loading guard ─── */
+  if (!authenticated || (loading && !portfolio)) {
     return <PrismaticLoader isFadingOut={fadingOut} fadeDuration={800} />;
   }
 

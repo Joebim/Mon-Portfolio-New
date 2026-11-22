@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { verifyFirebaseIdToken, createSessionToken, setSessionCookie } from '../../../../lib/auth';
+import {
+  verifyFirebaseIdToken,
+  isAuthorizedAdminEmail,
+  createSessionToken,
+  setSessionCookie,
+} from '../../../../lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +23,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Invalid or expired Firebase authentication token' },
         { status: 401 }
+      );
+    }
+
+    if (!verified.email || !isAuthorizedAdminEmail(verified.email)) {
+      return NextResponse.json(
+        { error: 'Access denied: this account is not authorized for admin console access.' },
+        { status: 403 }
       );
     }
 

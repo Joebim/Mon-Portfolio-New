@@ -48,16 +48,23 @@ export async function GET(request: Request) {
     const savedState = cookieStore.get('linkedin_oauth_state')?.value;
     cookieStore.delete('linkedin_oauth_state');
 
-    if (state) {
-      if (savedState && savedState !== state) {
-        throw new Error('OAuth state mismatch. Please retry the LinkedIn verification flow.');
-      }
-      const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
-      postId = decoded.postId || '';
-      autoPublish = Boolean(decoded.autoPublish);
+    if (!state || !savedState || savedState !== state) {
+      return NextResponse.redirect(
+        `${origin}/admin?tab=automation&subTab=social&linkedinError=${encodeURIComponent(
+          'OAuth state verification failed or expired. Please retry the LinkedIn verification flow.'
+        )}`
+      );
     }
+
+    const decoded = JSON.parse(Buffer.from(state, 'base64url').toString('utf-8'));
+    postId = decoded.postId || '';
+    autoPublish = Boolean(decoded.autoPublish);
   } catch (err) {
-    console.warn('[LinkedIn Callback] State parse warning:', err);
+    return NextResponse.redirect(
+      `${origin}/admin?tab=automation&subTab=social&linkedinError=${encodeURIComponent(
+        'Invalid LinkedIn OAuth state payload.'
+      )}`
+    );
   }
 
   try {

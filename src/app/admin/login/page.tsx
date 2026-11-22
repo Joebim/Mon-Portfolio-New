@@ -16,6 +16,21 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  const getSafeRedirectTarget = () => {
+    if (typeof window !== 'undefined') {
+      const nextParam = new URLSearchParams(window.location.search).get('next');
+      if (
+        nextParam &&
+        nextParam.startsWith('/admin') &&
+        !nextParam.startsWith('//') &&
+        !nextParam.startsWith('/admin/login')
+      ) {
+        return nextParam;
+      }
+    }
+    return '/admin';
+  };
+
   const completeServerLogin = async (idToken: string) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -28,7 +43,7 @@ export default function AdminLoginPage() {
       throw new Error(data.error || 'Server session creation failed');
     }
 
-    router.push('/admin');
+    router.push(getSafeRedirectTarget());
     router.refresh();
   };
 

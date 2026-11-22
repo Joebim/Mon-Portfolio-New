@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { getSession } from '../../../../lib/auth';
 import {
   buildLinkedInAuthorizationUrl,
   getLinkedInConnectionStatus,
@@ -7,11 +8,13 @@ import {
 
 /**
  * GET /api/auth/linkedin
- * - If `?mode=status`: returns JSON status of the LinkedIn OAuth connection & 60-day token countdown.
+ * - If `?mode=status`: requires active Admin session and returns LinkedIn OAuth connection & 60-day token status.
  * - Otherwise: initiates the LinkedIn OAuth 2.0 browser verification flow with
  *   scopes `openid profile email w_member_social`.
  *   Accepts optional `?postId=xxx&autoPublish=true` (triggered from the Review Email or Admin UI)
  *   so that right after you approve access on LinkedIn, the verified post is automatically published!
+ *   Note: When LinkedIn redirects back to `/admin`, Next.js middleware enforces admin login
+ *   if the current browser/device is not logged in.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -19,6 +22,10 @@ export async function GET(request: Request) {
   const origin = url.origin;
 
   if (mode === 'status') {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     const status = await getLinkedInConnectionStatus(origin);
     return NextResponse.json(status);
   }
@@ -43,6 +50,7 @@ export async function GET(request: Request) {
     const cookieStore = await cookies();
     cookieStore.set('linkedin_oauth_state', encodedState, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 600, // 10 minutes
