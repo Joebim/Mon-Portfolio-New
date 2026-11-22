@@ -500,7 +500,7 @@ export default function AdminDashboardPage() {
         const bData = await bRes.json();
         setBlogs(bData.articles || []);
       }
-      showToast(`Synced ${data.count} articles from Medium!`);
+      showToast(`Synced ${data.count} articles & images from Medium!`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Medium sync failed', 'error');
     } finally {
@@ -2379,7 +2379,7 @@ export default function AdminDashboardPage() {
                   <div>
                     <h2 className="text-xl font-medium tracking-tight">Blog Engine ({blogs.length})</h2>
                     <p className="text-xs text-[#8e8883] font-mono mt-1">
-                      Manage articles · sync with DEV.to and Medium RSS · publish to portfolio.
+                      Manage articles · sync with DEV.to and Medium RSS (with cover images) · publish to portfolio &amp; newsletter.
                     </p>
                     {platformStatus && (
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -2426,7 +2426,7 @@ export default function AdminDashboardPage() {
                       {syncingMedium ? 'SYNCING MEDIUM...' : 'SYNC FROM MEDIUM'}
                     </button>
                     <button
-                      onClick={() => setActiveTab('automation')}
+                      onClick={() => handleSelectTab('automation')}
                       className="px-4 py-2 rounded-lg bg-ember/15 border border-ember/40 text-ember font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember/25 transition-colors cursor-pointer"
                     >
                       ⚡ AI AUTOMATION
@@ -2445,10 +2445,10 @@ export default function AdminDashboardPage() {
                   {blogs.map((article) => (
                     <div
                       key={article.slug}
-                      className="p-5 rounded-xl bg-[#111110] border border-white/13 space-y-3"
+                      className="p-4 sm:p-5 rounded-xl bg-[#111110] border border-white/13 space-y-3 overflow-hidden min-w-0"
                     >
-                      <div className="flex max-sm:flex-col items-start sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex max-sm:flex-col items-start sm:items-center justify-between gap-4 min-w-0">
+                        <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full sm:flex-1 min-w-0">
                           {article.coverImage && (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -2457,7 +2457,7 @@ export default function AdminDashboardPage() {
                               className="w-16 h-12 object-cover rounded flex-none bg-[#1a1714]"
                             />
                           )}
-                          <div className="min-w-0">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <span className="font-mono text-[7px] text-ember px-2 py-0.5 rounded bg-ember/10">
                                 {article.tagList[0]?.toUpperCase() || 'ARTICLE'}
@@ -2479,12 +2479,16 @@ export default function AdminDashboardPage() {
                                 </span>
                               ))}
                             </div>
-                            <h4 className="text-sm font-medium text-paper truncate">{article.title}</h4>
-                            <p className="text-[11px] text-[#8e8883] truncate">{article.slug}</p>
+                            <h4 className="text-sm font-medium text-paper break-words line-clamp-2 sm:truncate">
+                              {article.title}
+                            </h4>
+                            <p className="text-[11px] text-[#8e8883] truncate max-w-full">
+                              {article.slug}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap flex-none">
+                        <div className="flex items-center gap-2 flex-wrap flex-none w-full sm:w-auto">
                           {!article.devtoUrl && (
                             <button
                               onClick={() => handleCrossPost(article.slug, 'devto')}
@@ -2504,16 +2508,6 @@ export default function AdminDashboardPage() {
                               ● DEV.TO ↗
                             </a>
                           )}
-                          {article.mediumUrl && (
-                            <a
-                              href={article.mediumUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono text-[7px] text-emerald-400 hover:underline"
-                            >
-                              ● MEDIUM ↗
-                            </a>
-                          )}
                           <button
                             onClick={() => setActiveBlogEdit(article)}
                             className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[#aaa] font-mono text-[8px] hover:text-paper transition-colors cursor-pointer"
@@ -2530,7 +2524,7 @@ export default function AdminDashboardPage() {
                       </div>
 
                       {article.description && (
-                        <p className="text-[11px] text-[#8e8883] font-mono leading-relaxed border-t border-white/5 pt-2">
+                        <p className="text-[11px] text-[#8e8883] font-mono leading-relaxed border-t border-white/5 pt-2 break-words overflow-hidden">
                           {article.description}
                         </p>
                       )}

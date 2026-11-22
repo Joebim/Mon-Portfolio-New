@@ -40,9 +40,67 @@ function cleanHtmlToText(html: string): string {
     .trim();
 }
 
+function isValidArticleImageUrl(url?: string): url is string {
+  if (!url) return false;
+  const trimmed = url.trim();
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) return false;
+  // Filter out Medium 1x1 tracking pixels and analytics beacons
+  if (/medium\.com\/_\/stat/i.test(trimmed)) return false;
+  if (/event=post\.clientViewed/i.test(trimmed)) return false;
+  return true;
+}
+
 function extractFirstImage(html: string): string | undefined {
-  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return match ? match[1] : undefined;
+  const imgTagRegex = /<img[^>]+>/gi;
+  let tagMatch: RegExpExecArray | null;
+  while ((tagMatch = imgTagRegex.exec(html)) !== null) {
+    const tag = tagMatch[0];
+    // Skip 1x1 tracking pixels
+    if (/width=["']?1["']?/i.test(tag) && /height=["']?1["']?/i.test(tag)) continue;
+    const srcMatch =
+      tag.match(/\bsrc=["']([^"']+)["']/i) ||
+      tag.match(/\bdata-src=["']([^"']+)["']/i);
+    if (srcMatch && isValidArticleImageUrl(srcMatch[1])) {
+      return srcMatch[1];
+    }
+  }
+  return undefined;
+}
+
+function extractRssMediaImage(itemXml: string): string | undefined {
+  const mediaMatch =
+    itemXml.match(/<media:content[^>]+url=["']([^"']+)["']/i) ||
+    itemXml.match(/<media:thumbnail[^>]+url=["']([^"']+)["']/i) ||
+    itemXml.match(/<enclosure[^>]+url=["']([^"']+)["'][^>]+type=["']image\//i);
+  if (mediaMatch && isValidArticleImageUrl(mediaMatch[1])) {
+    return mediaMatch[1];
+  }
+  return undefined;
+}
+
+async function fetchOgImageFromUrl(articleUrl: string): Promise<string | undefined> {
+  if (!articleUrl || !articleUrl.startsWith('http')) return undefined;
+  try {
+    const res = await fetch(articleUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        Accept: 'text/html',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return undefined;
+    const html = await res.text();
+    const ogMatch =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+      html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i) ||
+      html.match(/<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i);
+    if (ogMatch && isValidArticleImageUrl(ogMatch[1])) {
+      return ogMatch[1];
+    }
+  } catch {
+    // ignore timeout / fetch error
+  }
+  return undefined;
 }
 
 function slugify(title: string): string {
@@ -78,7 +136,12 @@ export async function getMediumArticles(customUsername?: string): Promise<BlogAr
         for (const item of data.items) {
           const rawContent = item.content || item.description || '';
           const plainText = cleanHtmlToText(rawContent);
-          const coverImage = item.thumbnail || extractFirstImage(rawContent);
+          let coverImage = isValidArticleImageUrl(item.thumbnail)
+            ? item.thumbnail
+            : extractFirstImage(rawContent);
+          if (!coverImage && item.link) {
+            coverImage = await fetchOgImageFromUrl(item.link);
+          }
           const title = item.title || 'Untitled Article';
           const slug = slugify(title);
 
@@ -150,7 +213,10 @@ export async function getMediumArticles(customUsername?: string): Promise<BlogAr
       const link = linkMatch ? linkMatch[1].trim() : '';
       const rawContent = contentMatch ? contentMatch[1].trim() : '';
       const plainText = cleanHtmlToText(rawContent);
-      const coverImage = extractFirstImage(rawContent);
+      let coverImage = extractRssMediaImage(itemContent) || extractFirstImage(rawContent);
+      if (!coverImage && link) {
+        coverImage = await fetchOgImageFromUrl(link);
+      }
       const pubDate = pubDateMatch ? pubDateMatch[1].trim() : '';
       const guid = guidMatch ? guidMatch[1].trim() : '';
       const slug = slugify(title);

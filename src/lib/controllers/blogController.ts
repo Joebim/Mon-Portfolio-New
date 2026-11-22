@@ -534,6 +534,27 @@ export async function syncFromDevTo(): Promise<{ count: number; articles: BlogAr
 
 export async function syncFromMedium(username?: string): Promise<{ count: number; articles: BlogArticle[] }> {
   const articles = await getMediumArticles(username);
+
+  // Ensure every synced Medium article cover image is mirrored to Cloudinary (if configured)
+  // so the image is reliably persisted alongside the article and never broken by Medium CDN hotlink limits.
+  const { isCloudinaryConfigured, uploadToCloudinary } = await import('../cloudinary');
+  if (isCloudinaryConfigured()) {
+    for (const article of articles) {
+      if (article.coverImage && !article.coverImage.includes('res.cloudinary.com')) {
+        try {
+          const uploaded = await uploadToCloudinary(article.coverImage, {
+            folder: 'portfolio/blogs',
+            tags: ['portfolio', 'medium-sync', 'blog-cover'],
+            context: { alt: article.title, caption: 'Synced from Medium' },
+          });
+          article.coverImage = uploaded.secureUrl;
+        } catch (err) {
+          console.warn(`[blogController] Medium cover Cloudinary mirror warning for "${article.slug}":`, err);
+        }
+      }
+    }
+  }
+
   const db = getFirestoreDb();
   if (db && articles.length > 0) {
     const batch = db.batch();
@@ -544,7 +565,7 @@ export async function syncFromMedium(username?: string): Promise<{ count: number
     await batch.commit();
   }
 
-  // Automatically update Hero Featured Blog Post with the newest synced DEV.to article
+  // Automatically update Hero Featured Blog Post with the newest synced article
   if (articles.length > 0) {
     const newest = [...articles]
       .filter((a) => !a.isDraft)
