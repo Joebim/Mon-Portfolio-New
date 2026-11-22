@@ -107,7 +107,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
       const offscreen = position === 'left' ? -100 : 100;
       gsap.set([panel, ...preLayers], { xPercent: offscreen, opacity: 1 });
-      gsap.set(panel, { visibility: 'hidden' });
       if (preContainer) {
         gsap.set(preContainer, { xPercent: 0, opacity: 1 });
       }
@@ -216,8 +215,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   const playOpen = useCallback(() => {
     if (busyRef.current) return;
     busyRef.current = true;
-    const panel = panelRef.current;
-    if (panel) panel.style.visibility = 'visible';
     const tl = buildOpenTimeline();
     if (tl) {
       tl.eventCallback('onComplete', () => {
@@ -249,7 +246,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       ease: 'power3.in',
       overwrite: 'auto',
       onComplete: () => {
-        if (panel) panel.style.visibility = 'hidden';
         const itemEls = Array.from(panel.querySelectorAll('.sm-panel-itemLabel')) as HTMLElement[];
         if (itemEls.length) gsap.set(itemEls, { yPercent: 140, rotate: 10 });
 
@@ -382,10 +378,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   useEffect(() => {
     if (!open) return;
 
-    document.body.classList.add('menu-is-open');
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
     const handleClickOutside = (event: MouseEvent) => {
       if (!closeOnClickAway) return;
       if (
@@ -407,8 +399,6 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.classList.remove('menu-is-open');
-      document.body.style.overflow = prevOverflow;
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -416,18 +406,13 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
   return (
     <div
-      className={`sm-scope pointer-events-none ${
-        open
-          ? 'fixed inset-0 w-screen h-screen overflow-hidden z-[90]'
-          : isFixed
-          ? 'fixed top-0 left-0 w-screen h-screen overflow-hidden z-30'
-          : 'relative w-full z-30'
+      className={`sm-scope z-40 pointer-events-none ${
+        isFixed ? 'fixed top-0 left-0 w-screen h-screen overflow-hidden' : 'w-full h-full'
       }`}
-      data-open={open || undefined}
     >
       <div
         className={
-          (className ? className + ' ' : '') + 'staggered-menu-wrapper pointer-events-none relative w-full h-full'
+          (className ? className + ' ' : '') + 'staggered-menu-wrapper pointer-events-none relative w-full h-full z-40'
         }
         style={accentColor ? ({ ['--sm-accent' as any]: accentColor } as React.CSSProperties) : undefined}
         data-position={position}
@@ -436,7 +421,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       >
         <div
           ref={preLayersRef}
-          className="sm-prelayers fixed top-0 right-0 bottom-0 pointer-events-none z-[95]"
+          className="sm-prelayers absolute top-0 right-0 bottom-0 pointer-events-none z-[5]"
           aria-hidden="true"
         >
           {(() => {
@@ -457,9 +442,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         </div>
 
         <header
-          className={`staggered-menu-header top-0 left-0 w-full flex items-center justify-between py-8 max-sm:pt-5 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 bg-transparent pointer-events-none ${
-            open ? 'fixed z-[110]' : 'absolute z-[30]'
-          }`}
+          className="staggered-menu-header absolute top-0 left-0 w-full flex items-center justify-between py-8 max-sm:pt-5 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 bg-transparent pointer-events-none z-20"
           aria-label="Main navigation header"
         >
           <div className="sm-logo flex items-center select-none pointer-events-auto" aria-label="Logo">
@@ -477,7 +460,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
             )}
           </div>
 
-          {headerCenter && !open && (
+          {headerCenter && (
             <div className="pointer-events-auto flex items-center max-md:hidden">
               {headerCenter}
             </div>
@@ -528,9 +511,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         <aside
           id="staggered-menu-panel"
           ref={panelRef}
-          className={`staggered-menu-panel fixed top-0 right-0 h-full w-full flex flex-col overflow-y-auto z-[100] backdrop-blur-[16px] ${
-            open ? 'pointer-events-auto' : 'pointer-events-none'
-          } ${
+          className={`staggered-menu-panel absolute top-0 right-0 h-full w-full flex flex-col overflow-y-auto z-10 backdrop-blur-[16px] pointer-events-auto ${
             isDark
               ? 'bg-[#0b0b0b] text-[#eeeae5]'
               : 'bg-white text-black'
@@ -621,10 +602,8 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       </div>
 
       <style>{`
-.sm-scope .staggered-menu-wrapper { position: relative; width: 100%; height: 100%; pointer-events: none; }
-.sm-scope .staggered-menu-header { top: 0; left: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; background: transparent; pointer-events: none; }
-.sm-scope:not([data-open]) .staggered-menu-header { position: absolute; }
-.sm-scope[data-open] .staggered-menu-header { position: fixed; z-index: 110; }
+.sm-scope .staggered-menu-wrapper { position: relative; width: 100%; height: 100%; z-index: 40; pointer-events: none; }
+.sm-scope .staggered-menu-header { position: absolute; top: 0; left: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; background: transparent; pointer-events: none; z-index: 20; }
 .sm-scope .staggered-menu-header > * { pointer-events: auto; }
 .sm-scope .sm-logo { display: flex; align-items: center; user-select: none; }
 .sm-scope .sm-logo-img { display: block; height: 32px; width: auto; object-fit: contain; }
@@ -639,31 +618,28 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 .sm-scope .sm-icon-line { position: absolute; left: 50%; top: 50%; width: 100%; height: 2px; background: currentColor; border-radius: 2px; transform: translate(-50%, -50%); will-change: transform; }
 .sm-scope .sm-line { display: none !important; }
 .sm-scope .staggered-menu-panel { 
-  position: fixed; 
+  position: absolute; 
   top: 0; 
   right: 0; 
   width: 100vw; 
   width: 100%; 
-  height: 100vh; 
-  height: 100dvh; 
+  height: 100%; 
   display: flex; 
   flex-direction: column; 
   padding: clamp(3.8em, 6.5vh, 4.8em) clamp(24px, 6.4vw, 105px) clamp(1.2em, 2.5vh, 2em) clamp(24px, 6.4vw, 105px); 
   overflow-y: auto; 
-  z-index: 100; 
+  z-index: 10; 
 }
 .sm-scope [data-position='left'] .staggered-menu-panel { right: auto; left: 0; }
 .sm-scope .sm-prelayers { 
-  position: fixed; 
+  position: absolute; 
   top: 0; 
   right: 0; 
   bottom: 0; 
   width: 100vw; 
   width: 100%; 
-  height: 100vh; 
-  height: 100dvh; 
   pointer-events: none; 
-  z-index: 95; 
+  z-index: 5; 
 }
 .sm-scope [data-position='left'] .sm-prelayers { right: auto; left: 0; }
 .sm-scope .sm-prelayer { position: absolute; top: 0; right: 0; height: 100%; width: 100%; transform: translateX(0); }

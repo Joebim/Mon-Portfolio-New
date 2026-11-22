@@ -53,197 +53,184 @@
   },
   "projects": [
     {
-      "title": "Real Estate Website",
-      "year": "2024",
-      "category": "Product experience",
-      "description": "A considered property platform to explore listings, discover the details, and connect with the people behind them.",
-      "technologies": [
-        "Vue",
-        "Tailwind CSS",
-        "Pinia",
-        "REST API"
-      ],
-      "accent": "#c1f071",
-      "kind": "realty"
-    },
-    {
-      "title": "Health Dashboard",
-      "year": "2024",
-      "category": "Data & wellbeing",
-      "description": "A clear, caring home for personal health metrics, progress tracking, and tailored insights.",
+      "title": "Glimere",
+      "year": "2023",
+      "category": "Fashion-Tech Store",
+      "description": "A custom-fashion marketplace connecting shoppers with independent designers, fabric vendors, and 3D creators. Users can personalize garments, preview designs in 3D, place orders, and track production and delivery.",
       "technologies": [
         "React",
         "Tailwind CSS",
-        "REST API"
+        "Node.js",
+        "Typescript",
+        "ThreeJS",
+        "Mongo DB",
+        "Express",
+        "Python"
       ],
-      "accent": "#aa9dff",
-      "kind": "health",
-      "url": "https://github.com/Joebim/Health-Dashboard",
-      "linkLabel": "VIEW SOURCE CODE"
+      "accent": "#ff6a1a",
+      "kind": "fashion",
+      "url": "https://www.glimere.com",
+      "linkLabel": "VIEW WEBSITE",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1793922151/portfolio/works/qaracyajgx6jnuqhpvjr.jpg"
     },
     {
-      "title": "Delve",
-      "year": "JUN—SEP ’24",
-      "category": "Language learning · AI game",
+      "title": "Sheerpeace",
+      "year": "2026",
+      "category": "WEB PLATFORM",
+      "description": "Sheer Peace is an online lifestyle store offering a variety of products, from clothing to home décor. The brand brings together practical everyday essentials and thoughtfully chosen items designed to support a calmer, more peaceful lifestyle.",
+      "technologies": [
+        "NextJS",
+        "Typescript",
+        "NodeJs",
+        "Express",
+        "Knex",
+        "Postgres",
+        "Hostinger Vps"
+      ],
+      "accent": "#8e42ff",
+      "kind": "ecommerce",
+      "url": "https://www.sheerpeace.store",
+      "linkLabel": "VIEW PROJECT",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1795297607/portfolio/works/dpmec25bkrk0pwkp9man.jpg"
+    },
+    {
+      "title": "The Hillz",
+      "year": "2025",
+      "category": "Religious / Event Management site",
+      "description": "A church website sharing the ministry’s teachings, community, and gatherings. Its admin event-management tools allow church staff to manage and publish events, including event details and updates.",
+      "technologies": [
+        "NextJS",
+        "Typescript",
+        "NodeJS",
+        "Express",
+        "Firebase"
+      ],
+      "accent": "#AD47FD",
+      "kind": "religious-event-management",
+      "url": "https://www.thehillz.org/",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1794219396/copy_of_xac0pr5pu9hg8uurck85.jpg"
+    },
+    {
+      "title": "PUGABULL",
+      "year": "2024",
+      "category": "Meme Coin Website",
+      "description": "A Solana-based meme coin website built around community-driven charitable giving. It introduces the $PUGA project and its mission, while showcasing related features such as an NFT collection, staking rewards, and games.",
+      "technologies": [
+        "React",
+        "Tailwind CSS",
+        "Framer-motion",
+        "REST API"
+      ],
+      "accent": "#FEFABC",
+      "kind": "crypto",
+      "url": "https://pugabull-website.vercel.app/",
+      "linkLabel": "VIEW WEBSITE",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1794219835/portfolio/works/ydlghwcepcfifedg4bpw.png"
+    },
+    {
+      "title": "Tassel and Wicker",
+      "year": "2025",
+      "category": "Luxury Gifting Brand",
       "description": "Designed core game interfaces for a language-learning AI game, contributing to a 40% increase in daily active users. Built quest-management tools for admins and helped a 15-person cross-functional team ship 30% faster.",
       "technologies": [
         "Next.js",
+        "Typescript",
         "Tailwind CSS",
         "Zustand",
-        "shadcn/ui"
+        "NodeJS",
+        "ExpressJS",
+        "MongoDB."
       ],
-      "accent": "#ffaf81",
-      "kind": "language"
+      "accent": "#5f212a",
+      "kind": "Luxury Ecommerce",
+      "url": "https://tasselandwicker.com",
+      "linkLabel": "VIEW WEBSITE",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1794221242/portfolio/works/ao3srs7l7v6mgqji0qgq.jpg"
     },
     {
-      "title": "DevLinks",
-      "year": "JUL—OCT ’24",
-      "category": "Link-sharing app",
-      "description": "Designed an interactive link-sharing experience that lifted engagement by 25%. Reusable UI, state management, and Firebase authentication and live sync helped keep the app consistent and responsive.",
-      "technologies": [
-        "Next.js",
-        "Tailwind CSS",
-        "Firebase",
-        "Context API"
-      ],
-      "accent": "#90c8ff",
-      "kind": "links",
-      "url": "https://github.com/Joebim/hng_link_sharing_app",
-      "linkLabel": "VIEW SOURCE CODE"
-    },
-    {
-      "title": "Pugabull",
-      "year": "2024",
-      "category": "Community & cause",
-      "description": "A meme coin for good, using laughter and internet culture to help move positive change forward.",
+      "title": "JSP (JDLAB SCHOOL PORTAL)",
+      "year": "2021",
+      "category": "Edu-Tech Platform",
+      "description": "JDLab School Portal(JSP) is a school management portal that offers all the features you need to automate institutional processes, owned by \"JDLab\" and now branching out to form \"Tespire\". ",
       "technologies": [
         "React",
-        "Tailwind CSS",
-        "REST API"
-      ],
-      "accent": "#c4f07b",
-      "kind": "meme",
-      "url": "https://pugabull-website.vercel.app",
-      "linkLabel": "VISIT LIVE PROJECT"
-    },
-    {
-      "title": "Couch Cake UI",
-      "year": "2023",
-      "category": "Interactive commerce",
-      "description": "An interior showcase with a playful, realistic three-dimensional preview for furniture.",
-      "technologies": [
-        "React",
-        "Tailwind CSS",
-        "REST API"
-      ],
-      "accent": "#f3bf7a",
-      "kind": "interior",
-      "url": "https://github.com/Joebim/interior-ui",
-      "linkLabel": "VIEW SOURCE CODE"
-    },
-    {
-      "title": "Glimere",
-      "year": "2023",
-      "category": "Fashion community",
-      "description": "A fashion-first social space for personal style, discovery, and creative connection.",
-      "technologies": [
-        "React",
-        "Tailwind CSS",
+        "TypeScript",
         "Node.js"
       ],
-      "accent": "#e89dcb",
-      "kind": "fashion",
-      "url": "https://github.com/Joebim/Glimere_Official",
-      "linkLabel": "VIEW SOURCE CODE"
+      "accent": "#4399f4",
+      "kind": "Edutech",
+      "linkLabel": "NON-COMMERCIAL",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1794223198/portfolio/works/isryzwzexbeuebkjrbjx.png"
     },
     {
-      "title": "Fontasie",
-      "year": "2023",
-      "category": "Creative tool",
-      "description": "A playful type-animation toolkit for composing expressive motion from reusable code patterns.",
+      "title": "DELVE",
+      "year": "2024",
+      "category": "Gaming",
+      "description": "Delve is an AI-powered language-learning game by HNG, built during my internship. Explore immersive worlds, complete quests, and interact with 3D characters to practise and strengthen your language skills.",
       "technologies": [
-        "React",
-        "Tailwind CSS",
-        "Sass"
+        "Nextjs",
+        "TypeScript",
+        "Threejs",
+        "Framer-Motion",
+        "Python",
+        "AWS"
       ],
-      "accent": "#f57f5d",
-      "kind": "type"
-    },
-    {
-      "title": "CORS",
-      "year": "2022",
-      "category": "Service brand",
-      "description": "A clear digital front door for a home and office cleaning service.",
-      "technologies": [
-        "React",
-        "Material UI",
-        "Redux"
-      ],
-      "accent": "#a3cfd1",
-      "kind": "impact"
+      "accent": "#b366ff",
+      "kind": "Gaming",
+      "url": "https://blog-articles-hng.vercel.app/",
+      "linkLabel": "VIEW HNG BLOG ON DELVE",
+      "mediaSrc": "https://res.cloudinary.com/zg1vxkdu/image/upload/v1794225249/portfolio/works/hky7zz0quuuzx1tyo7qu.jpg"
     }
   ],
   "smallWorks": [
     {
-      "name": "Products Dashboard",
-      "note": "Operations, orders & inventory",
+      "name": "Realstate",
+      "note": "Real Estate Website",
+      "year": "2024",
+      "stack": "Vue, TailwindCSS, Pinia, RestAPI",
+      "url": "https://real-estate-web-app-lbwk.vercel.app/"
+    },
+    {
+      "name": "Fontasie",
+      "note": "Fontasie is a text animation tool that leverages on code templates to create stunning text animations",
+      "year": "2024",
+      "stack": "React, Tailwindcss, SASS, google-font-api, html-css-js-templates",
+      "url": "https://joebim.github.io/Font-Manager/"
+    },
+    {
+      "name": "TechCare",
+      "note": "A comprehensive dashboard to monitor your health metrics, track your progress, and get personalized insights",
+      "year": "2024",
+      "stack": "React, TailwindCSS, RestAPI",
+      "url": "https://joebim.github.io/Health-Dashboard/"
+    },
+    {
+      "name": "Couch Cake UI",
+      "note": "nterior UI design, View funitures in realistic 3d slide preview",
       "year": "2023",
-      "stack": "Next.js · Context API · Sass"
+      "stack": "React, TailwindCSS, RestAPI",
+      "url": "https://incandescent-kitsune-1349bd.netlify.app/"
     },
     {
-      "name": "Analytics Dashboard",
-      "note": "Data visualization & insights",
-      "year": "2023",
-      "stack": "Angular · Material UI · Sass",
-      "url": "https://github.com/Joebim/Angular-Dashboard"
+      "name": "DevLinks",
+      "note": "A place for developers to store links and share profilesdemo",
+      "year": "2026",
+      "stack": "NextJS, Typescript, Firebase",
+      "url": "https://hng-link-sharing-app.netlify.app/"
     },
     {
-      "name": "JDLab School Portal",
-      "note": "A complete school management portal",
-      "year": "2021",
-      "stack": "React · Bootstrap · Redux"
-    },
-    {
-      "name": "Simple Portfolio Landing",
-      "note": "A portfolio landing page with animation",
-      "year": "—",
-      "stack": "React · JavaScript · CSS",
-      "url": "https://github.com/Joebim/Simple-Portfolio-Landing"
-    },
-    {
-      "name": "Login UI",
-      "note": "Responsive sign-in and sign-up screens",
-      "year": "—",
-      "stack": "HTML · CSS · JavaScript",
-      "url": "https://github.com/Joebim/Login-UI"
-    },
-    {
-      "name": "Web UI Components",
-      "note": "A responsive, themed component store",
-      "year": "—",
-      "stack": "React · Styled Components · Tailwind CSS",
-      "url": "https://github.com/Joebim/Web-UI"
+      "name": "CORS(Core Outreach Services)",
+      "note": "A Cleaning Service Website",
+      "year": "2026",
+      "stack": "React, TypeScript, TailwindCss",
+      "url": "https://coreoutreachservices.com"
     },
     {
       "name": "Xender Web Clone",
-      "note": "A responsive interface with extra features",
-      "year": "—",
-      "stack": "React · Tailwind CSS · Sass",
-      "url": "https://github.com/Joebim/Xender-Web-Clone"
-    },
-    {
-      "name": "Font Manager",
-      "note": "Dynamic previews of font properties",
-      "year": "—",
-      "stack": "React · Tailwind CSS · Sass",
-      "url": "https://github.com/Joebim/Font-Manager"
-    },
-    {
-      "name": "Task List",
-      "note": "A lightweight to-do app for mobile",
-      "year": "—",
-      "stack": "React Native · Expo",
-      "url": "https://github.com/Joebim/Task-List"
+      "note": "Xender wireless files sharing platform",
+      "year": "2026",
+      "stack": "Html, CSS, JS",
+      "url": "https://joebim.github.io/Xender-Web-Clone/"
     }
   ],
   "experiences": [
@@ -432,74 +419,63 @@
     "Attention to detail"
   ],
   "latestArticle": {
-    "title": "React vs Angular: Tips to help you choose ⚔️",
-    "description": "A practical look at architecture, learning curves, and deciding between component freedom and structured enterprise scale.",
+    "title": "React vs Angular: Tips to help you choose ⚔️💻",
+    "description": "Web apps are the most preferred for websites in 2024, they are known for their efficiency in building...",
     "platform": "DEV.TO",
     "readingTime": "3 MIN READ",
-    "publishedAt": "JUN 2024",
+    "publishedAt": "2024-06-30T00:10:01Z",
+    "date": "JUN 30, 2024",
     "url": "https://dev.to/joebim/react-vs-angular-tips-to-help-you-choose-49ca"
   },
   "additionalProjects": [
     {
-      "name": "Products Dashboard",
-      "note": "Operations, orders & inventory",
+      "name": "Realstate",
+      "note": "Real Estate Website",
+      "year": "2024",
+      "stack": "Vue, TailwindCSS, Pinia, RestAPI",
+      "url": "https://real-estate-web-app-lbwk.vercel.app/"
+    },
+    {
+      "name": "Fontasie",
+      "note": "Fontasie is a text animation tool that leverages on code templates to create stunning text animations",
+      "year": "2024",
+      "stack": "React, Tailwindcss, SASS, google-font-api, html-css-js-templates",
+      "url": "https://joebim.github.io/Font-Manager/"
+    },
+    {
+      "name": "TechCare",
+      "note": "A comprehensive dashboard to monitor your health metrics, track your progress, and get personalized insights",
+      "year": "2024",
+      "stack": "React, TailwindCSS, RestAPI",
+      "url": "https://joebim.github.io/Health-Dashboard/"
+    },
+    {
+      "name": "Couch Cake UI",
+      "note": "nterior UI design, View funitures in realistic 3d slide preview",
       "year": "2023",
-      "stack": "Next.js · Context API · Sass"
+      "stack": "React, TailwindCSS, RestAPI",
+      "url": "https://incandescent-kitsune-1349bd.netlify.app/"
     },
     {
-      "name": "Analytics Dashboard",
-      "note": "Data visualization & insights",
-      "year": "2023",
-      "stack": "Angular · Material UI · Sass",
-      "url": "https://github.com/Joebim/Angular-Dashboard"
+      "name": "DevLinks",
+      "note": "A place for developers to store links and share profilesdemo",
+      "year": "2026",
+      "stack": "NextJS, Typescript, Firebase",
+      "url": "https://hng-link-sharing-app.netlify.app/"
     },
     {
-      "name": "JDLab School Portal",
-      "note": "A complete school management portal",
-      "year": "2021",
-      "stack": "React · Bootstrap · Redux"
-    },
-    {
-      "name": "Simple Portfolio Landing",
-      "note": "A portfolio landing page with animation",
-      "year": "—",
-      "stack": "React · JavaScript · CSS",
-      "url": "https://github.com/Joebim/Simple-Portfolio-Landing"
-    },
-    {
-      "name": "Login UI",
-      "note": "Responsive sign-in and sign-up screens",
-      "year": "—",
-      "stack": "HTML · CSS · JavaScript",
-      "url": "https://github.com/Joebim/Login-UI"
-    },
-    {
-      "name": "Web UI Components",
-      "note": "A responsive, themed component store",
-      "year": "—",
-      "stack": "React · Styled Components · Tailwind CSS",
-      "url": "https://github.com/Joebim/Web-UI"
+      "name": "CORS(Core Outreach Services)",
+      "note": "A Cleaning Service Website",
+      "year": "2026",
+      "stack": "React, TypeScript, TailwindCss",
+      "url": "https://coreoutreachservices.com"
     },
     {
       "name": "Xender Web Clone",
-      "note": "A responsive interface with extra features",
-      "year": "—",
-      "stack": "React · Tailwind CSS · Sass",
-      "url": "https://github.com/Joebim/Xender-Web-Clone"
-    },
-    {
-      "name": "Font Manager",
-      "note": "Dynamic previews of font properties",
-      "year": "—",
-      "stack": "React · Tailwind CSS · Sass",
-      "url": "https://github.com/Joebim/Font-Manager"
-    },
-    {
-      "name": "Task List",
-      "note": "A lightweight to-do app for mobile",
-      "year": "—",
-      "stack": "React Native · Expo",
-      "url": "https://github.com/Joebim/Task-List"
+      "note": "Xender wireless files sharing platform",
+      "year": "2026",
+      "stack": "Html, CSS, JS",
+      "url": "https://joebim.github.io/Xender-Web-Clone/"
     }
   ],
   "experience": [

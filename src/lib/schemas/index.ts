@@ -123,6 +123,7 @@ export const BlogArticleSchema = z.object({
   mediumId: z.string().optional(),
   mediumUrl: z.string().url().optional(),
   publishedTo: z.array(z.enum(['devto', 'medium', 'portfolio'])).default([]),
+  newsletterSentAt: z.string().optional(),
 });
 
 export type Contact = z.infer<typeof ContactSchema>;

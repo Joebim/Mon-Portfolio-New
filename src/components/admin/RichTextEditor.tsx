@@ -12,15 +12,12 @@ interface RichTextEditorProps {
   onChange: (markdown: string) => void;
   placeholder?: string;
   minHeight?: number;
+  stickyTopOffset?: string;
+  onOpenMediaPicker?: (onSelectUrl: (url: string) => void) => void;
 }
 
 /* ──────────────────────────────────────────────
    Minimal HTML ↔ Markdown conversions
-   We store Markdown in Firestore / cross-post as Markdown.
-   Tiptap works in HTML internally, so we:
-     - load: md → simple HTML (for display)
-     - save: HTML → md (for storage)
-   This handles the common subset used in blog writing.
 ────────────────────────────────────────────── */
 
 function mdToHtml(md: string): string {
@@ -28,6 +25,8 @@ function mdToHtml(md: string): string {
   let html = md
     // Code blocks
     .replace(/```(\w*)\n?([\s\S]*?)```/g, (_m, _lang, code) => `<pre><code>${code.trim()}</code></pre>`)
+    // Images
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" />')
     // Headings
     .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
@@ -52,7 +51,6 @@ function mdToHtml(md: string): string {
     // Single newlines → <br>
     .replace(/\n/g, '<br>');
 
-  // Wrap bare content that isn't a block element in <p>
   if (!html.startsWith('<')) html = `<p>${html}</p>`;
   return html;
 }
@@ -77,6 +75,7 @@ function htmlToMd(html: string): string {
     .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
     // Images
     .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*\/?>/gi, '![$2]($1)')
+    .replace(/<img[^>]*src="([^"]*)"[^>]*\/?>/gi, '![]($1)')
     // List items
     .replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n')
     // Block quotes
@@ -112,10 +111,10 @@ const ToolbarButton = ({
     onClick={onClick}
     disabled={disabled}
     title={title}
-    className={`px-2 py-1 rounded font-mono text-[10px] transition-colors cursor-pointer disabled:opacity-30 ${
+    className={`px-2.5 py-1.5 rounded-lg font-mono text-[10px] transition-all cursor-pointer disabled:opacity-30 ${
       active
-        ? 'bg-ember text-ink'
-        : 'text-[#aaa] hover:text-paper hover:bg-white/10'
+        ? 'bg-ember text-ink font-bold shadow-sm'
+        : 'text-[#bbb] hover:text-paper hover:bg-white/10'
     }`}
   >
     {children}
@@ -126,8 +125,13 @@ export default function RichTextEditor({
   value,
   onChange,
   placeholder = 'Write your article content here…',
-  minHeight = 320,
+  minHeight = 420,
+  stickyTopOffset = 'top-[65px]',
+  onOpenMediaPicker,
 }: RichTextEditorProps) {
+  const [uploadingInline, setUploadingInline] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -143,7 +147,7 @@ export default function RichTextEditor({
     editorProps: {
       attributes: {
         class: [
-          'outline-none min-h-[var(--editor-min-h)] px-4 py-3 text-sm leading-relaxed text-paper',
+          'outline-none min-h-[var(--editor-min-h)] px-5 py-4 text-sm leading-relaxed text-paper',
           'prose prose-invert prose-sm max-w-none',
           '[&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-3 [&_h1]:mt-5',
           '[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4',
@@ -166,7 +170,7 @@ export default function RichTextEditor({
     },
   });
 
-  // Sync external value changes (e.g. when editing an existing article)
+  // Sync external value changes
   useEffect(() => {
     if (!editor) return;
     const currentMd = htmlToMd(editor.getHTML());
@@ -222,15 +226,36 @@ export default function RichTextEditor({
     });
   }, [editor]);
 
+  const handleInlineFileUpload = async (file: File) => {
+    if (!editor) return;
+    setUploadingInline(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'portfolio/blogs');
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok && (data.secureUrl || data.url)) {
+        editor.chain().focus().setImage({ src: data.secureUrl || data.url, alt: file.name }).run();
+      }
+    } finally {
+      setUploadingInline(false);
+    }
+  };
+
   if (!editor) return null;
+
+  const wordCount = value ? value.trim().split(/\s+/).filter(Boolean).length : 0;
 
   return (
     <div
-      className="rounded-xl border border-white/10 bg-[#181614] overflow-hidden focus-within:border-ember transition-colors"
+      className="relative rounded-xl border border-white/15 bg-[#181614] focus-within:border-ember transition-colors"
       style={{ '--editor-min-h': `${minHeight}px` } as React.CSSProperties}
     >
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-2 border-b border-white/10 bg-[#111110]">
+      {/* Sticky Formatting Toolbar — stays visible while scrolling through long articles */}
+      <div
+        className={`sticky ${stickyTopOffset} z-30 rounded-t-xl flex flex-wrap items-center gap-1 px-3 py-2.5 border-b border-white/15 bg-[#111110]/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.65)]`}
+      >
         {/* Text style */}
         <ToolbarButton title="Heading 1" active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</ToolbarButton>
         <ToolbarButton title="Heading 2" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</ToolbarButton>
@@ -253,7 +278,37 @@ export default function RichTextEditor({
         <span className="w-px h-4 bg-white/15 mx-1" />
 
         <ToolbarButton title="Insert link" active={editor.isActive('link')} onClick={addLink}>🔗 Link</ToolbarButton>
-        <ToolbarButton title="Insert image URL" onClick={addImage}>🖼 Img</ToolbarButton>
+        <ToolbarButton title="Insert image by URL" onClick={addImage}>🖼 URL</ToolbarButton>
+        <ToolbarButton
+          title="Upload image to Cloudinary"
+          disabled={uploadingInline}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {uploadingInline ? '⏳ Uploading…' : '☁ Upload Img'}
+        </ToolbarButton>
+        {onOpenMediaPicker && (
+          <ToolbarButton
+            title="Pick image from Cloudinary Media Library"
+            onClick={() =>
+              onOpenMediaPicker((url) => {
+                editor.chain().focus().setImage({ src: url, alt: '' }).run();
+              })
+            }
+          >
+            🗂 Library
+          </ToolbarButton>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleInlineFileUpload(f);
+            e.target.value = '';
+          }}
+        />
 
         <span className="w-px h-4 bg-white/15 mx-1" />
 
@@ -262,8 +317,12 @@ export default function RichTextEditor({
 
         <span className="flex-1" />
 
-        <ToolbarButton title="Undo" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>↩ Undo</ToolbarButton>
-        <ToolbarButton title="Redo" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>↪ Redo</ToolbarButton>
+        <span className="font-mono text-[9px] text-[#777] px-2 hidden sm:inline">
+          {wordCount} words · ~{Math.max(1, Math.ceil(wordCount / 200))} min
+        </span>
+
+        <ToolbarButton title="Undo" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>↩</ToolbarButton>
+        <ToolbarButton title="Redo" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>↪</ToolbarButton>
       </div>
 
       {/* Editor area */}

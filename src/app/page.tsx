@@ -52,6 +52,45 @@ export default async function HomePage() {
   } catch {
     // articles stays empty – BlogSection renders a fallback
   }
+
+  // Ensure the Hero Featured Blog Post always reflects the latest published DEV.to / blog article
+  const latestPublishedBlog = articles.find((a) => !a.isDraft);
+  if (latestPublishedBlog) {
+    const existingTime = portfolio.latestArticle?.publishedAt
+      ? new Date(portfolio.latestArticle.publishedAt).getTime()
+      : 0;
+    const latestTime = latestPublishedBlog.publishedAt
+      ? new Date(latestPublishedBlog.publishedAt).getTime()
+      : 0;
+
+    if (!portfolio.latestArticle?.title || latestTime >= existingTime) {
+      portfolio = {
+        ...portfolio,
+        latestArticle: {
+          id: latestPublishedBlog.devtoId || latestPublishedBlog.id,
+          slug: latestPublishedBlog.slug,
+          title: latestPublishedBlog.title,
+          description: latestPublishedBlog.description,
+          platform:
+            latestPublishedBlog.devtoUrl ||
+            (latestPublishedBlog.publishedTo || []).includes('devto')
+              ? 'DEV.TO'
+              : 'BLOG',
+          readingTime: `${latestPublishedBlog.readingTimeMinutes || 5} MIN READ`,
+          publishedAt: latestPublishedBlog.publishedAt,
+          date: new Date(latestPublishedBlog.publishedAt || Date.now())
+            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            .toUpperCase(),
+          url:
+            latestPublishedBlog.devtoUrl ||
+            latestPublishedBlog.url ||
+            `/blog/${latestPublishedBlog.slug}`,
+          coverImage: latestPublishedBlog.coverImage,
+        },
+      };
+    }
+  }
+
   return (
     <>
       <PrismaticLoader autoFadeOut minDuration={1000} fadeDuration={800} />

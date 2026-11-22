@@ -6,6 +6,7 @@ import {
   saveBlogArticle,
   deleteBlogArticle,
 } from '../../../../lib/controllers/blogController';
+import { sendArticleToSubscribers } from '../../../../lib/controllers/newsletterController';
 
 /** GET /api/admin/blogs — list all blogs */
 export async function GET() {
@@ -23,10 +24,7 @@ export async function GET() {
 
 /**
  * POST /api/admin/blogs
- * Body: { mode: 'create' | 'save', ...data }
- *
- * mode=create  → createBlogArticle (auto cross-posts to DEV.to + Medium)
- * mode=save    → saveBlogArticle (updates Firestore only, no cross-post)
+ * Body: { mode: 'create' | 'save', sendNewsletter?: boolean, ...data }
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -34,14 +32,18 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { mode = 'save', ...data } = body;
+    const { mode = 'save', sendNewsletter = false, ...data } = body;
 
     if (mode === 'create') {
+      // createBlogArticle immediately publishes to DEV.to and dispatches the newsletter to subscribers
       const result = await createBlogArticle(data);
-      return NextResponse.json({ success: true, ...result });
+      return NextResponse.json({
+        success: true,
+        ...result,
+      });
     }
 
-    // Default: plain save / update
+    // Default: save / update (also updates DEV.to if linked and pulls back DEV.to cover image)
     const saved = await saveBlogArticle(data);
     return NextResponse.json({ success: true, article: saved });
   } catch (error) {

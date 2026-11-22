@@ -18,6 +18,8 @@ import { Arrow } from '../../components/SiteNavigation';
 import { signOutUser } from '../../lib/firebase';
 import { PrismaticLoader } from '../../components/PrismaticLoader';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
+import { CloudinaryMediaManager } from '../../components/admin/CloudinaryMediaManager';
+import { AutomationAndNewsletterManager } from '../../components/admin/AutomationAndNewsletterManager';
 import { portfolio as defaultPortfolio } from '../../data';
 
 // Rich-text editor is client-only (Tiptap)
@@ -30,7 +32,26 @@ const RichTextEditor = dynamic_import(() => import('../../components/admin/RichT
   ),
 });
 
-type AdminTab = 'profile' | 'projects' | 'smallWorks' | 'experience' | 'skills' | 'blogs';
+type AdminTab =
+  | 'profile'
+  | 'projects'
+  | 'smallWorks'
+  | 'experience'
+  | 'skills'
+  | 'blogs'
+  | 'media'
+  | 'automation';
+
+const VALID_ADMIN_TABS: AdminTab[] = [
+  'profile',
+  'projects',
+  'smallWorks',
+  'experience',
+  'skills',
+  'blogs',
+  'media',
+  'automation',
+];
 
 /* ─── small reusable helpers ─────────────────────── */
 const inputCls =
@@ -195,7 +216,16 @@ function MultilineArrayInput({
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<AdminTab>('profile');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as AdminTab | null;
+      if (tabParam && VALID_ADMIN_TABS.includes(tabParam)) {
+        return tabParam;
+      }
+    }
+    return 'profile';
+  });
   const [loading, setLoading] = useState(true);
   const [fadingOut, setFadingOut] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -238,13 +268,65 @@ export default function AdminDashboardPage() {
     tagList: '',
     coverImage: '',
     isDraft: false,
+    sendNewsletter: true,
     publishTo: { devto: true },
   });
+  const [syncingCoverDevTo, setSyncingCoverDevTo] = useState(false);
+  const [generatingCoverAi, setGeneratingCoverAi] = useState(false);
+  const [mediaPickerCallback, setMediaPickerCallback] = useState<((url: string) => void) | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  const handleSelectTab = (nextTab: AdminTab) => {
+    setActiveTab(nextTab);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', nextTab);
+      if (nextTab !== 'automation') {
+        url.searchParams.delete('subTab');
+      }
+      window.history.replaceState({}, '', url.pathname + url.search);
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const syncTabFromUrl = () => {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab') as AdminTab | null;
+        if (tabParam && VALID_ADMIN_TABS.includes(tabParam)) {
+          setActiveTab(tabParam);
+        } else {
+          // Ensure ?tab= is present in the URL so any refresh preserves the active tab
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', activeTab);
+          window.history.replaceState({}, '', url.pathname + url.search);
+        }
+      };
+
+      syncTabFromUrl();
+
+      const params = new URLSearchParams(window.location.search);
+      const liStatus = params.get('linkedin');
+      const liErr = params.get('linkedinError');
+      if (liStatus === 'published') {
+        handleSelectTab('automation');
+        showToast('LinkedIn OAuth verified & post published to your profile ✓');
+      } else if (liStatus === 'connected') {
+        handleSelectTab('automation');
+        showToast('LinkedIn OAuth verified ✓ (60-day member access token saved)');
+      } else if (liErr) {
+        handleSelectTab('automation');
+        showToast(`LinkedIn OAuth: ${liErr}`, 'error');
+      }
+
+      window.addEventListener('popstate', syncTabFromUrl);
+      return () => window.removeEventListener('popstate', syncTabFromUrl);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -361,14 +443,45 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const syncLatestToPortfolioState = (article?: BlogArticle) => {
+    if (!article || article.isDraft) return;
+    setPortfolio((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        latestArticle: {
+          id: article.devtoId || article.id,
+          slug: article.slug,
+          title: article.title,
+          description: article.description,
+          platform:
+            article.devtoUrl || (article.publishedTo || []).includes('devto')
+              ? 'DEV.TO'
+              : 'BLOG',
+          readingTime: `${article.readingTimeMinutes || 5} MIN READ`,
+          publishedAt: article.publishedAt,
+          date: new Date(article.publishedAt || Date.now())
+            .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            .toUpperCase(),
+          url: article.devtoUrl || article.url || `/blog/${article.slug}`,
+          coverImage: article.coverImage,
+        },
+      };
+    });
+  };
+
   const handleSyncDevTo = async () => {
     setSyncingDevTo(true);
     try {
       const res = await fetch('/api/admin/sync-devto', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Sync failed');
-      setBlogs(data.articles || []);
-      showToast(`Synced ${data.count} articles from DEV.to!`);
+      const syncedList: BlogArticle[] = data.articles || [];
+      setBlogs(syncedList);
+      if (syncedList.length > 0) {
+        syncLatestToPortfolioState(syncedList[0]);
+      }
+      showToast(`Synced ${data.count} articles from DEV.to & updated Hero Featured Post!`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Sync failed', 'error');
     } finally {
@@ -409,13 +522,130 @@ export default function AdminDashboardPage() {
       const res = await fetch('/api/admin/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
-      onSuccess(data.secureUrl || data.url);
+      // For blog covers, use the DEV.to-compatible 1000x420 PNG URL so DEV.to cover storage always ingests it
+      const finalUrl =
+        folder === 'portfolio/blogs' && data.devtoUrl
+          ? data.devtoUrl
+          : data.secureUrl || data.url;
+      onSuccess(finalUrl);
       setCloudinaryConfigured(true);
-      showToast('Image uploaded to Cloudinary ✓');
+      showToast(
+        folder === 'portfolio/blogs'
+          ? 'Uploaded to Cloudinary (formatted for DEV.to cover compatibility) ✓'
+          : 'Image uploaded to Cloudinary ✓'
+      );
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Image upload failed', 'error');
     } finally {
       setUploadingImage(null);
+    }
+  };
+
+  /**
+   * Attaches the current Cloudinary cover image to DEV.to, uploads it into DEV.to's
+   * cover image storage, and pulls DEV.to's hosted cover_image URL directly into our Cover Image field.
+   */
+  const handleSyncCoverWithDevTo = async (mode: 'new' | 'edit') => {
+    const currentUrl = mode === 'new' ? newBlog.coverImage : activeBlogEdit?.coverImage;
+    if (!currentUrl || !currentUrl.trim()) {
+      showToast('Upload or paste a Cover Image URL first', 'error');
+      return;
+    }
+    setSyncingCoverDevTo(true);
+    try {
+      const payload =
+        mode === 'new'
+          ? {
+              action: 'sync-cover',
+              coverImage: currentUrl.trim(),
+              title: newBlog.title.trim() || 'Draft Article',
+              bodyMarkdown: newBlog.bodyMarkdown || 'Draft content',
+              description: newBlog.description,
+              tags: newBlog.tagList
+                ? newBlog.tagList.split(',').map((t) => t.trim()).filter(Boolean)
+                : [],
+            }
+          : {
+              action: 'sync-cover',
+              coverImage: currentUrl.trim(),
+              devtoId: activeBlogEdit?.devtoId,
+              title: activeBlogEdit?.title,
+              bodyMarkdown: activeBlogEdit?.bodyMarkdown,
+              description: activeBlogEdit?.description,
+              tags: activeBlogEdit?.tagList,
+            };
+
+      const res = await fetch('/api/admin/blogs/crosspost', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to sync cover with DEV.to');
+
+      if (mode === 'new') {
+        setNewBlog((prev) => ({ ...prev, coverImage: data.coverImage }));
+      } else if (activeBlogEdit) {
+        setActiveBlogEdit({
+          ...activeBlogEdit,
+          coverImage: data.coverImage,
+          ...(data.devtoId ? { devtoId: data.devtoId } : {}),
+          ...(data.devtoUrl ? { devtoUrl: data.devtoUrl } : {}),
+        });
+      }
+
+      showToast(
+        data.source === 'devto-storage'
+          ? 'Attached to DEV.to & pulled DEV.to cover storage URL into field ✓'
+          : 'Formatted Cloudinary URL for DEV.to cover image storage ✓'
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Cover sync failed', 'error');
+    } finally {
+      setSyncingCoverDevTo(false);
+    }
+  };
+
+  /**
+   * Generates a 100% free AI cover image (Pollinations Flux), uploads it to Cloudinary,
+   * and populates the DEV.to-compatible cover URL into the Cover Image field.
+   */
+  const handleGenerateFreeAiCoverForBlog = async (mode: 'new' | 'edit') => {
+    const promptTopic =
+      mode === 'new'
+        ? newBlog.title.trim() || newBlog.description.trim()
+        : activeBlogEdit?.title.trim() || activeBlogEdit?.description.trim();
+
+    if (!promptTopic) {
+      showToast('Enter an Article Title first so AI can generate a matching cover image', 'error');
+      return;
+    }
+
+    setGeneratingCoverAi(true);
+    try {
+      const res = await fetch('/api/admin/automation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate-image',
+          prompt: promptTopic,
+          uploadToCloud: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI cover generation failed');
+
+      const finalCover = data.devtoCompatibleUrl || data.imageUrl;
+      if (mode === 'new') {
+        setNewBlog((prev) => ({ ...prev, coverImage: finalCover }));
+      } else if (activeBlogEdit) {
+        setActiveBlogEdit({ ...activeBlogEdit, coverImage: finalCover });
+      }
+      showToast('Generated free AI cover image & uploaded to Cloudinary ✓');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'AI cover generation failed', 'error');
+    } finally {
+      setGeneratingCoverAi(false);
     }
   };
 
@@ -440,6 +670,7 @@ export default function AdminDashboardPage() {
           tagList: newBlog.tagList ? newBlog.tagList.split(',').map((t) => t.trim()).filter(Boolean) : [],
           coverImage: newBlog.coverImage.trim() || undefined,
           isDraft: newBlog.isDraft,
+          sendNewsletter: newBlog.sendNewsletter,
           publishTo,
         }),
       });
@@ -447,6 +678,7 @@ export default function AdminDashboardPage() {
       if (!res.ok) throw new Error(data.error || 'Create failed');
 
       setBlogs((prev) => [data.article, ...prev]);
+      syncLatestToPortfolioState(data.article);
       setIsCreatingBlog(false);
       setNewBlog({
         title: '',
@@ -455,11 +687,13 @@ export default function AdminDashboardPage() {
         tagList: '',
         coverImage: '',
         isDraft: false,
+        sendNewsletter: true,
         publishTo: { devto: true },
       });
 
       const msgs: string[] = ['Article created ✓'];
-      if (data.devto?.success) msgs.push('DEV.to ✓');
+      if (data.devto?.success) msgs.push('DEV.to + Cover Synced ✓');
+      if (data.newsletter?.success) msgs.push(`Newsletter (${data.newsletter.sentCount}) ✓`);
       showToast(msgs.join(' · '));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Create failed', 'error');
@@ -485,12 +719,14 @@ export default function AdminDashboardPage() {
             ? {
                 ...b,
                 devtoUrl: data.url,
+                devtoId: data.devtoId || b.devtoId,
+                coverImage: data.coverImage || b.coverImage,
                 publishedTo: Array.from(new Set([...(b.publishedTo ?? []), 'devto' as const])) as Array<'devto' | 'medium' | 'portfolio'>,
               }
             : b
         )
       );
-      showToast('Posted to DEV.to ✓');
+      showToast('Posted to DEV.to & pulled DEV.to cover image ✓');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `${platform} cross-post failed`, 'error');
     } finally {
@@ -694,10 +930,12 @@ export default function AdminDashboardPage() {
             { id: 'experience', label: '04 / Career Timeline' },
             { id: 'skills', label: '05 / Skills & Toolkit' },
             { id: 'blogs', label: '06 / Blog Engine' },
+            { id: 'media', label: '07 / Media Library' },
+            { id: 'automation', label: '08 / AI Automation & Newsletter' },
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as AdminTab)}
+              onClick={() => handleSelectTab(tab.id as AdminTab)}
               className={`px-4 py-2 rounded-lg font-mono text-[9px] tracking-[0.08em] transition-all cursor-pointer ${
                 activeTab === tab.id
                   ? 'bg-white/10 text-paper border border-white/20'
@@ -710,7 +948,10 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Fallback if portfolio data fails to load */}
-        {!portfolio && activeTab !== 'blogs' && (
+        {!portfolio &&
+          activeTab !== 'blogs' &&
+          activeTab !== 'media' &&
+          activeTab !== 'automation' && (
           <div className="p-8 rounded-2xl bg-[#111110] border border-white/13 text-center space-y-4 max-w-lg mx-auto my-12">
             <div className="w-3 h-3 rounded-full bg-ember animate-ping mx-auto" />
             <h3 className="text-base font-medium text-paper">Portfolio Content Not Loaded</h3>
@@ -1706,196 +1947,360 @@ export default function AdminDashboardPage() {
         )}
 
         {/* ══════════════════════════════════════
-            TAB 06 — Blog Engine
+            TAB 06 — Blog Engine (Isolated Create/Edit View + Sticky Toolbar & Save Bar)
         ══════════════════════════════════════ */}
         {activeTab === 'blogs' && (
           <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-white/10">
-              <div>
-                <h2 className="text-xl font-medium tracking-tight">Blog Engine ({blogs.length})</h2>
-                <p className="text-xs text-[#8e8883] font-mono mt-1">
-                  Manage articles · sync with DEV.to and Medium RSS · publish to portfolio.
-                </p>
-                {platformStatus && (
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className={`font-mono text-[7px] px-2 py-0.5 rounded-full border ${platformStatus.devto.connected ? 'border-green-500/40 text-green-400 bg-green-500/10' : 'border-white/10 text-[#555]'}`}>
-                      {platformStatus.devto.connected ? `● DEV.TO @${platformStatus.devto.username}` : '○ DEV.TO NOT CONNECTED'}
-                    </span>
-                    <span className={`font-mono text-[7px] px-2 py-0.5 rounded-full border ${platformStatus.medium.connected ? 'border-green-500/40 text-green-400 bg-green-500/10' : 'border-white/10 text-[#555]'}`}>
-                      {platformStatus.medium.connected ? `● MEDIUM FEED @${platformStatus.medium.username}` : '○ MEDIUM USERNAME NOT SET'}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={handleSyncDevTo}
-                  disabled={syncingDevTo}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
-                >
-                  <span className={syncingDevTo ? 'animate-spin inline-block' : ''}>↺</span>
-                  {syncingDevTo ? 'SYNCING DEV.TO...' : 'SYNC FROM DEV.TO'}
-                </button>
-                <button
-                  onClick={handleSyncMedium}
-                  disabled={syncingMedium}
-                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
-                >
-                  <span className={syncingMedium ? 'animate-spin inline-block' : ''}>↺</span>
-                  {syncingMedium ? 'SYNCING MEDIUM...' : 'SYNC FROM MEDIUM'}
-                </button>
-                <button
-                  onClick={() => setIsCreatingBlog(true)}
-                  className="px-4 py-2 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember-soft transition-colors cursor-pointer"
-                >
-                  + NEW ARTICLE
-                </button>
-              </div>
-            </div>
-
-            {/* ── NEW ARTICLE MODAL ── */}
+            {/* ── ISOLATED CREATE ARTICLE VIEW (Other posts hidden while creating) ── */}
             {isCreatingBlog && (
-              <div className="p-6 rounded-2xl bg-[#111110] border border-ember/30 space-y-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-base font-medium text-paper">Create New Article</h3>
-                  <button onClick={() => setIsCreatingBlog(false)} className="text-[#888] font-mono text-xs hover:text-paper cursor-pointer">CLOSE [×]</button>
+              <div className="relative rounded-2xl bg-[#111110] border border-ember/30 p-6 space-y-5">
+                <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-white/10">
+                  <div>
+                    <span className="font-mono text-[8px] text-ember uppercase tracking-[0.14em] font-bold">
+                      FOCUSED EDITOR MODE · NEW ARTICLE
+                    </span>
+                    <h3 className="text-lg font-medium text-paper mt-0.5">
+                      {newBlog.title.trim() || 'Untitled New Article'}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingBlog(false)}
+                    className="px-3.5 py-1.5 rounded-lg border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                  >
+                    ← BACK TO ARTICLES
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
                   <Field label="Title *">
-                    <input type="text" className={inputCls} value={newBlog.title}
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={newBlog.title}
                       onChange={(e) => setNewBlog({ ...newBlog, title: e.target.value })}
-                      placeholder="Your article title" />
+                      placeholder="Your article title"
+                    />
                   </Field>
                   <Field label="Tags (comma-separated, max 4)">
-                    <input type="text" className={inputCls} value={newBlog.tagList}
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={newBlog.tagList}
                       onChange={(e) => setNewBlog({ ...newBlog, tagList: e.target.value })}
-                      placeholder="react, typescript, webdev" />
+                      placeholder="react, typescript, webdev"
+                    />
                   </Field>
                 </div>
 
                 <Field label="Description / Summary">
-                  <textarea rows={2} className={inputCls} value={newBlog.description}
+                  <textarea
+                    rows={2}
+                    className={inputCls}
+                    value={newBlog.description}
                     onChange={(e) => setNewBlog({ ...newBlog, description: e.target.value })}
-                    placeholder="A brief summary shown in previews" />
+                    placeholder="A brief summary shown in previews and SEO"
+                  />
                 </Field>
 
-                {/* Cover image */}
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label className={labelCls}>Cover Image (optional)</label>
-                    <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer flex items-center gap-1">
-                      <span>{uploadingImage === 'newBlog' ? 'UPLOADING...' : '↑ UPLOAD TO CLOUDINARY'}</span>
-                      <input type="file" accept="image/*" className="hidden"
-                        disabled={uploadingImage === 'newBlog'}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleUploadFile(file, 'portfolio/blogs', 'newBlog', (url) => setNewBlog((p) => ({ ...p, coverImage: url })));
-                        }} />
+                {/* Cover image with Cloudinary Upload, Media Library Picker, Free AI Generator & DEV.to Cover Storage Sync */}
+                <div className="p-4 rounded-xl bg-[#161513] border border-white/10 space-y-2.5">
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <label className={labelCls}>
+                      Cover Image (Cloudinary &amp; DEV.to Cover Storage Ready)
                     </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer flex items-center gap-1 font-bold">
+                        <span>{uploadingImage === 'newBlog' ? '⏳ UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingImage === 'newBlog'}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file)
+                              handleUploadFile(file, 'portfolio/blogs', 'newBlog', (url) =>
+                                setNewBlog((p) => ({ ...p, coverImage: url }))
+                              );
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMediaPickerCallback(() => (url: string) => {
+                            setNewBlog((p) => ({ ...p, coverImage: url }));
+                            setMediaPickerCallback(null);
+                          })
+                        }
+                        className="font-mono text-[8px] text-sky-400 hover:underline cursor-pointer"
+                      >
+                        🗂 PICK FROM LIBRARY
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateFreeAiCoverForBlog('new')}
+                        disabled={generatingCoverAi}
+                        className="font-mono text-[8px] text-emerald-400 hover:underline cursor-pointer disabled:opacity-40"
+                      >
+                        {generatingCoverAi ? '⏳ GENERATING AI COVER…' : '✨ GENERATE FREE AI COVER'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSyncCoverWithDevTo('new')}
+                        disabled={syncingCoverDevTo || !newBlog.coverImage.trim()}
+                        className="px-2 py-0.5 rounded bg-ember/15 border border-ember/40 font-mono text-[8px] text-ember hover:bg-ember/25 cursor-pointer disabled:opacity-40"
+                        title="Uploads/attaches the Cloudinary image to DEV.to cover image storage and pulls DEV.to's cover URL into this field"
+                      >
+                        {syncingCoverDevTo ? '⏳ SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <input type="text" className={`${inputCls} flex-1`} value={newBlog.coverImage}
-                      placeholder="https://... or upload to Cloudinary"
-                      onChange={(e) => setNewBlog({ ...newBlog, coverImage: e.target.value })} />
-                    {newBlog.coverImage && <img src={newBlog.coverImage} alt="" className="w-8 h-8 object-cover rounded border border-white/10 flex-none" />}
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      className={`${inputCls} flex-1 font-mono`}
+                      value={newBlog.coverImage}
+                      placeholder="https://... (Upload to Cloudinary, Generate Free AI Cover, or Sync with DEV.to)"
+                      onChange={(e) => setNewBlog({ ...newBlog, coverImage: e.target.value })}
+                    />
+                    {newBlog.coverImage && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={newBlog.coverImage}
+                        alt="Cover preview"
+                        className="w-16 h-10 object-cover rounded-lg border border-white/15 flex-none bg-black"
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* Rich text editor */}
+                {/* Rich text editor with Sticky Toolbar */}
                 <div>
-                  <label className={labelCls}>Article Content *</label>
+                  <label className={labelCls}>Article Content * (Formatting toolbar stays sticky on scroll)</label>
                   <RichTextEditor
                     value={newBlog.bodyMarkdown}
                     onChange={(md) => setNewBlog((p) => ({ ...p, bodyMarkdown: md }))}
                     placeholder="Write your article content here…"
-                    minHeight={400}
+                    minHeight={480}
+                    onOpenMediaPicker={(cb) =>
+                      setMediaPickerCallback(() => (url: string) => {
+                        cb(url);
+                        setMediaPickerCallback(null);
+                      })
+                    }
                   />
                 </div>
 
-                {/* Publish options */}
-                <div className="flex flex-wrap items-center gap-6 pt-2 border-t border-white/10">
-                  <div>
-                    <p className="font-mono text-[8px] text-[#888] uppercase mb-2">Publish To</p>
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="accent-ember" checked={newBlog.publishTo.devto}
-                          onChange={(e) => setNewBlog({ ...newBlog, publishTo: { ...newBlog.publishTo, devto: e.target.checked } })} />
-                        <span className="font-mono text-[9px] text-paper">DEV.TO</span>
-                        {platformStatus && !platformStatus.devto.connected && (
-                          <span className="font-mono text-[7px] text-yellow-500">(token missing)</span>
-                        )}
-                      </label>
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer ml-auto">
-                    <input type="checkbox" className="accent-ember" checked={newBlog.isDraft}
-                      onChange={(e) => setNewBlog({ ...newBlog, isDraft: e.target.checked })} />
-                    <span className="font-mono text-[9px] text-[#aaa]">SAVE AS DRAFT</span>
-                  </label>
-                </div>
+                {/* Sticky Bottom Save & Publish Action Menu */}
+                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-[#111110]/95 backdrop-blur-md border border-ember/40 shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-5">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-ember"
+                        checked={newBlog.publishTo.devto}
+                        onChange={(e) =>
+                          setNewBlog({
+                            ...newBlog,
+                            publishTo: { ...newBlog.publishTo, devto: e.target.checked },
+                          })
+                        }
+                      />
+                      <span className="font-mono text-[9px] text-paper font-bold">
+                        PUBLISH &amp; PULL COVER VIA DEV.TO
+                      </span>
+                      {platformStatus && !platformStatus.devto.connected && (
+                        <span className="font-mono text-[7px] text-yellow-500">(token missing)</span>
+                      )}
+                    </label>
 
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setIsCreatingBlog(false)}
-                    className="px-4 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper cursor-pointer">
-                    CANCEL
-                  </button>
-                  <button onClick={handleCreateBlog} disabled={saving}
-                    className="px-5 py-1.5 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer flex items-center gap-2">
-                    {saving ? 'PUBLISHING...' : (newBlog.isDraft ? 'SAVE DRAFT' : 'PUBLISH ARTICLE')}
-                  </button>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-ember"
+                        checked={newBlog.sendNewsletter}
+                        onChange={(e) => setNewBlog({ ...newBlog, sendNewsletter: e.target.checked })}
+                      />
+                      <span className="font-mono text-[9px] text-[#ccc]">EMAIL NEWSLETTER SUBSCRIBERS</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-ember"
+                        checked={newBlog.isDraft}
+                        onChange={(e) => setNewBlog({ ...newBlog, isDraft: e.target.checked })}
+                      />
+                      <span className="font-mono text-[9px] text-amber-400">SAVE AS DRAFT</span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-3 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingBlog(false)}
+                      className="px-4 py-2 rounded-xl border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCreateBlog}
+                      disabled={saving}
+                      className="px-6 py-2 rounded-xl bg-ember text-ink font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
+                    >
+                      {saving ? 'PUBLISHING…' : newBlog.isDraft ? 'SAVE DRAFT' : 'PUBLISH ARTICLE'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* ── EDIT ARTICLE MODAL ── */}
-            {activeBlogEdit && (
-              <div className="p-6 rounded-2xl bg-[#111110] border border-ember/30 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-base font-medium text-paper">Edit: {activeBlogEdit.title}</h3>
-                  <button onClick={() => setActiveBlogEdit(null)} className="text-[#888] font-mono text-xs hover:text-paper cursor-pointer">CLOSE [×]</button>
+            {/* ── ISOLATED EDIT ARTICLE VIEW (Other posts hidden while editing) ── */}
+            {!isCreatingBlog && activeBlogEdit && (
+              <div className="relative rounded-2xl bg-[#111110] border border-ember/30 p-6 space-y-5">
+                <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-white/10">
+                  <div>
+                    <span className="font-mono text-[8px] text-ember uppercase tracking-[0.14em] font-bold">
+                      FOCUSED EDITOR MODE · EDITING ARTICLE
+                    </span>
+                    <h3 className="text-lg font-medium text-paper mt-0.5">{activeBlogEdit.title}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveBlogEdit(null)}
+                    className="px-3.5 py-1.5 rounded-lg border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                  >
+                    ← BACK TO ARTICLES
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
                   <Field label="Title">
-                    <input type="text" className={inputCls} value={activeBlogEdit.title}
-                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, title: e.target.value })} />
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={activeBlogEdit.title}
+                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, title: e.target.value })}
+                    />
                   </Field>
                   <Field label="Slug">
-                    <input type="text" className={inputCls} value={activeBlogEdit.slug}
-                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, slug: e.target.value })} />
+                    <input
+                      type="text"
+                      className={inputCls}
+                      value={activeBlogEdit.slug}
+                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, slug: e.target.value })}
+                    />
                   </Field>
                 </div>
 
                 <Field label="Description">
-                  <textarea rows={2} className={inputCls} value={activeBlogEdit.description}
-                    onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, description: e.target.value })} />
+                  <textarea
+                    rows={2}
+                    className={inputCls}
+                    value={activeBlogEdit.description}
+                    onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, description: e.target.value })}
+                  />
                 </Field>
 
-                <div className="grid grid-cols-3 max-sm:grid-cols-1 gap-4">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <label className={labelCls}>Cover Image</label>
-                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer">
-                        <span>{uploadingImage === 'editBlog' ? 'UPLOADING...' : '↑ UPLOAD'}</span>
-                        <input type="file" accept="image/*" className="hidden"
+                {/* Cover image with Cloudinary Upload, Library Picker, Free AI Cover & DEV.to Cover Storage Sync */}
+                <div className="p-4 rounded-xl bg-[#161513] border border-white/10 space-y-2.5">
+                  <div className="flex flex-wrap justify-between items-center gap-2">
+                    <label className={labelCls}>
+                      Cover Image (Cloudinary &amp; DEV.to Cover Storage Ready)
+                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer font-bold">
+                        <span>{uploadingImage === 'editBlog' ? '⏳ UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
                           disabled={uploadingImage === 'editBlog'}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleUploadFile(file, 'portfolio/blogs', 'editBlog', (url) => setActiveBlogEdit((p) => p ? { ...p, coverImage: url } : null));
-                          }} />
+                            if (file)
+                              handleUploadFile(file, 'portfolio/blogs', 'editBlog', (url) =>
+                                setActiveBlogEdit((p) => (p ? { ...p, coverImage: url } : null))
+                              );
+                          }}
+                        />
                       </label>
-                    </div>
-                    <div className="flex gap-2">
-                      <input type="text" className={`${inputCls} flex-1`} value={activeBlogEdit.coverImage || ''}
-                        onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, coverImage: e.target.value })} />
-                      {activeBlogEdit.coverImage && <img src={activeBlogEdit.coverImage} alt="" className="w-8 h-8 object-cover rounded border border-white/10 flex-none" />}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMediaPickerCallback(() => (url: string) => {
+                            setActiveBlogEdit((p) => (p ? { ...p, coverImage: url } : null));
+                            setMediaPickerCallback(null);
+                          })
+                        }
+                        className="font-mono text-[8px] text-sky-400 hover:underline cursor-pointer"
+                      >
+                        🗂 PICK FROM LIBRARY
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleGenerateFreeAiCoverForBlog('edit')}
+                        disabled={generatingCoverAi}
+                        className="font-mono text-[8px] text-emerald-400 hover:underline cursor-pointer disabled:opacity-40"
+                      >
+                        {generatingCoverAi ? '⏳ GENERATING AI COVER…' : '✨ GENERATE FREE AI COVER'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSyncCoverWithDevTo('edit')}
+                        disabled={syncingCoverDevTo || !activeBlogEdit.coverImage?.trim()}
+                        className="px-2 py-0.5 rounded bg-ember/15 border border-ember/40 font-mono text-[8px] text-ember hover:bg-ember/25 cursor-pointer disabled:opacity-40"
+                        title="Attaches this image to DEV.to cover image storage and pulls DEV.to's hosted cover URL into this field"
+                      >
+                        {syncingCoverDevTo ? '⏳ SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
+                      </button>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      className={`${inputCls} flex-1 font-mono`}
+                      value={activeBlogEdit.coverImage || ''}
+                      placeholder="https://... (Upload to Cloudinary, Generate Free AI Cover, or Sync with DEV.to)"
+                      onChange={(e) =>
+                        setActiveBlogEdit({ ...activeBlogEdit, coverImage: e.target.value })
+                      }
+                    />
+                    {activeBlogEdit.coverImage && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={activeBlogEdit.coverImage}
+                        alt=""
+                        className="w-16 h-10 object-cover rounded-lg border border-white/15 flex-none bg-black"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
                   <Field label="Reading Time (mins)">
-                    <input type="number" className={inputCls} value={activeBlogEdit.readingTimeMinutes}
-                      onChange={(e) => setActiveBlogEdit({ ...activeBlogEdit, readingTimeMinutes: parseInt(e.target.value) || 1 })} />
+                    <input
+                      type="number"
+                      className={inputCls}
+                      value={activeBlogEdit.readingTimeMinutes}
+                      onChange={(e) =>
+                        setActiveBlogEdit({
+                          ...activeBlogEdit,
+                          readingTimeMinutes: parseInt(e.target.value) || 1,
+                        })
+                      }
+                    />
                   </Field>
                   <Field label="Tags (comma-separated)">
                     <CommaSeparatedInput
@@ -1907,114 +2312,282 @@ export default function AdminDashboardPage() {
                   </Field>
                 </div>
 
-                {/* Rich text editor for edit */}
+                {/* Rich text editor for edit (Sticky Toolbar) */}
                 <div>
-                  <label className={labelCls}>Article Content</label>
+                  <label className={labelCls}>Article Content (Formatting toolbar stays sticky on scroll)</label>
                   <RichTextEditor
                     value={activeBlogEdit.bodyMarkdown || ''}
-                    onChange={(md) => setActiveBlogEdit((p) => p ? { ...p, bodyMarkdown: md } : null)}
-                    minHeight={360}
+                    onChange={(md) =>
+                      setActiveBlogEdit((p) => (p ? { ...p, bodyMarkdown: md } : null))
+                    }
+                    minHeight={480}
+                    onOpenMediaPicker={(cb) =>
+                      setMediaPickerCallback(() => (url: string) => {
+                        cb(url);
+                        setMediaPickerCallback(null);
+                      })
+                    }
                   />
                 </div>
 
-                <div className="flex justify-end gap-3 pt-2">
-                  <button onClick={() => setActiveBlogEdit(null)}
-                    className="px-4 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper cursor-pointer">
-                    CANCEL
-                  </button>
-                  <button onClick={() => handleSaveBlogArticle(activeBlogEdit)} disabled={saving}
-                    className="px-4 py-1.5 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer">
-                    {saving ? 'SAVING...' : 'SAVE ARTICLE'}
-                  </button>
+                {/* Sticky Bottom Save Menu */}
+                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-[#111110]/95 backdrop-blur-md border border-ember/40 shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-ember"
+                        checked={activeBlogEdit.isDraft}
+                        onChange={(e) =>
+                          setActiveBlogEdit({ ...activeBlogEdit, isDraft: e.target.checked })
+                        }
+                      />
+                      <span className="font-mono text-[9px] text-amber-400">DRAFT STATUS</span>
+                    </label>
+                    {activeBlogEdit.devtoId && (
+                      <span className="font-mono text-[8px] text-emerald-400">
+                        ● LINKED TO DEV.TO (#{activeBlogEdit.devtoId}) — SAVING AUTO-SYNCS COVER &amp; BODY
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setActiveBlogEdit(null)}
+                      className="px-4 py-2 rounded-xl border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                    >
+                      CANCEL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSaveBlogArticle(activeBlogEdit)}
+                      disabled={saving}
+                      className="px-6 py-2 rounded-xl bg-ember text-ink font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
+                    >
+                      {saving ? 'SAVING…' : 'SAVE ARTICLE'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* ── ARTICLE LIST ── */}
-            <div className="grid grid-cols-1 gap-3">
-              {blogs.map((article) => (
-                <div key={article.slug} className="p-5 rounded-xl bg-[#111110] border border-white/13 space-y-3">
-                  <div className="flex max-sm:flex-col items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                      {article.coverImage && (
-                        <img src={article.coverImage} alt="" className="w-16 h-12 object-cover rounded flex-none bg-[#1a1714]" />
-                      )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-mono text-[7px] text-ember px-2 py-0.5 rounded bg-ember/10">
-                            {article.tagList[0]?.toUpperCase() || 'ARTICLE'}
-                          </span>
-                          <span className="font-mono text-[8px] text-[#777]">{article.readingTimeMinutes} MIN</span>
-                          {article.isDraft && (
-                            <span className="font-mono text-[7px] text-yellow-500 px-2 py-0.5 rounded bg-yellow-500/10">DRAFT</span>
-                          )}
-                          {/* Platform badges */}
-                          {(article.publishedTo ?? []).map((platform) => (
-                            <span key={platform} className="font-mono text-[7px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#aaa]">
-                              {platform === 'devto' ? 'DEV.TO' : 'MEDIUM'}
-                            </span>
-                          ))}
-                        </div>
-                        <h4 className="text-sm font-medium text-paper truncate">{article.title}</h4>
-                        <p className="text-[11px] text-[#8e8883] truncate">{article.slug}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap flex-none">
-                      {/* Cross-post buttons */}
-                      {!article.devtoUrl && (
-                        <button
-                          onClick={() => handleCrossPost(article.slug, 'devto')}
-                          disabled={crossPosting[`${article.slug}-devto`]}
-                          className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper hover:border-white/30 disabled:opacity-50 transition-colors cursor-pointer"
-                        >
-                          {crossPosting[`${article.slug}-devto`] ? '...' : '→ DEV.TO'}
-                        </button>
-                      )}
-                      {article.devtoUrl && (
-                        <a href={article.devtoUrl} target="_blank" rel="noopener noreferrer"
-                          className="font-mono text-[7px] text-emerald-400 hover:underline">
-                          ● DEV.TO ↗
-                        </a>
-                      )}
-                      {article.mediumUrl && (
-                        <a href={article.mediumUrl} target="_blank" rel="noopener noreferrer"
-                          className="font-mono text-[7px] text-emerald-400 hover:underline">
-                          ● MEDIUM ↗
-                        </a>
-                      )}
-                      <button
-                        onClick={() => setActiveBlogEdit(article)}
-                        className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[#aaa] font-mono text-[8px] hover:text-paper transition-colors cursor-pointer"
-                      >
-                        EDIT
-                      </button>
-                      <button
-                        onClick={() => handleDeleteBlogArticle(article.slug)}
-                        className="text-red-400 font-mono text-[8px] hover:underline cursor-pointer"
-                      >
-                        DELETE
-                      </button>
-                    </div>
-                  </div>
-
-                  {article.description && (
-                    <p className="text-[11px] text-[#8e8883] font-mono leading-relaxed border-t border-white/5 pt-2">
-                      {article.description}
+            {/* ── MAIN BLOG LIST VIEW (Only rendered when NOT creating or editing an article!) ── */}
+            {!isCreatingBlog && !activeBlogEdit && (
+              <>
+                <div className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-white/10">
+                  <div>
+                    <h2 className="text-xl font-medium tracking-tight">Blog Engine ({blogs.length})</h2>
+                    <p className="text-xs text-[#8e8883] font-mono mt-1">
+                      Manage articles · sync with DEV.to and Medium RSS · publish to portfolio.
                     </p>
+                    {platformStatus && (
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <span
+                          className={`font-mono text-[7px] px-2 py-0.5 rounded-full border ${
+                            platformStatus.devto.connected
+                              ? 'border-green-500/40 text-green-400 bg-green-500/10'
+                              : 'border-white/10 text-[#555]'
+                          }`}
+                        >
+                          {platformStatus.devto.connected
+                            ? `● DEV.TO @${platformStatus.devto.username}`
+                            : '○ DEV.TO NOT CONNECTED'}
+                        </span>
+                        <span
+                          className={`font-mono text-[7px] px-2 py-0.5 rounded-full border ${
+                            platformStatus.medium.connected
+                              ? 'border-green-500/40 text-green-400 bg-green-500/10'
+                              : 'border-white/10 text-[#555]'
+                          }`}
+                        >
+                          {platformStatus.medium.connected
+                            ? `● MEDIUM FEED @${platformStatus.medium.username}`
+                            : '○ MEDIUM USERNAME NOT SET'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={handleSyncDevTo}
+                      disabled={syncingDevTo}
+                      className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <span className={syncingDevTo ? 'animate-spin inline-block' : ''}>↺</span>
+                      {syncingDevTo ? 'SYNCING DEV.TO...' : 'SYNC FROM DEV.TO'}
+                    </button>
+                    <button
+                      onClick={handleSyncMedium}
+                      disabled={syncingMedium}
+                      className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <span className={syncingMedium ? 'animate-spin inline-block' : ''}>↺</span>
+                      {syncingMedium ? 'SYNCING MEDIUM...' : 'SYNC FROM MEDIUM'}
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('automation')}
+                      className="px-4 py-2 rounded-lg bg-ember/15 border border-ember/40 text-ember font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember/25 transition-colors cursor-pointer"
+                    >
+                      ⚡ AI AUTOMATION
+                    </button>
+                    <button
+                      onClick={() => setIsCreatingBlog(true)}
+                      className="px-4 py-2 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember-soft transition-colors cursor-pointer"
+                    >
+                      + NEW ARTICLE
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── ARTICLE LIST ── */}
+                <div className="grid grid-cols-1 gap-3">
+                  {blogs.map((article) => (
+                    <div
+                      key={article.slug}
+                      className="p-5 rounded-xl bg-[#111110] border border-white/13 space-y-3"
+                    >
+                      <div className="flex max-sm:flex-col items-start sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 min-w-0">
+                          {article.coverImage && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={article.coverImage}
+                              alt=""
+                              className="w-16 h-12 object-cover rounded flex-none bg-[#1a1714]"
+                            />
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-mono text-[7px] text-ember px-2 py-0.5 rounded bg-ember/10">
+                                {article.tagList[0]?.toUpperCase() || 'ARTICLE'}
+                              </span>
+                              <span className="font-mono text-[8px] text-[#777]">
+                                {article.readingTimeMinutes} MIN
+                              </span>
+                              {article.isDraft && (
+                                <span className="font-mono text-[7px] text-yellow-500 px-2 py-0.5 rounded bg-yellow-500/10">
+                                  DRAFT
+                                </span>
+                              )}
+                              {(article.publishedTo ?? []).map((platform) => (
+                                <span
+                                  key={platform}
+                                  className="font-mono text-[7px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[#aaa]"
+                                >
+                                  {platform === 'devto' ? 'DEV.TO' : platform.toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
+                            <h4 className="text-sm font-medium text-paper truncate">{article.title}</h4>
+                            <p className="text-[11px] text-[#8e8883] truncate">{article.slug}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap flex-none">
+                          {!article.devtoUrl && (
+                            <button
+                              onClick={() => handleCrossPost(article.slug, 'devto')}
+                              disabled={crossPosting[`${article.slug}-devto`]}
+                              className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper hover:border-white/30 disabled:opacity-50 transition-colors cursor-pointer"
+                            >
+                              {crossPosting[`${article.slug}-devto`] ? '...' : '→ DEV.TO'}
+                            </button>
+                          )}
+                          {article.devtoUrl && (
+                            <a
+                              href={article.devtoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-[7px] text-emerald-400 hover:underline"
+                            >
+                              ● DEV.TO ↗
+                            </a>
+                          )}
+                          {article.mediumUrl && (
+                            <a
+                              href={article.mediumUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-[7px] text-emerald-400 hover:underline"
+                            >
+                              ● MEDIUM ↗
+                            </a>
+                          )}
+                          <button
+                            onClick={() => setActiveBlogEdit(article)}
+                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[#aaa] font-mono text-[8px] hover:text-paper transition-colors cursor-pointer"
+                          >
+                            EDIT
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBlogArticle(article.slug)}
+                            className="text-red-400 font-mono text-[8px] hover:underline cursor-pointer"
+                          >
+                            DELETE
+                          </button>
+                        </div>
+                      </div>
+
+                      {article.description && (
+                        <p className="text-[11px] text-[#8e8883] font-mono leading-relaxed border-t border-white/5 pt-2">
+                          {article.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {blogs.length === 0 && (
+                    <div className="text-center py-20 font-mono text-[10px] text-[#555]">
+                      No articles yet. Create your first one above, run AI Automation, or sync from DEV.to.
+                    </div>
                   )}
                 </div>
-              ))}
-              {blogs.length === 0 && (
-                <div className="text-center py-20 font-mono text-[10px] text-[#555]">
-                  No articles yet. Create your first one above, or sync from DEV.to.
-                </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            TAB 07 — Cloudinary Media Library
+        ══════════════════════════════════════ */}
+        {activeTab === 'media' && <CloudinaryMediaManager showToast={showToast} />}
+
+        {/* ══════════════════════════════════════
+            TAB 08 — AI Automation, Social & Newsletter
+        ══════════════════════════════════════ */}
+        {activeTab === 'automation' && (
+          <AutomationAndNewsletterManager
+            blogs={blogs}
+            onArticleCreated={(newArt) => {
+              setBlogs((prev) => [newArt, ...prev]);
+              syncLatestToPortfolioState(newArt);
+            }}
+            showToast={showToast}
+          />
         )}
       </div>
     </div>
+
+    {/* Global Cloudinary Media Picker Modal (when triggered from Blog Editor) */}
+    {mediaPickerCallback && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-8 bg-black/85 backdrop-blur-md overflow-y-auto"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setMediaPickerCallback(null);
+        }}
+      >
+        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-[#0e0d0c] border border-white/15 p-6 shadow-2xl">
+          <CloudinaryMediaManager
+            showToast={showToast}
+            pickerTitle="Select Image from Cloudinary Media Library"
+            onSelectAsset={(url) => mediaPickerCallback(url)}
+            onClosePicker={() => setMediaPickerCallback(null)}
+          />
+        </div>
+      </div>
+    )}
 
     {/* Global custom confirm & delete modal */}
     {confirmModal && (

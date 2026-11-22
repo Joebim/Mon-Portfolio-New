@@ -4,9 +4,9 @@ import { uploadToCloudinary, isCloudinaryConfigured } from '../../../../lib/clou
 
 /**
  * POST /api/admin/upload
- * Accepts multipart/form-data with:
- *  - `file`: The image file (Blob/File)
- *  - `folder`: (optional) Subfolder in Cloudinary, e.g. "portfolio/blogs", "portfolio/works"
+ * Accepts either:
+ * 1) multipart/form-data with `file` (File) and optional `folder`
+ * 2) application/json with `url` (remote image URL or base64 data URI) and optional `folder`
  */
 export async function POST(request: Request) {
   const session = await getSession();
@@ -25,9 +25,39 @@ export async function POST(request: Request) {
   }
 
   try {
+    const contentType = request.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const body = await request.json();
+      const remoteUrl = body.url as string | undefined;
+      const folder = (body.folder as string) || 'portfolio/blogs';
+      if (!remoteUrl || typeof remoteUrl !== 'string') {
+        return NextResponse.json({ error: 'No valid image URL provided.' }, { status: 400 });
+      }
+
+      const result = await uploadToCloudinary(remoteUrl, {
+        folder,
+        tags: ['portfolio', folder.replace(/[^a-zA-Z0-9_-]/g, '_')],
+        context: body.alt ? { alt: body.alt } : undefined,
+      });
+
+      return NextResponse.json({
+        success: true,
+        url: result.secureUrl,
+        secureUrl: result.secureUrl,
+        devtoUrl: result.devtoUrl,
+        publicId: result.publicId,
+        width: result.width,
+        height: result.height,
+        format: result.format,
+        bytes: result.bytes,
+      });
+    }
+
     const formData = await request.formData();
     const file = formData.get('file');
     const folder = (formData.get('folder') as string) || 'portfolio';
+    const alt = (formData.get('alt') as string) || '';
 
     if (!file || typeof file === 'string') {
       return NextResponse.json(
@@ -53,12 +83,14 @@ export async function POST(request: Request) {
     const result = await uploadToCloudinary(buffer, {
       folder,
       tags: ['portfolio', folder.replace(/[^a-zA-Z0-9_-]/g, '_')],
+      context: alt ? { alt } : undefined,
     });
 
     return NextResponse.json({
       success: true,
       url: result.secureUrl,
       secureUrl: result.secureUrl,
+      devtoUrl: result.devtoUrl,
       publicId: result.publicId,
       width: result.width,
       height: result.height,
@@ -91,4 +123,3 @@ export async function GET() {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || null,
   });
 }
-

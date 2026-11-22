@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import rehypeHighlight from 'rehype-highlight';
 import { Arrow, ProjectLabel } from '../../../components/SiteNavigation';
+import { NewsletterSection } from '../../../components/NewsletterSection';
 import 'highlight.js/styles/github-dark.css';
 
 export const revalidate = 3600;
@@ -215,6 +216,9 @@ export default async function BlogArticlePage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {/* Newsletter Subscription */}
+      <NewsletterSection compact />
 
       {/* Footer */}
       <footer className="flex items-center justify-between gap-7 py-6 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 border-t border-white/13">

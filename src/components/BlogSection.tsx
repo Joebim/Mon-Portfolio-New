@@ -8,6 +8,7 @@ import type { DevToArticle } from '../lib/devto';
 import { articleCover } from '../lib/devto';
 import { Reveal } from './Reveal';
 import { Arrow, ProjectLabel } from './SiteNavigation';
+import { NewsletterSection } from './NewsletterSection';
 
 const FlexCarousel = dynamic(() => import('./FlexCarousel'), { ssr: false });
 
@@ -138,8 +139,11 @@ export function BlogSection({ articles }: BlogSectionProps) {
         )}
       </div>
 
+      {/* Newsletter Subscription (CurvedInput) */}
+      <NewsletterSection />
+
       {/* Bottom padding — compact on mobile */}
-      <div className="h-[clamp(80px,10vw,140px)] max-sm:h-6" />
+      <div className="h-[clamp(24px,4vw,60px)] max-sm:h-4" />
     </section>
   );
 }
