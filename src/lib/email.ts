@@ -514,5 +514,109 @@ export function buildAutomationFailureAlertEmailHtml(input: {
 </html>`;
 }
 
+/**
+ * Builds the Admin Success Notification Email HTML sent whenever a Blog Post
+ * or LinkedIn Post is successfully posted through automation.
+ */
+export function buildAutomationSuccessAlertEmailHtml(input: {
+  pipeline: 'blog' | 'linkedin';
+  pipelineLabel: string;
+  title: string;
+  summary?: string;
+  liveUrl?: string;
+  devtoUrl?: string;
+  coverImageUrl?: string;
+  modelUsed?: string;
+  newsletterSentCount?: number;
+  isDraft?: boolean;
+  timestamp?: string;
+}): string {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const adminUrl = `${siteUrl}/admin?tab=automation&subTab=${
+    input.pipeline === 'linkedin' ? 'social' : 'schedule'
+  }`;
+  const occurredAt = input.timestamp || new Date().toISOString();
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>${input.pipelineLabel}: ${input.title}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0b0b0b;color:#eeeae5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0b0b0b;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;background-color:#121110;border:1px solid rgba(180,213,121,0.4);border-radius:20px;overflow:hidden;">
+          <tr>
+            <td style="padding:24px 28px;border-bottom:1px solid #22261e;background-color:#131712;">
+              <div style="font-family:monospace;font-size:11px;letter-spacing:0.14em;color:#b4d579;font-weight:700;text-transform:uppercase;">
+                ✅ AUTOMATION PUBLISHED · ${input.pipelineLabel.toUpperCase()}
+              </div>
+              <h1 style="margin:8px 0 10px 0;font-size:20px;color:#eeeae5;line-height:1.3;">
+                &ldquo;${input.title}&rdquo;
+              </h1>
+              <div style="font-family:monospace;font-size:11px;color:#a7a09a;">
+                POSTED AT: ${new Date(occurredAt).toLocaleString()}${
+                  input.modelUsed ? ` · MODEL: ${input.modelUsed}` : ''
+                }${input.isDraft ? ' · SAVED AS DRAFT' : ' · LIVE'}
+              </div>
+            </td>
+          </tr>
+
+          ${
+            input.coverImageUrl
+              ? `<tr>
+            <td style="padding:0;">
+              <img src="${input.coverImageUrl}" alt="${input.title}" style="width:100%;max-height:260px;object-fit:cover;display:block;" />
+            </td>
+          </tr>`
+              : ''
+          }
+
+          <tr>
+            <td style="padding:24px 28px;">
+              ${
+                input.summary
+                  ? `<p style="margin:0 0 18px 0;font-size:14px;line-height:1.65;color:#d6d0c9;white-space:pre-wrap;">${input.summary.replace(
+                      /</g,
+                      '&lt;'
+                    )}</p>`
+                  : ''
+              }
+              <div style="font-family:monospace;font-size:11px;color:#b4d579;line-height:1.8;">
+                ${input.liveUrl ? `<div>🔗 Live URL: <a href="${input.liveUrl}" style="color:#38bdf8;">${input.liveUrl}</a></div>` : ''}
+                ${input.devtoUrl ? `<div>📝 DEV.to URL: <a href="${input.devtoUrl}" style="color:#f36d45;">${input.devtoUrl}</a></div>` : ''}
+                ${
+                  typeof input.newsletterSentCount === 'number'
+                    ? `<div>✉ Newsletter Dispatched: ${input.newsletterSentCount} subscriber(s)</div>`
+                    : ''
+                }
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 28px;background-color:#0e0d0c;border-top:1px solid #221e1b;">
+              ${
+                input.liveUrl
+                  ? `<a href="${input.liveUrl}" style="display:inline-block;padding:12px 22px;background-color:#b4d579;color:#0b0b0b;text-decoration:none;font-family:monospace;font-size:11px;font-weight:700;letter-spacing:0.08em;border-radius:10px;margin-right:8px;">
+                      VIEW LIVE POST →
+                    </a>`
+                  : ''
+              }
+              <a href="${adminUrl}" style="display:inline-block;padding:12px 18px;background-color:#1c1917;border:1px solid #44403c;color:#eeeae5;text-decoration:none;font-family:monospace;font-size:11px;font-weight:700;border-radius:10px;">
+                OPEN AUTOMATION STUDIO →
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 
 

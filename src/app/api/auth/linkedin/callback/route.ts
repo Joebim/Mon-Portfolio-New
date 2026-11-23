@@ -8,6 +8,7 @@ import {
   listSocialPosts,
   updateSocialPost,
   sendAutomationFailureAlert,
+  sendAutomationSuccessAlert,
 } from '../../../../../lib/automation';
 
 /**
@@ -89,6 +90,14 @@ export async function GET(request: Request) {
           await updateSocialPost(targetPost.id, {
             linkedinStatus: 'published',
             linkedinPostUrl: pubRes.url,
+          });
+          await sendAutomationSuccessAlert({
+            pipeline: 'linkedin',
+            pipelineLabel: 'LinkedIn Post Published (OAuth Verified)',
+            title: targetPost.articleTitle,
+            summary: targetPost.linkedinContent.slice(0, 500),
+            liveUrl: pubRes.url,
+            coverImageUrl: targetPost.linkedinImageUrl,
           });
           return NextResponse.redirect(
             `${origin}/admin?tab=automation&subTab=social&linkedin=published&postId=${encodeURIComponent(targetPost.id)}`

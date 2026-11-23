@@ -8,6 +8,7 @@ import {
   scanForReputationRisks,
   buildSocialReviewAlertEmailHtml,
   buildAutomationFailureAlertEmailHtml,
+  buildAutomationSuccessAlertEmailHtml,
 } from './email';
 import { getDevToComments, getArticle } from './devto';
 import { publishPostToLinkedInProfile } from './linkedin';
@@ -1210,6 +1211,76 @@ export async function sendAutomationFailureAlert(input: {
   }
 }
 
+/**
+ * Sends an immediate Success Notification Email to the Admin whenever a Blog Post
+ * or LinkedIn Post is successfully posted through automation.
+ */
+export async function sendAutomationSuccessAlert(input: {
+  pipeline: 'blog' | 'linkedin';
+  pipelineLabel: string;
+  title: string;
+  summary?: string;
+  liveUrl?: string;
+  devtoUrl?: string;
+  coverImageUrl?: string;
+  modelUsed?: string;
+  newsletterSentCount?: number;
+  isDraft?: boolean;
+}): Promise<{ success: boolean; sentTo: string; provider: string; error?: string }> {
+  try {
+    const config = await getAutomationConfig();
+    const targetEmail = (
+      config.adminAlertEmail ||
+      process.env.ADMIN_ALERT_EMAIL ||
+      process.env.GMAIL_USER ||
+      'akinwolejoseph01@gmail.com'
+    ).trim();
+
+    const html = buildAutomationSuccessAlertEmailHtml({
+      ...input,
+      timestamp: new Date().toISOString(),
+    });
+
+    const res = await sendEmail({
+      to: targetEmail,
+      subject: `[✅ Automation Posted] ${input.pipelineLabel}: "${input.title}"`,
+      html,
+      text: `${input.pipelineLabel} posted "${input.title}".\n${
+        input.liveUrl ? `Live URL: ${input.liveUrl}\n` : ''
+      }${input.devtoUrl ? `DEV.to URL: ${input.devtoUrl}\n` : ''}${
+        typeof input.newsletterSentCount === 'number'
+          ? `Newsletter Sent: ${input.newsletterSentCount} subscriber(s)\n`
+          : ''
+      }`,
+    });
+
+    await logAutomationStep({
+      level: res.success ? 'info' : 'warn',
+      pipeline: input.pipeline,
+      step: 'SUCCESS_ALERT_EMAIL_SENT',
+      message: res.success
+        ? `Sent success notification email to ${targetEmail} via ${res.provider}`
+        : `Could not send success email to ${targetEmail}: ${res.error}`,
+      meta: { sentTo: targetEmail, provider: res.provider, error: res.error },
+    });
+
+    return {
+      success: res.success,
+      sentTo: targetEmail,
+      provider: res.provider,
+      error: res.error,
+    };
+  } catch (err) {
+    console.warn('[automation] sendAutomationSuccessAlert exception:', err);
+    return {
+      success: false,
+      sentTo: '',
+      provider: 'none',
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
 export async function publishToLinkedInApi(
   text: string,
   articleUrl: string,
@@ -1223,7 +1294,24 @@ export async function publishToLinkedInApi(
     articleTitle: title,
   });
 
-  if (!res.success && !res.needsOAuth) {
+  if (res.success) {
+    await logAutomationStep({
+      level: 'success',
+      pipeline: 'linkedin',
+      step: 'LINKEDIN_API_PUBLISH_OK',
+      message: `Published LinkedIn post for "${title}"${res.url ? ` (${res.url})` : ''}`,
+      meta: { title, articleUrl, postUrl: res.url, hasImage: Boolean(imageUrl) },
+    });
+
+    await sendAutomationSuccessAlert({
+      pipeline: 'linkedin',
+      pipelineLabel: 'LinkedIn Post Published',
+      title,
+      summary: text.slice(0, 500),
+      liveUrl: res.url,
+      coverImageUrl: imageUrl?.trim() || undefined,
+    });
+  } else if (!res.needsOAuth) {
     await logAutomationStep({
       level: 'error',
       pipeline: 'linkedin',
@@ -1917,6 +2005,21 @@ IMAGE_PROMPT: <visual description for a dark-mode 3D/abstract tech cover illustr
         devtoUrl: created.devto?.url,
         newsletterSentCount: newsletterResult?.sentCount,
       },
+    });
+
+    // Notify Admin by email that the automated blog post has been posted
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+    await sendAutomationSuccessAlert({
+      pipeline: 'blog',
+      pipelineLabel: isDraft ? 'Automated Blog Draft Saved' : 'Automated Blog Published',
+      title: created.article.title,
+      summary: created.article.description,
+      liveUrl: `${siteUrl}/blog/${created.article.slug}`,
+      devtoUrl: created.devto?.url,
+      coverImageUrl: created.article.coverImage,
+      modelUsed: aiRes.modelUsed,
+      newsletterSentCount: newsletterResult?.sentCount,
+      isDraft,
     });
 
     return {
