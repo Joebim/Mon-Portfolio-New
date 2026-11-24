@@ -218,14 +218,15 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
       >
         {/* Word 1 with interactive TechText blueprint effect */}
         <div
-          className="md:w-[580px] lg:w-[680px] xl:w-[780px]"
-          style={{ height: `${desktopFontSize * 1.12}px` }}
+          className="-ml-5 md:w-[600px] lg:w-[700px] xl:w-[800px]"
+          style={{ height: `${desktopFontSize * 1.12 + 34}px` }}
         >
           <TechText
             text={titleWord1}
             fontWeight={900}
             fontSize={desktopFontSize}
             useExactFontSize
+            paddingLeft={20}
             reveal="letter"
             dashLength={4}
             dashGap={2}
@@ -255,7 +256,7 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
         {/* Word 2 in matching crisp, bold architectural typography */}
         <div
           ref={desktopEngineerRef}
-          className="md:text-[clamp(76px,7.5vw,110px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.88] select-none md:-mt-3"
+          className="md:text-[clamp(76px,7.5vw,110px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.88] select-none md:-mt-7"
         >
           {titleWord2}<span className="text-[#f36d45]">.</span>
         </div>
@@ -283,14 +284,15 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
           {/* Left: Word 1 with TechText + Word 2 */}
           <div className="flex flex-col select-none flex-1 min-w-0">
             <div
-              className="w-full"
-              style={{ height: `${mobileFontSize * 1.1}px` }}
+              className="-ml-3.5 w-[calc(100%+14px)]"
+              style={{ height: `${mobileFontSize * 1.1 + 26}px` }}
             >
               <TechText
                 text={titleWord1}
                 fontWeight={900}
                 fontSize={mobileFontSize}
                 useExactFontSize
+                paddingLeft={14}
                 reveal="letter"
                 dashLength={4}
                 dashGap={2}
@@ -318,7 +320,7 @@ export function Hero({ portfolio = defaultPortfolio }: { portfolio?: PortfolioCo
             </div>
             <div
               ref={mobileEngineerRef}
-              className="text-[clamp(38px,11vw,50px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.85] select-none -mt-1"
+              className="text-[clamp(38px,11vw,50px)] font-[Manrope] font-black uppercase text-[#ece8e3] tracking-[-0.045em] leading-[0.85] select-none -mt-4"
             >
               {titleWord2}<span className="text-[#f36d45]">.</span>
             </div>

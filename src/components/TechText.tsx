@@ -60,6 +60,7 @@ export interface TechTextProps {
   introDuration?: number;
   guides?: boolean;
   useExactFontSize?: boolean;
+  paddingLeft?: number;
   className?: string;
   style?: CSSProperties;
 }
@@ -124,6 +125,7 @@ export const TechText = ({
   introDuration = 2,
   guides = false,
   useExactFontSize = false,
+  paddingLeft = 0,
   className = '',
   style
 }: TechTextProps) => {
@@ -160,7 +162,8 @@ export const TechText = ({
       intro,
       introDuration,
       guides,
-      useExactFontSize
+      useExactFontSize,
+      paddingLeft
     };
     wakeRef.current();
   });
@@ -341,7 +344,11 @@ export const TechText = ({
 
       finalMetrics.forEach((fm) => {
         const lineStart =
-          s.align === 'left' ? 0 : s.align === 'right' ? width - fm.width : (width - fm.width) / 2;
+          s.align === 'left'
+            ? s.paddingLeft
+            : s.align === 'right'
+              ? width - fm.width
+              : (width - fm.width) / 2;
         const lx1 = lineStart;
         const lx2 = lineStart + fm.width;
         if (lx1 < wordLeft) wordLeft = lx1;
@@ -388,7 +395,11 @@ export const TechText = ({
       linesText.forEach((lineStr, lineIdx) => {
         const fm = finalMetrics[lineIdx];
         const lineStart =
-          s.align === 'left' ? 0 : s.align === 'right' ? width - fm.width : (width - fm.width) / 2;
+          s.align === 'left'
+            ? s.paddingLeft
+            : s.align === 'right'
+              ? width - fm.width
+              : (width - fm.width) / 2;
         const lineBaseline = startY + lineIdx * lineHeight;
         const x = lineStart + fm.boxLeft;
 
