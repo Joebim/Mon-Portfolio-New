@@ -24,24 +24,50 @@ export async function generateStaticParams() {
   }
 }
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(/\/$/, '');
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   try {
     const { slug } = await params;
     const article = await getBlogArticleBySlug(slug);
-    if (!article) return { title: 'Article — Joseph Akinwole' };
-    const cover = article.coverImage || article.socialImage;
+    if (!article) {
+      return {
+        title: 'Article Not Found',
+        robots: { index: false, follow: false },
+      };
+    }
+    const cover = article.coverImage || article.socialImage || `${siteUrl}/joseph-portrait.png`;
+    const canonicalPath = `/blog/${article.slug}`;
+    const fullUrl = `${siteUrl}${canonicalPath}`;
+    const tags = Array.isArray(article.tagList) ? article.tagList : [];
+
     return {
-      title: `${article.title} — Joseph Akinwole`,
+      title: article.title,
       description: article.description,
+      keywords: tags,
+      authors: [{ name: 'Joseph Akinwole', url: siteUrl }],
+      alternates: {
+        canonical: canonicalPath,
+      },
       openGraph: {
+        type: 'article',
+        url: fullUrl,
         title: article.title,
         description: article.description,
-        images: cover ? [{ url: cover }] : [],
-        type: 'article',
+        publishedTime: article.publishedAt,
+        authors: ['Joseph Akinwole'],
+        tags,
+        images: [{ url: cover, width: 1200, height: 630, alt: article.title }],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: article.title,
+        description: article.description,
+        images: [cover],
       },
     };
   } catch {
-    return { title: 'Article — Joseph Akinwole' };
+    return { title: 'Article' };
   }
 }
 
@@ -91,9 +117,54 @@ export default async function BlogArticlePage({ params }: Props) {
   }
 
   const coverUrl = article.coverImage || article.socialImage || 'https://images.unsplash.com/photo-1737071371043-761e02b1ef95?q=80&w=1200';
+  const articleFullUrl = `${siteUrl}/blog/${article.slug}`;
+  const articleJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BlogPosting',
+        '@id': `${articleFullUrl}#article`,
+        headline: article.title,
+        description: article.description,
+        image: coverUrl,
+        datePublished: article.publishedAt,
+        dateModified: article.publishedAt,
+        url: articleFullUrl,
+        mainEntityOfPage: {
+          '@type': 'WebPage',
+          '@id': articleFullUrl,
+        },
+        author: {
+          '@type': 'Person',
+          '@id': `${siteUrl}/#person`,
+          name: 'Joseph Akinwole',
+          url: siteUrl,
+        },
+        publisher: {
+          '@type': 'Person',
+          '@id': `${siteUrl}/#person`,
+          name: 'Joseph Akinwole',
+          url: siteUrl,
+        },
+        keywords: Array.isArray(article.tagList) ? article.tagList.join(', ') : '',
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${siteUrl}/blog` },
+          { '@type': 'ListItem', position: 3, name: article.title, item: articleFullUrl },
+        ],
+      },
+    ],
+  };
 
   return (
     <main className="min-h-screen bg-[#0B0B0B] text-paper">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       {/* Back nav */}
       <div className="w-full max-w-[calc(760px+clamp(24px,6.4vw,105px)*2)] mx-auto px-[clamp(24px,6.4vw,105px)] max-sm:px-6 pt-10 max-sm:pt-8">
         <Link

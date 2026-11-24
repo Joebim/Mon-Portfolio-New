@@ -1,10 +1,13 @@
 import type { MetadataRoute } from 'next';
+import { getAllBlogArticles } from '../lib/controllers/blogController';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(/\/$/, '');
   const currentDate = new Date();
 
-  return [
+  const staticEntries: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: currentDate,
@@ -12,34 +15,25 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/#work`,
+      url: `${baseUrl}/blog`,
       lastModified: currentDate,
-      changeFrequency: 'monthly',
+      changeFrequency: 'daily',
       priority: 0.9,
     },
-    {
-      url: `${baseUrl}/#about`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/#skills`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/#experience`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/#contact`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
   ];
+
+  try {
+    const { articles } = await getAllBlogArticles();
+    const blogEntries: MetadataRoute.Sitemap = (articles || [])
+      .filter((article) => !article.isDraft && Boolean(article.slug))
+      .map((article) => ({
+        url: `${baseUrl}/blog/${article.slug}`,
+        lastModified: article.publishedAt ? new Date(article.publishedAt) : currentDate,
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      }));
+    return [...staticEntries, ...blogEntries];
+  } catch {
+    return staticEntries;
+  }
 }

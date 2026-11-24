@@ -7,9 +7,30 @@ import { NewsletterSection } from '../../components/NewsletterSection';
 
 export const revalidate = 3600;
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(/\/$/, '');
+
 export const metadata: Metadata = {
-  title: 'Writing — Joseph Akinwole',
-  description: "Thoughts on frontend craft, financial tooling, and the things I've learned building software people use.",
+  title: 'Writing & Engineering Blog',
+  description:
+    "Deep-dive technical articles on frontend architecture, React, Next.js, TypeScript, financial tooling, and production web engineering by Joseph Akinwole.",
+  alternates: {
+    canonical: '/blog',
+  },
+  openGraph: {
+    type: 'website',
+    url: `${siteUrl}/blog`,
+    title: 'Writing & Engineering Blog — Joseph Akinwole',
+    description:
+      "Deep-dive technical articles on frontend architecture, React, Next.js, TypeScript, and financial tooling.",
+    images: [{ url: '/joseph-portrait.png', width: 1200, height: 630, alt: 'Joseph Akinwole — Writing' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Writing & Engineering Blog — Joseph Akinwole',
+    description:
+      "Deep-dive technical articles on frontend architecture, React, Next.js, TypeScript, and financial tooling.",
+    images: ['/joseph-portrait.png'],
+  },
 };
 
 const TAG_COLORS: Record<string, string> = {
