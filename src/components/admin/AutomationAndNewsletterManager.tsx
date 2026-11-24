@@ -377,9 +377,11 @@ export function AutomationAndNewsletterManager({
       }
       if (data.config) setConfig(data.config);
       showToast(
-        data.socialPost?.reviewEmailSent
-          ? `Generated LinkedIn post for "${data.articleTitle}" & emailed review alert`
-          : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`,
+        data.socialPost?.linkedinStatus === "published"
+          ? `Published LinkedIn post for "${data.articleTitle}" & sent confirmation email`
+          : data.socialPost?.reviewEmailSent
+            ? `LinkedIn OAuth expired/unverified — emailed verification link for "${data.articleTitle}"`
+            : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`,
       );
       await loadAll();
     } catch (err) {

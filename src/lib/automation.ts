@@ -11,7 +11,11 @@ import {
   buildAutomationSuccessAlertEmailHtml,
 } from './email';
 import { getDevToComments, getArticle } from './devto';
-import { publishPostToLinkedInProfile, fetchLinkedInPostEngagement } from './linkedin';
+import {
+  publishPostToLinkedInProfile,
+  fetchLinkedInPostEngagement,
+  getLinkedInConnectionStatus,
+} from './linkedin';
 import type { BlogArticle } from './schemas';
 
 export interface PostTypeSchedule {
@@ -1064,21 +1068,48 @@ ${(article.bodyMarkdown || article.description).slice(0, 2200)}`;
     createdAt: new Date().toISOString(),
   };
 
-  // Hold LinkedIn post in 'pending_review' and email the admin to review & verify via LinkedIn OAuth before posting!
+  // If LinkedIn OAuth is already verified and active in its 60-day countdown,
+  // auto-publish directly and send a "post published" notification instead of a verification email.
+  // Only send the verification/review email when the 60-day token has expired or OAuth is disconnected.
   const alertEmail =
     activeConfig.adminAlertEmail ||
     process.env.ADMIN_ALERT_EMAIL ||
     process.env.GMAIL_USER ||
     'akinwolejoseph01@gmail.com';
 
+  let needsVerificationEmail = true;
   try {
-    const emailRes = await sendSocialReviewAlert(record, alertEmail);
-    if (emailRes.success) {
-      record.reviewEmailSent = true;
-      record.reviewEmailSentTo = alertEmail;
+    const liStatus = await getLinkedInConnectionStatus();
+    if (liStatus.connected) {
+      const publishRes = await publishToLinkedInApi(
+        record.linkedinContent,
+        record.articleUrl,
+        record.articleTitle,
+        record.linkedinImageUrl
+      );
+      if (publishRes.success) {
+        record.linkedinStatus = 'published';
+        if (publishRes.url) record.linkedinPostUrl = publishRes.url;
+        needsVerificationEmail = false;
+      } else if (!publishRes.needsOAuth) {
+        // Non-OAuth publish failure: publishToLinkedInApi already sent failure alert
+        needsVerificationEmail = false;
+      }
     }
   } catch (err) {
-    console.warn('[automation] Review alert email warning:', err);
+    console.warn('[automation] LinkedIn auto-publish check warning:', err);
+  }
+
+  if (needsVerificationEmail) {
+    try {
+      const emailRes = await sendSocialReviewAlert(record, alertEmail);
+      if (emailRes.success) {
+        record.reviewEmailSent = true;
+        record.reviewEmailSentTo = alertEmail;
+      }
+    } catch (err) {
+      console.warn('[automation] Review alert email warning:', err);
+    }
   }
 
   // Save social post record
@@ -2212,13 +2243,16 @@ export async function runAutomatedLinkedInPipeline(options: {
     });
     const nowIso = new Date().toISOString();
 
+    const isPublished = socialPost.linkedinStatus === 'published';
     await saveAutomationConfig({
       linkedinTopicsQueue: remainingLinkedinQueue,
       linkedinTopicImages: nextTopicImages,
       linkedinSchedule: {
         ...config.linkedinSchedule,
         lastRunAt: nowIso,
-        lastRunStatus: `Generated LinkedIn draft for "${targetArticle.title}" (${attachedTopicImage ? 'with attached image' : 'no image'}, ${remainingLinkedinQueue.length} left in week's LinkedIn queue)`,
+        lastRunStatus: isPublished
+          ? `Published LinkedIn post for "${targetArticle.title}" (${attachedTopicImage ? 'with attached image' : 'no image'}, ${remainingLinkedinQueue.length} left in week's LinkedIn queue)`
+          : `Held LinkedIn draft for verification: "${targetArticle.title}" (${attachedTopicImage ? 'with attached image' : 'no image'}, ${remainingLinkedinQueue.length} left in week's LinkedIn queue)`,
       },
     });
 
