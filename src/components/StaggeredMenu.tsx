@@ -378,6 +378,9 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
   useEffect(() => {
     if (!open) return;
 
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const handleClickOutside = (event: MouseEvent) => {
       if (!closeOnClickAway) return;
       if (
@@ -399,6 +402,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      document.body.style.overflow = prevOverflow;
       document.removeEventListener('mousedown', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
     };
@@ -421,7 +425,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       >
         <div
           ref={preLayersRef}
-          className="sm-prelayers absolute top-0 right-0 bottom-0 pointer-events-none z-[5]"
+          className="sm-prelayers fixed top-0 right-0 bottom-0 h-[100dvh] w-full pointer-events-none z-[45]"
           aria-hidden="true"
         >
           {(() => {
@@ -442,7 +446,9 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         </div>
 
         <header
-          className="staggered-menu-header absolute top-0 left-0 w-full flex items-center justify-between py-8 max-sm:pt-5 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 bg-transparent pointer-events-none z-20"
+          className={`staggered-menu-header ${
+            open || isFixed ? 'fixed' : 'absolute'
+          } top-0 left-0 w-full flex items-center justify-between py-8 max-sm:pt-5 px-[clamp(24px,6.4vw,105px)] max-sm:px-6 bg-transparent pointer-events-none z-[60]`}
           aria-label="Main navigation header"
         >
           <div className="sm-logo flex items-center select-none pointer-events-auto" aria-label="Logo">
@@ -511,7 +517,9 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         <aside
           id="staggered-menu-panel"
           ref={panelRef}
-          className={`staggered-menu-panel absolute top-0 right-0 h-full w-full flex flex-col overflow-y-auto z-10 backdrop-blur-[16px] pointer-events-auto ${
+          className={`staggered-menu-panel fixed top-0 right-0 h-[100dvh] w-full flex flex-col overflow-y-auto z-[50] backdrop-blur-[16px] ${
+            open ? 'pointer-events-auto' : 'pointer-events-none'
+          } ${
             isDark
               ? 'bg-[#0b0b0b] text-[#eeeae5]'
               : 'bg-white text-black'
@@ -603,7 +611,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 
       <style>{`
 .sm-scope .staggered-menu-wrapper { position: relative; width: 100%; height: 100%; z-index: 40; pointer-events: none; }
-.sm-scope .staggered-menu-header { position: absolute; top: 0; left: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; background: transparent; pointer-events: none; z-index: 20; }
+.sm-scope .staggered-menu-header { top: 0; left: 0; width: 100%; display: flex; align-items: center; justify-content: space-between; background: transparent; pointer-events: none; }
 .sm-scope .staggered-menu-header > * { pointer-events: auto; }
 .sm-scope .sm-logo { display: flex; align-items: center; user-select: none; }
 .sm-scope .sm-logo-img { display: block; height: 32px; width: auto; object-fit: contain; }
@@ -618,28 +626,27 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
 .sm-scope .sm-icon-line { position: absolute; left: 50%; top: 50%; width: 100%; height: 2px; background: currentColor; border-radius: 2px; transform: translate(-50%, -50%); will-change: transform; }
 .sm-scope .sm-line { display: none !important; }
 .sm-scope .staggered-menu-panel { 
-  position: absolute; 
+  position: fixed; 
   top: 0; 
   right: 0; 
   width: 100vw; 
-  width: 100%; 
-  height: 100%; 
+  height: 100dvh; 
   display: flex; 
   flex-direction: column; 
   padding: clamp(3.8em, 6.5vh, 4.8em) clamp(24px, 6.4vw, 105px) clamp(1.2em, 2.5vh, 2em) clamp(24px, 6.4vw, 105px); 
   overflow-y: auto; 
-  z-index: 10; 
+  z-index: 50; 
 }
 .sm-scope [data-position='left'] .staggered-menu-panel { right: auto; left: 0; }
 .sm-scope .sm-prelayers { 
-  position: absolute; 
+  position: fixed; 
   top: 0; 
   right: 0; 
   bottom: 0; 
   width: 100vw; 
-  width: 100%; 
+  height: 100dvh; 
   pointer-events: none; 
-  z-index: 5; 
+  z-index: 45; 
 }
 .sm-scope [data-position='left'] .sm-prelayers { right: auto; left: 0; }
 .sm-scope .sm-prelayer { position: absolute; top: 0; right: 0; height: 100%; width: 100%; transform: translateX(0); }
