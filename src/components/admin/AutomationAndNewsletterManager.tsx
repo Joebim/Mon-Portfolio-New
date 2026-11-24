@@ -1,6 +1,7 @@
 ﻿'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { notifyAdminDataUpdated, subscribeAdminDataUpdated } from '../../lib/adminRealtime';
 import type { BlogArticle } from '../../lib/schemas';
 import type {
   AutomationConfig,
@@ -173,16 +174,23 @@ export function AutomationAndNewsletterManager({
   const [subscriberSearch, setSubscriberSearch] = useState('');
   const [deleteSubscriberEmail, setDeleteSubscriberEmail] = useState<string | null>(null);
 
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  const syncingRef = useRef(false);
+  const hasUnsavedConfigRef = useRef(false);
+
+  const loadAll = useCallback(async (silent = false) => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (!silent) setLoading(true);
     try {
       const [autoRes, newsRes] = await Promise.all([
-        fetch('/api/admin/automation'),
-        fetch('/api/admin/newsletter'),
+        fetch('/api/admin/automation', { cache: 'no-store' }),
+        fetch('/api/admin/newsletter', { cache: 'no-store' }),
       ]);
       if (autoRes.ok) {
         const aData = await autoRes.json();
-        if (aData.config) setConfig(aData.config);
+        if (aData.config && (!silent || !hasUnsavedConfigRef.current)) {
+          setConfig(aData.config);
+        }
         if (Array.isArray(aData.socialPosts)) setSocialPosts(aData.socialPosts);
         if (Array.isArray(aData.comments)) setComments(aData.comments);
         if (Array.isArray(aData.logs)) setLogs(aData.logs);
@@ -193,14 +201,29 @@ export function AutomationAndNewsletterManager({
         if (Array.isArray(nData.subscribers)) setSubscribers(nData.subscribers);
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to load automation data', 'error');
+      if (!silent) {
+        showToast(err instanceof Error ? err.message : 'Failed to load automation data', 'error');
+      }
     } finally {
-      setLoading(false);
+      syncingRef.current = false;
+      if (!silent) setLoading(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    loadAll();
+    loadAll(false);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadAll(true);
+      }
+    }, 15000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadAll(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    const unsubscribe = subscribeAdminDataUpdated(() => loadAll(true));
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const st = params.get('subTab');
@@ -218,6 +241,11 @@ export function AutomationAndNewsletterManager({
         handleSelectSubTab(subTab);
       }
     }
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubscribe();
+    };
   }, [loadAll]);
 
   useEffect(() => {
@@ -240,7 +268,9 @@ export function AutomationAndNewsletterManager({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
+      hasUnsavedConfigRef.current = false;
       setConfig(data.config);
+      notifyAdminDataUpdated('automation');
       showToast('Automation configuration saved');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to save config', 'error');
@@ -276,10 +306,11 @@ export function AutomationAndNewsletterManager({
       if (data.devtoResult?.success) parts.push('DEV.to + Hero Featured Updated');
       if (data.newsletterResult?.success) parts.push(`Emailed ${data.newsletterResult.sentCount} subscribers`);
       showToast(parts.join(' · '));
-      await loadAll();
+      await loadAll(true);
+      notifyAdminDataUpdated('automation');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Automation pipeline failed', 'error');
-      await loadAll();
+      await loadAll(true);
     } finally {
       setRunningPipeline(false);
     }
@@ -308,10 +339,11 @@ export function AutomationAndNewsletterManager({
           ? `Generated LinkedIn post for "${data.articleTitle}" & emailed review alert`
           : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`
       );
-      await loadAll();
+      await loadAll(true);
+      notifyAdminDataUpdated('automation');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'LinkedIn automation failed', 'error');
-      await loadAll();
+      await loadAll(true);
     } finally {
       setRunningLinkedinPipeline(false);
     }
@@ -373,12 +405,12 @@ export function AutomationAndNewsletterManager({
 
   const updateSubSchedule = (
     type: 'blogSchedule' | 'linkedinSchedule',
-    patch: Partial<PostTypeSchedule>
+    patch: Partial<PostTypeSchedule>,
+    autoSave = false
   ) => {
     const currentSub = config[type] || CLIENT_DEFAULT_AUTOMATION_CONFIG[type];
     const nextSub = { ...currentSub, ...patch };
-    setConfig({
-      ...config,
+    const nextPatch: Partial<AutomationConfig> = {
       [type]: nextSub,
       ...(type === 'blogSchedule'
         ? {
@@ -391,7 +423,15 @@ export function AutomationAndNewsletterManager({
         : {
             enabled: Boolean(config.blogSchedule?.enabled) || nextSub.enabled,
           }),
+    };
+    hasUnsavedConfigRef.current = !autoSave;
+    setConfig({
+      ...config,
+      ...nextPatch,
     });
+    if (autoSave) {
+      void handleSaveConfig(nextPatch);
+    }
   };
 
   const handleGenerateSocialForBlog = async () => {
@@ -552,7 +592,8 @@ export function AutomationAndNewsletterManager({
         throw new Error(data.error || 'Direct API publish unavailable');
       }
       showToast(`Published directly to ${platform.toUpperCase()}`);
-      await loadAll();
+      await loadAll(true);
+      notifyAdminDataUpdated('automation');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'API publish failed', 'error');
     } finally {
@@ -573,6 +614,7 @@ export function AutomationAndNewsletterManager({
       });
       if (res.ok) {
         setSocialPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+        notifyAdminDataUpdated('automation');
         showToast('Saved social post edits');
       }
     } catch {
@@ -597,7 +639,8 @@ export function AutomationAndNewsletterManager({
           data.syncedLinkedinPosts ? ` & ${data.syncedLinkedinPosts} LinkedIn post(s)` : ''
         }`
       );
-      await loadAll();
+      await loadAll(true);
+      notifyAdminDataUpdated('automation');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Comment sync failed', 'error');
     } finally {
@@ -882,7 +925,10 @@ export function AutomationAndNewsletterManager({
                 </div>
                 <select
                   value={config.timezone}
-                  onChange={(e) => setConfig({ ...config, timezone: e.target.value })}
+                  onChange={(e) => {
+                    hasUnsavedConfigRef.current = true;
+                    setConfig({ ...config, timezone: e.target.value });
+                  }}
                   className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-[10px] text-paper font-mono focus:border-white/25 outline-none"
                 >
                   <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
@@ -891,6 +937,35 @@ export function AutomationAndNewsletterManager({
                   <option value="America/New_York">America/New_York</option>
                 </select>
               </div>
+
+              {/* Cron Heartbeat Status */}
+              {(() => {
+                const lastCronPing = logs.find((l) => l.pipeline === 'cron' && l.step === 'CRON_SCHEDULE_CHECK');
+                return (
+                  <div
+                    className={`px-3.5 py-2.5 rounded-xl border text-[10px] font-mono flex flex-wrap items-center justify-between gap-2 ${
+                      lastCronPing
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    }`}
+                  >
+                    {lastCronPing ? (
+                      <span>
+                        ● Cron Heartbeat active · Last ping:{' '}
+                        {new Date(lastCronPing.timestamp).toLocaleString('en-GB', {
+                          timeZone: config.timezone || 'Africa/Lagos',
+                        })}{' '}
+                        ({config.timezone || 'Africa/Lagos'})
+                      </span>
+                    ) : (
+                      <span>
+                        ⚠ No cron pings recorded yet — set an external scheduler (e.g. cron-job.org) to GET{' '}
+                        <code className="text-white">/api/cron/blog-automation</code> every 5–15 min.
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* ── 1. BLOG POST SCHEDULE CARD ── */}
               {(() => {
@@ -908,21 +983,22 @@ export function AutomationAndNewsletterManager({
                           </p>
                         )}
                       </div>
-                      <label className="inline-flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(blogSched.enabled)}
-                          onChange={(e) => updateSubSchedule('blogSchedule', { enabled: e.target.checked })}
-                          className="accent-ember w-4 h-4"
-                        />
+                      <button
+                        type="button"
+                        onClick={() => updateSubSchedule('blogSchedule', { enabled: !blogSched.enabled }, true)}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-[9px] font-bold transition-all cursor-pointer ${
+                          blogSched.enabled
+                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                        }`}
+                      >
                         <span
-                          className={`font-mono text-[9px] font-bold ${
-                            blogSched.enabled ? 'text-emerald-400' : 'text-[#777]'
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            blogSched.enabled ? 'bg-emerald-400' : 'bg-amber-400'
                           }`}
-                        >
-                          {blogSched.enabled ? 'ACTIVE' : 'PAUSED'}
-                        </span>
-                      </label>
+                        />
+                        {blogSched.enabled ? 'ACTIVE' : 'PAUSED (CLICK TO ENABLE)'}
+                      </button>
                     </div>
 
                     {/* Mode & Time */}
@@ -1053,23 +1129,22 @@ export function AutomationAndNewsletterManager({
                           </p>
                         )}
                       </div>
-                      <label className="inline-flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(liSched.enabled)}
-                          onChange={(e) =>
-                            updateSubSchedule('linkedinSchedule', { enabled: e.target.checked })
-                          }
-                          className="accent-sky-400 w-4 h-4"
-                        />
+                      <button
+                        type="button"
+                        onClick={() => updateSubSchedule('linkedinSchedule', { enabled: !liSched.enabled }, true)}
+                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-[9px] font-bold transition-all cursor-pointer ${
+                          liSched.enabled
+                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                        }`}
+                      >
                         <span
-                          className={`font-mono text-[9px] font-bold ${
-                            liSched.enabled ? 'text-emerald-400' : 'text-[#777]'
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            liSched.enabled ? 'bg-emerald-400' : 'bg-amber-400'
                           }`}
-                        >
-                          {liSched.enabled ? 'ACTIVE' : 'PAUSED'}
-                        </span>
-                      </label>
+                        />
+                        {liSched.enabled ? 'ACTIVE' : 'PAUSED (CLICK TO ENABLE)'}
+                      </button>
                     </div>
 
                     {/* Mode & Time */}

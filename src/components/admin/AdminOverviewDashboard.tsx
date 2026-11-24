@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { subscribeAdminDataUpdated } from '../../lib/adminRealtime';
 
 export interface AdminAnalyticsPayload {
   site: {
@@ -106,8 +107,11 @@ export function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewDashboard
   const [loading, setLoading] = useState(true);
   const [filterText, setFilterText] = useState('');
   const [activityFilter, setActivityFilter] = useState<'all' | 'blog' | 'linkedin'>('all');
+  const fetchingRef = useRef(false);
 
   const fetchAnalytics = useCallback(async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     try {
       const res = await fetch('/api/admin/analytics', { cache: 'no-store' });
       if (res.ok) {
@@ -117,14 +121,30 @@ export function AdminOverviewDashboard({ onNavigateTab }: AdminOverviewDashboard
     } catch {
       // silent
     } finally {
+      fetchingRef.current = false;
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchAnalytics();
-    const timer = setInterval(fetchAnalytics, 30000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchAnalytics();
+      }
+    }, 15000);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchAnalytics();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    const unsubscribe = subscribeAdminDataUpdated(fetchAnalytics);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      unsubscribe();
+    };
   }, [fetchAnalytics]);
 
   const visitSeries = data?.site.dailySeries.map((d) => d.visits) || [0, 0, 0, 0, 0, 0, 0];
