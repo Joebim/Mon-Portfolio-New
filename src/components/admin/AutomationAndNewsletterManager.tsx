@@ -182,9 +182,6 @@ export function AutomationAndNewsletterManager({
       ]);
       if (autoRes.ok) {
         const aData = await autoRes.json();
-        if (aData.serverTimeDebug) {
-          console.log('[Automation Server Time Debug]', JSON.stringify(aData.serverTimeDebug, null, 2));
-        }
         if (aData.config) setConfig(aData.config);
         if (Array.isArray(aData.socialPosts)) setSocialPosts(aData.socialPosts);
         if (Array.isArray(aData.comments)) setComments(aData.comments);
