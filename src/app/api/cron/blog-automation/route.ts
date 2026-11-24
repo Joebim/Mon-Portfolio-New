@@ -32,6 +32,17 @@ async function handleCronRequest(request: Request) {
       const authHeader = request.headers.get('authorization');
       const querySecret = searchParams.get('secret');
       if (authHeader !== `Bearer ${cronSecret}` && querySecret !== cronSecret) {
+        await logAutomationStep({
+          level: 'error',
+          pipeline: 'cron',
+          step: 'CRON_AUTH_FAILED',
+          message: 'Cron trigger rejected with 401 (missing or invalid CRON_SECRET)',
+          meta: {
+            hasAuthHeader: Boolean(authHeader),
+            hasQuerySecret: Boolean(querySecret),
+            userAgent: request.headers.get('user-agent') || 'unknown',
+          },
+        }).catch(() => {});
         return NextResponse.json({ error: 'Unauthorized cron trigger' }, { status: 401 });
       }
     }

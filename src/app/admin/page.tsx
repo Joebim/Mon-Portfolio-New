@@ -471,14 +471,30 @@ export default function AdminDashboardPage() {
         }
 
         try {
-          const [statusRes, uploadRes] = await Promise.all([
+          const [statusRes, uploadRes, autoDebugRes] = await Promise.all([
             fetch('/api/admin/blogs/crosspost'),
             fetch('/api/admin/upload'),
+            fetch('/api/admin/automation', { cache: 'no-store' }),
           ]);
           if (statusRes.ok) setPlatformStatus(await statusRes.json());
           if (uploadRes.ok) {
             const uData = await uploadRes.json();
             setCloudinaryConfigured(Boolean(uData.configured));
+          }
+          if (autoDebugRes.ok) {
+            const aDebug = await autoDebugRes.json();
+            if (aDebug.automationDebugReport) {
+              const r = aDebug.automationDebugReport;
+              console.log('[Automation Debug 1/5 - Server Clock & WAT]', r.serverClock);
+              console.log('[Automation Debug 2/5 - Schedules & Due Checks]', r.schedules);
+              console.log('[Automation Debug 3/5 - Weekly Queues]', r.queues);
+              console.log('[Automation Debug 4/5 - Environment & Providers]', r.environment);
+              console.log('[Automation Debug 5/5 - Cron History & Recent Logs]', {
+                cronHistory: r.cronHistory,
+                recentLogs: r.recentLogs,
+              });
+              console.log('[Automation Debug FULL REPORT]', JSON.stringify(r, null, 2));
+            }
           }
         } catch {
           // non-fatal

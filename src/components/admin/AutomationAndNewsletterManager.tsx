@@ -206,6 +206,12 @@ export function AutomationAndNewsletterManager({
         ]);
         if (autoRes.ok) {
           const aData = await autoRes.json();
+          if (!silent && aData.automationDebugReport) {
+            console.log(
+              "[Automation Debug - Manager Load]",
+              JSON.stringify(aData.automationDebugReport, null, 2),
+            );
+          }
           if (aData.config && (!silent || !hasUnsavedConfigRef.current)) {
             setConfig(aData.config);
           }
@@ -303,6 +309,11 @@ export function AutomationAndNewsletterManager({
       if (!res.ok) throw new Error(data.error || "Save failed");
       hasUnsavedConfigRef.current = false;
       setConfig(data.config);
+      console.log("[Automation Debug - Config Saved]", {
+        blogSchedule: data.config?.blogSchedule,
+        linkedinSchedule: data.config?.linkedinSchedule,
+        timezone: data.config?.timezone,
+      });
       notifyAdminDataUpdated("automation");
       showToast("Automation configuration saved");
     } catch (err) {

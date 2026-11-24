@@ -19,6 +19,8 @@ import {
   getAutomationLogs,
   clearAutomationLogs,
   logAutomationStep,
+  getZonedDateParts,
+  isPostTypeScheduleDue,
 } from '../../../../lib/automation';
 import { getBlogArticleBySlug } from '../../../../lib/controllers/blogController';
 import { getEmailProviderStatus } from '../../../../lib/email';
@@ -42,11 +44,70 @@ export async function GET(request: Request) {
       getAutomationLogs(),
     ]);
 
+    const now = new Date();
+    const configuredTimezone = config.timezone || 'Africa/Lagos';
+    const watClock = getZonedDateParts(now, configuredTimezone);
+    const blogDueCheck = isPostTypeScheduleDue(config.blogSchedule, 'Blog Schedule', now, configuredTimezone);
+    const linkedinDueCheck = isPostTypeScheduleDue(
+      config.linkedinSchedule,
+      'LinkedIn Schedule',
+      now,
+      configuredTimezone
+    );
+    const cronLogs = logs.filter((l) => l.pipeline === 'cron');
+    const automationDebugReport = {
+      generatedAtWat: `${watClock.dateKey} ${String(watClock.hour).padStart(2, '0')}:${String(watClock.minute).padStart(2, '0')} (${configuredTimezone})`,
+      serverClock: {
+        serverIsoUtc: now.toISOString(),
+        serverLocalString: now.toString(),
+        serverIntlTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        serverTimezoneOffsetMinutes: now.getTimezoneOffset(),
+        configuredTimezone,
+        watClock,
+      },
+      schedules: {
+        globalEnabled: config.enabled,
+        blogSchedule: config.blogSchedule,
+        linkedinSchedule: config.linkedinSchedule,
+        blogDueCheck,
+        linkedinDueCheck,
+      },
+      queues: {
+        weekKey: config.lastWeeklyQueueGeneratedWeek || null,
+        devtoQueueCount: config.devtoTopicsQueue?.length ?? 0,
+        devtoNextTopic: config.devtoTopicsQueue?.[0] || null,
+        linkedinQueueCount: config.linkedinTopicsQueue?.length ?? 0,
+        linkedinNextTopic: config.linkedinTopicsQueue?.[0] || null,
+      },
+      environment: {
+        cronSecretSet: Boolean(process.env.CRON_SECRET),
+        devtoApiKeySet: Boolean(process.env.DEVTO_API_KEY),
+        geminiKeySet: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY),
+        cloudflareAiSet: Boolean(
+          process.env.CLOUDFLARE_ACCOUNT_ID &&
+            (process.env.CLOUDFLARE_API_TOKEN ||
+              process.env.CLOUDFLARE_WORKERS_AI_API_KEY ||
+              process.env.CLOUDFLARE_API_KEY)
+        ),
+        linkedinConnected: linkedinAuth.connected,
+        linkedinDaysRemaining: linkedinAuth.daysRemaining ?? null,
+        emailProvider: getEmailProviderStatus(),
+        firebaseConfigured: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT || process.env.FIREBASE_PROJECT_ID),
+      },
+      cronHistory: {
+        totalCronLogs: cronLogs.length,
+        lastCronLog: cronLogs[0] || null,
+        recentCronLogs: cronLogs.slice(0, 10),
+      },
+      recentLogs: logs.slice(0, 15),
+    };
+
     return NextResponse.json({
       config,
       socialPosts,
       comments,
       logs,
+      automationDebugReport,
       providers: {
         geminiConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY),
         cloudflareWorkersAiConfigured: Boolean(
