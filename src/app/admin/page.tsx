@@ -1116,14 +1116,19 @@ export default function AdminDashboardPage() {
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectTab(item.tab, item.subTab)}
-                      className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 text-left text-xs transition-colors cursor-pointer ${
+                      className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 text-left text-xs transition-all cursor-pointer border ${
                         isActive
-                          ? 'bg-white/[0.09] text-white font-medium border-l-2 border-[#f36d45]'
-                          : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04]'
+                          ? 'bg-white/[0.1] text-white font-medium border-[#f36d45]/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_16px_rgba(243,109,69,0.12)]'
+                          : 'border-transparent text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04]'
                       }`}
                     >
-                      <SidebarIcon name={item.icon} />
-                      <span>{item.label}</span>
+                      <span className={isActive ? 'text-[#f36d45]' : ''}>
+                        <SidebarIcon name={item.icon} />
+                      </span>
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#f36d45] shrink-0" />
+                      )}
                     </button>
                   );
                 })}
