@@ -1263,6 +1263,16 @@ TAGS: ${(article.tagList || []).join(', ')}`;
  * Sends an email alert to the Admin containing the ready-to-post LinkedIn draft
  * and the Reputation Safety Scan result so Joseph can review & verify via OAuth before publishing.
  */
+function getNotifyFromEmail(): string | undefined {
+  const explicit = (process.env.EMAIL_NOTIFY_FROM || process.env.NOTIFY_EMAIL_FROM || '').trim();
+  if (explicit) return explicit;
+  const baseFrom = (process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || '').trim();
+  if (baseFrom.includes('@josephakinwole.dev')) {
+    return 'notify@josephakinwole.dev';
+  }
+  return baseFrom || undefined;
+}
+
 export async function sendSocialReviewAlert(
   record: SocialPostRecord,
   recipientEmail?: string
@@ -1286,6 +1296,7 @@ export async function sendSocialReviewAlert(
     safetyCheck,
   });
 
+  const notifyFrom = getNotifyFromEmail();
   const res = await sendEmail({
     to: targetEmail,
     subject: `${subjectPrefix} LinkedIn Draft for "${record.articleTitle}"`,
@@ -1293,6 +1304,7 @@ export async function sendSocialReviewAlert(
     text: `Review LinkedIn Draft for "${record.articleTitle}" before posting.\n\nReputation Scan: ${
       safetyCheck.passed ? 'PASSED' : `FLAGGED (${safetyCheck.flaggedWords.join(', ')})`
     }\n\n--- LINKEDIN DRAFT ---\n${record.linkedinContent}`,
+    ...(notifyFrom ? { configOverride: { fromEmail: notifyFrom } } : {}),
   });
 
   return {
@@ -1341,6 +1353,7 @@ export async function sendAutomationFailureAlert(input: {
       timestamp: new Date().toISOString(),
     });
 
+    const notifyFrom = getNotifyFromEmail();
     const res = await sendEmail({
       to: targetEmail,
       subject: `[🚨 Automation Failed] ${input.pipelineLabel}${
@@ -1350,6 +1363,7 @@ export async function sendAutomationFailureAlert(input: {
       text: `${input.pipelineLabel} failed at step [${input.failedStep}].\n${
         input.topicOrTitle ? `Target: ${input.topicOrTitle}\n` : ''
       }Error: ${input.errorMessage}\n\nRecent Execution Logs:\n${recentLogs.join('\n')}`,
+      ...(notifyFrom ? { configOverride: { fromEmail: notifyFrom } } : {}),
     });
 
     await logAutomationStep({
@@ -1409,6 +1423,7 @@ export async function sendAutomationSuccessAlert(input: {
       timestamp: new Date().toISOString(),
     });
 
+    const notifyFrom = getNotifyFromEmail();
     const res = await sendEmail({
       to: targetEmail,
       subject: `[✅ Automation Posted] ${input.pipelineLabel}: "${input.title}"`,
@@ -1420,6 +1435,7 @@ export async function sendAutomationSuccessAlert(input: {
           ? `Newsletter Sent: ${input.newsletterSentCount} subscriber(s)\n`
           : ''
       }`,
+      ...(notifyFrom ? { configOverride: { fromEmail: notifyFrom } } : {}),
     });
 
     await logAutomationStep({
