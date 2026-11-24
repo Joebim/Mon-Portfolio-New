@@ -19,7 +19,7 @@ const manrope = Manrope({
   display: 'swap',
 });
 
-const siteUrl = 'https://josephakinwole.com';
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(/\/$/, '');
 
 export const viewport: Viewport = {
   themeColor: '#0b0b0b',

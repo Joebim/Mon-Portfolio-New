@@ -181,7 +181,7 @@ export function verifyUnsubscribeToken(email: string, token: string): boolean {
 }
 
 export function buildUnsubscribeUrl(email: string): string {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(
     /\/$/,
     ''
   );
@@ -207,7 +207,7 @@ export function buildBlogNewsletterHtml(
   },
   recipientEmail?: string
 ): string {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(
     /\/$/,
     ''
   );
@@ -281,7 +281,7 @@ export function buildBlogNewsletterHtml(
 }
 
 export function buildWelcomeEmailHtml(recipientEmail?: string): string {
-  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(
     /\/$/,
     ''
   );

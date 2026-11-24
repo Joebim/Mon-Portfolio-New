@@ -1151,7 +1151,7 @@ export async function generateSocialPostsForArticle(
   }
 ): Promise<SocialPostRecord> {
   const activeConfig = config || (await getAutomationConfig());
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com';
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.josephakinwole.dev').replace(/\/$/, '');
   const hasMatchingBlog = options?.hasMatchingBlog ?? Boolean(article.url);
   const articleUrl = hasMatchingBlog ? article.url || `${siteUrl}/blog/${article.slug}` : '';
 
