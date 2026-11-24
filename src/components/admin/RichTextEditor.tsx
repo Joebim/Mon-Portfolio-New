@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -111,10 +111,10 @@ const ToolbarButton = ({
     onClick={onClick}
     disabled={disabled}
     title={title}
-    className={`px-2.5 py-1.5 rounded-lg font-mono text-[10px] transition-all cursor-pointer disabled:opacity-30 ${
+    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer disabled:opacity-30 ${
       active
-        ? 'bg-ember text-ink font-bold shadow-sm'
-        : 'text-[#bbb] hover:text-paper hover:bg-white/10'
+        ? 'bg-[#f36d45] text-[#09090b] font-semibold shadow-sm'
+        : 'text-zinc-400 hover:text-white hover:bg-white/[0.08]'
     }`}
   >
     {children}
@@ -136,11 +136,11 @@ export default function RichTextEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-        codeBlock: { HTMLAttributes: { class: 'rounded bg-[#1a1714] p-4 font-mono text-xs overflow-x-auto' } },
+        codeBlock: { HTMLAttributes: { class: 'rounded bg-white/[0.05] p-4 font-mono text-xs overflow-x-auto' } },
         blockquote: { HTMLAttributes: { class: 'border-l-4 border-ember/40 pl-4 text-[#aaa] italic my-4' } },
       }),
       Placeholder.configure({ placeholder }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-ember underline cursor-pointer' } }),
+      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-zinc-200 underline cursor-pointer' } }),
       Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full my-4' } }),
     ],
     content: mdToHtml(value),
@@ -156,10 +156,10 @@ export default function RichTextEditor({
           '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2',
           '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2',
           '[&_li]:my-0.5',
-          '[&_pre]:bg-[#1a1714] [&_pre]:rounded [&_pre]:p-4 [&_pre]:my-3',
-          '[&_code]:bg-[#1a1714] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono',
+          '[&_pre]:bg-white/[0.05] [&_pre]:rounded [&_pre]:p-4 [&_pre]:my-3',
+          '[&_code]:bg-white/[0.05] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[11px] [&_code]:font-mono',
           '[&_blockquote]:border-l-4 [&_blockquote]:border-ember/40 [&_blockquote]:pl-4 [&_blockquote]:text-[#aaa] [&_blockquote]:italic [&_blockquote]:my-3',
-          '[&_a]:text-ember [&_a]:underline',
+          '[&_a]:text-zinc-200 [&_a]:underline',
           '[&_strong]:font-semibold',
         ].join(' '),
       },
@@ -249,12 +249,12 @@ export default function RichTextEditor({
 
   return (
     <div
-      className="relative rounded-xl border border-white/15 bg-[#181614] focus-within:border-ember transition-colors"
+      className="relative rounded-xl border border-white/[0.1] bg-white/[0.04] focus-within:border-ember transition-colors"
       style={{ '--editor-min-h': `${minHeight}px` } as React.CSSProperties}
     >
       {/* Sticky Formatting Toolbar — stays visible while scrolling through long articles */}
       <div
-        className={`sticky ${stickyTopOffset} z-30 rounded-t-xl flex flex-wrap items-center gap-1 px-3 py-2.5 border-b border-white/15 bg-[#111110]/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.65)]`}
+        className={`sticky ${stickyTopOffset} z-30 rounded-t-xl flex flex-wrap items-center gap-1 px-3 py-2.5 border-b border-white/[0.1] bg-white/[0.04] backdrop-blur-2xl/95 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.65)]`}
       >
         {/* Text style */}
         <ToolbarButton title="Heading 1" active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</ToolbarButton>
@@ -284,7 +284,7 @@ export default function RichTextEditor({
           disabled={uploadingInline}
           onClick={() => fileInputRef.current?.click()}
         >
-          {uploadingInline ? '⏳ Uploading…' : '☁ Upload Img'}
+          {uploadingInline ? 'Uploading…' : '☁ Upload Img'}
         </ToolbarButton>
         {onOpenMediaPicker && (
           <ToolbarButton
@@ -383,7 +383,7 @@ function UrlPromptModal({
       }}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl bg-[#141210] border border-white/15 p-5 shadow-2xl space-y-4"
+        className="relative w-full max-w-sm rounded-2xl bg-white/[0.04] border border-white/[0.1] p-5 shadow-2xl space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold text-paper tracking-tight">{title}</h3>
@@ -402,20 +402,20 @@ function UrlPromptModal({
             }
           }}
           placeholder={placeholder}
-          className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper focus:border-ember outline-none font-mono"
+          className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none font-mono"
         />
         <div className="flex justify-end gap-2 pt-1">
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[9px] hover:text-paper hover:bg-white/5 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg border border-white/[0.1] text-[#888] font-mono text-[9px] hover:text-paper hover:bg-white/5 cursor-pointer"
           >
             CANCEL
           </button>
           <button
             type="button"
             onClick={() => onConfirm(val)}
-            className="px-3 py-1.5 rounded-lg bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold shadow cursor-pointer"
+            className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold shadow cursor-pointer"
           >
             {confirmLabel}
           </button>

@@ -161,20 +161,61 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
 }
 
 /**
+ * Creates a tamper-proof HMAC-SHA256 token for one-click email unsubscribe links.
+ */
+export function createUnsubscribeToken(email: string): string {
+  const crypto = require('crypto') as typeof import('crypto');
+  const secret =
+    process.env.ADMIN_JWT_SECRET || 'mon-portfolio-joseph-admin-secret-2026-secure-key';
+  return crypto
+    .createHmac('sha256', secret)
+    .update(email.trim().toLowerCase())
+    .digest('hex')
+    .slice(0, 32);
+}
+
+export function verifyUnsubscribeToken(email: string, token: string): boolean {
+  if (!email || !token) return false;
+  const expected = createUnsubscribeToken(email);
+  return expected.length === token.length && expected === token;
+}
+
+export function buildUnsubscribeUrl(email: string): string {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+    /\/$/,
+    ''
+  );
+  const normalized = email.trim().toLowerCase();
+  const token = createUnsubscribeToken(normalized);
+  return `${siteUrl}/api/newsletter/unsubscribe?email=${encodeURIComponent(
+    normalized
+  )}&token=${encodeURIComponent(token)}`;
+}
+
+/**
  * Generates an editorial HTML newsletter email for a newly published blog article.
  */
-export function buildBlogNewsletterHtml(article: {
-  title: string;
-  description: string;
-  slug: string;
-  coverImage?: string;
-  readingTimeMinutes?: number;
-  tagList?: string[];
-  url?: string;
-}): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com';
+export function buildBlogNewsletterHtml(
+  article: {
+    title: string;
+    description: string;
+    slug: string;
+    coverImage?: string;
+    readingTimeMinutes?: number;
+    tagList?: string[];
+    url?: string;
+  },
+  recipientEmail?: string
+): string {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+    /\/$/,
+    ''
+  );
   const articleUrl = `${siteUrl}/blog/${article.slug}`;
   const tags = (article.tagList || []).slice(0, 3).map((t) => t.toUpperCase()).join(' · ');
+  const unsubscribeUrl = recipientEmail
+    ? buildUnsubscribeUrl(recipientEmail)
+    : `${siteUrl}/blog#newsletter`;
 
   return `<!DOCTYPE html>
 <html>
@@ -221,9 +262,14 @@ export function buildBlogNewsletterHtml(article: {
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 32px;background-color:#0e0d0c;border-top:1px solid #221e1b;font-family:monospace;font-size:10px;color:#6e6760;line-height:1.6;">
+            <td style="padding:20px 32px;background-color:#0e0d0c;border-top:1px solid #221e1b;font-family:monospace;font-size:10px;color:#6e6760;line-height:1.8;">
               You are receiving this email because you subscribed to Joseph Akinwole's engineering newsletter.<br/>
-              <a href="${siteUrl}" style="color:#f36d45;text-decoration:none;">Visit Portfolio</a>
+              <div style="margin-top:10px;">
+                <a href="${siteUrl}" style="color:#f36d45;text-decoration:none;margin-right:16px;">Visit Portfolio</a>
+                <a href="${unsubscribeUrl}" style="display:inline-block;padding:6px 12px;border:1px solid #3a332d;border-radius:6px;color:#a7a09a;text-decoration:none;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;">
+                  Unsubscribe
+                </a>
+              </div>
             </td>
           </tr>
         </table>
@@ -234,8 +280,12 @@ export function buildBlogNewsletterHtml(article: {
 </html>`;
 }
 
-export function buildWelcomeEmailHtml(): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com';
+export function buildWelcomeEmailHtml(recipientEmail?: string): string {
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com').replace(
+    /\/$/,
+    ''
+  );
+  const unsubscribeUrl = recipientEmail ? buildUnsubscribeUrl(recipientEmail) : `${siteUrl}/blog#newsletter`;
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background-color:#0b0b0b;color:#eeeae5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
@@ -255,6 +305,12 @@ export function buildWelcomeEmailHtml(): string {
               <a href="${siteUrl}/blog" style="display:inline-block;padding:12px 24px;background-color:#f36d45;color:#0b0b0b;text-decoration:none;font-family:monospace;font-size:11px;font-weight:700;letter-spacing:0.1em;border-radius:10px;">
                 EXPLORE ARTICLES →
               </a>
+              <div style="margin-top:24px;padding-top:16px;border-top:1px solid #221e1b;font-family:monospace;font-size:10px;color:#6e6760;">
+                Don&apos;t want these emails?
+                <a href="${unsubscribeUrl}" style="display:inline-block;margin-left:8px;padding:4px 10px;border:1px solid #3a332d;border-radius:6px;color:#a7a09a;text-decoration:none;text-transform:uppercase;">
+                  Unsubscribe
+                </a>
+              </div>
             </td>
           </tr>
         </table>

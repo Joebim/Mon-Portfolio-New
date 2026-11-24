@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import type { CloudinaryAsset } from '../../lib/cloudinary';
@@ -87,7 +87,7 @@ export function CloudinaryMediaManager({
         if (!res.ok) throw new Error(data.error || 'Upload failed');
         uploadedCount++;
       }
-      showToast(`Uploaded ${uploadedCount} image${uploadedCount > 1 ? 's' : ''} to Cloudinary ✓`);
+      showToast(`Uploaded ${uploadedCount} image${uploadedCount > 1 ? 's' : ''} to Cloudinary`);
       await fetchMedia();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
@@ -111,7 +111,7 @@ export function CloudinaryMediaManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Remote upload failed');
       setRemoteUrlInput('');
-      showToast('Remote image imported to Cloudinary ✓');
+      showToast('Remote image imported to Cloudinary');
       await fetchMedia();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Remote upload failed', 'error');
@@ -141,8 +141,8 @@ export function CloudinaryMediaManager({
       setAiImagePrompt('');
       showToast(
         data.uploadedToCloudinary
-          ? 'Generated free AI cover & uploaded to Cloudinary ✓'
-          : 'Generated free AI image ✓'
+          ? 'Generated free AI cover & uploaded to Cloudinary'
+          : 'Generated free AI image'
       );
       await fetchMedia();
       if (onSelectAsset && data.devtoCompatibleUrl) {
@@ -187,7 +187,7 @@ export function CloudinaryMediaManager({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Update failed');
-      showToast('Cloudinary asset updated ✓');
+      showToast('Cloudinary asset updated');
       setEditAsset(null);
       await fetchMedia();
     } catch (err) {
@@ -208,7 +208,7 @@ export function CloudinaryMediaManager({
       if (!res.ok) throw new Error(data.error || 'Delete failed');
       setAssets((prev) => prev.filter((a) => a.publicId !== target.publicId));
       if (previewAsset?.publicId === target.publicId) setPreviewAsset(null);
-      showToast(`Deleted "${target.publicId}" from Cloudinary ✓`);
+      showToast(`Deleted "${target.publicId}" from Cloudinary`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Delete failed', 'error');
     }
@@ -216,7 +216,7 @@ export function CloudinaryMediaManager({
 
   const copyToClipboard = (text: string, label = 'URL') => {
     navigator.clipboard.writeText(text);
-    showToast(`Copied ${label} to clipboard ✓`);
+    showToast(`Copied ${label} to clipboard`);
   };
 
   return (
@@ -237,9 +237,9 @@ export function CloudinaryMediaManager({
             type="button"
             onClick={fetchMedia}
             disabled={loading}
-            className="px-3.5 py-2 rounded-lg bg-white/10 border border-white/15 text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer"
+            className="px-3.5 py-2 rounded-lg bg-white/10 border border-white/[0.1] text-paper font-mono text-[9px] tracking-[0.08em] hover:bg-white/15 transition-colors cursor-pointer"
           >
-            {loading ? '↺ LOADING…' : '↺ REFRESH'}
+            {loading ? 'LOADING…' : 'REFRESH'}
           </button>
           {onClosePicker && (
             <button
@@ -254,7 +254,7 @@ export function CloudinaryMediaManager({
       </div>
 
       {/* Upload & Free AI Generator Bar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-5 rounded-2xl bg-[#111110] border border-white/13">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09]">
         {/* 1. Direct File Upload */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -264,7 +264,7 @@ export function CloudinaryMediaManager({
             <select
               value={uploadFolder}
               onChange={(e) => setUploadFolder(e.target.value)}
-              className="px-2 py-0.5 rounded bg-[#181614] border border-white/15 font-mono text-[9px] text-ember outline-none"
+              className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.1] font-mono text-[9px] text-zinc-200 outline-none"
             >
               <option value="portfolio/blogs">Folder: portfolio/blogs</option>
               <option value="portfolio/works">Folder: portfolio/works</option>
@@ -272,8 +272,8 @@ export function CloudinaryMediaManager({
               <option value="portfolio">Folder: portfolio (root)</option>
             </select>
           </div>
-          <label className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-dashed border-ember/50 bg-ember/5 hover:bg-ember/10 text-ember font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer transition-colors">
-            <span>{uploading ? '⏳ UPLOADING TO CLOUDINARY…' : '↑ CHOOSE FILE(S) TO UPLOAD'}</span>
+          <label className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-dashed border-ember/50 bg-ember/5 hover:bg-ember/10 text-zinc-200 font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer transition-colors">
+            <span>{uploading ? 'UPLOADING TO CLOUDINARY…' : '↑ CHOOSE FILE(S) TO UPLOAD'}</span>
             <input
               type="file"
               accept="image/*"
@@ -296,13 +296,13 @@ export function CloudinaryMediaManager({
               value={remoteUrlInput}
               onChange={(e) => setRemoteUrlInput(e.target.value)}
               placeholder="https://example.com/image.png"
-              className="flex-1 px-3 py-2 rounded-xl bg-[#181614] border border-white/10 text-xs text-paper focus:border-ember outline-none"
+              className="flex-1 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-paper focus:border-white/25 outline-none"
             />
             <button
               type="button"
               onClick={handleRemoteUrlUpload}
               disabled={uploading || !remoteUrlInput.trim()}
-              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 font-mono text-[9px] text-paper disabled:opacity-40 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper disabled:opacity-40 cursor-pointer"
             >
               IMPORT
             </button>
@@ -311,8 +311,8 @@ export function CloudinaryMediaManager({
 
         {/* 3. Generate Free AI Cover Image (Flux) & Auto-Upload to Cloudinary */}
         <div className="space-y-2">
-          <span className="block font-mono text-[8px] text-ember uppercase tracking-[0.08em]">
-            3. ✨ Generate Free AI Cover (Flux → Cloudinary)
+          <span className="block font-mono text-[8px] text-zinc-200 uppercase tracking-[0.08em]">
+            3. Generate Free AI Cover (Flux → Cloudinary)
           </span>
           <div className="flex gap-2">
             <input
@@ -326,15 +326,15 @@ export function CloudinaryMediaManager({
                 }
               }}
               placeholder="e.g. React 19 state machine architecture..."
-              className="flex-1 px-3 py-2 rounded-xl bg-[#181614] border border-ember/30 text-xs text-paper focus:border-ember outline-none"
+              className="flex-1 px-3 py-2 rounded-xl bg-white/[0.04] border border-ember/30 text-xs text-paper focus:border-white/25 outline-none"
             />
             <button
               type="button"
               onClick={handleGenerateFreeAiImage}
               disabled={generatingAiImage}
-              className="px-3.5 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold disabled:opacity-40 cursor-pointer whitespace-nowrap"
+              className="px-3.5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold disabled:opacity-40 cursor-pointer whitespace-nowrap"
             >
-              {generatingAiImage ? '⏳ GENERATING…' : '✨ GENERATE'}
+              {generatingAiImage ? 'GENERATING…' : 'GENERATE'}
             </button>
           </div>
         </div>
@@ -356,8 +356,8 @@ export function CloudinaryMediaManager({
               onClick={() => setFolderFilter(f.value)}
               className={`px-3 py-1.5 rounded-lg font-mono text-[9px] tracking-[0.08em] transition-colors cursor-pointer ${
                 folderFilter === f.value
-                  ? 'bg-ember text-ink font-bold'
-                  : 'bg-[#141210] text-[#888] border border-white/10 hover:text-paper'
+                  ? 'bg-white text-[#09090b] font-bold'
+                  : 'bg-white/[0.04] text-[#888] border border-white/10 hover:text-paper'
               }`}
             >
               {f.label}
@@ -370,7 +370,7 @@ export function CloudinaryMediaManager({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by public ID, tag, or alt text…"
-          className="w-full sm:w-72 px-3 py-1.5 rounded-xl bg-[#181614] border border-white/10 text-xs text-paper focus:border-ember outline-none font-mono"
+          className="w-full sm:w-72 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-paper focus:border-white/25 outline-none font-mono"
         />
       </div>
 
@@ -386,11 +386,11 @@ export function CloudinaryMediaManager({
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="h-56 rounded-2xl bg-[#141210] border border-white/10 animate-pulse" />
+            <div key={i} className="h-56 rounded-2xl bg-white/[0.04] border border-white/10 animate-pulse" />
           ))}
         </div>
       ) : assets.length === 0 ? (
-        <div className="py-16 text-center rounded-2xl border border-white/10 bg-[#111110] font-mono text-xs text-[#666]">
+        <div className="py-16 text-center rounded-2xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl font-mono text-xs text-[#666]">
           No Cloudinary assets found in this view. Upload an image or generate a free AI cover above.
         </div>
       ) : (
@@ -398,11 +398,11 @@ export function CloudinaryMediaManager({
           {assets.map((asset) => (
             <div
               key={asset.publicId}
-              className="group rounded-2xl bg-[#111110] border border-white/13 overflow-hidden flex flex-col justify-between hover:border-ember/50 transition-all"
+              className="group rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] overflow-hidden flex flex-col justify-between hover:border-ember/50 transition-all"
             >
               {/* Thumbnail */}
               <div
-                className="relative aspect-[16/10] bg-[#1a1714] overflow-hidden cursor-pointer"
+                className="relative aspect-[16/10] bg-white/[0.05] overflow-hidden cursor-pointer"
                 onClick={() => setPreviewAsset(asset)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -413,10 +413,10 @@ export function CloudinaryMediaManager({
                   loading="lazy"
                 />
                 <div className="absolute top-2 left-2 flex items-center gap-1">
-                  <span className="px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm border border-white/15 font-mono text-[8px] text-ember uppercase">
+                  <span className="px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm border border-white/[0.1] font-mono text-[8px] text-zinc-200 uppercase">
                     {asset.format}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm border border-white/15 font-mono text-[8px] text-[#ccc]">
+                  <span className="px-2 py-0.5 rounded bg-black/75 backdrop-blur-sm border border-white/[0.1] font-mono text-[8px] text-[#ccc]">
                     {asset.width}×{asset.height}
                   </span>
                 </div>
@@ -453,9 +453,9 @@ export function CloudinaryMediaManager({
                     <button
                       type="button"
                       onClick={() => onSelectAsset(asset.devtoUrl || asset.secureUrl, asset)}
-                      className="w-full mb-1 py-1.5 px-2.5 rounded-lg bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer"
+                      className="w-full mb-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer"
                     >
-                      ✓ USE THIS IMAGE (DEV.TO READY)
+                      USE THIS IMAGE (DEV.TO READY)
                     </button>
                   )}
                   <button
@@ -469,7 +469,7 @@ export function CloudinaryMediaManager({
                   <button
                     type="button"
                     onClick={() => copyToClipboard(asset.devtoUrl, 'DEV.to Cover PNG URL')}
-                    className="flex-1 py-1 px-2 rounded bg-ember/15 hover:bg-ember/25 border border-ember/30 font-mono text-[8px] text-ember cursor-pointer"
+                    className="flex-1 py-1 px-2 rounded bg-ember/15 hover:bg-ember/25 border border-ember/30 font-mono text-[8px] text-zinc-200 cursor-pointer"
                     title="Copy DEV.to 1000x420 PNG compatible cover URL"
                   >
                     DEV.TO URL
@@ -514,7 +514,7 @@ export function CloudinaryMediaManager({
             if (e.target === e.currentTarget) setPreviewAsset(null);
           }}
         >
-          <div className="relative w-full max-w-3xl rounded-2xl bg-[#141210] border border-white/15 p-6 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white/[0.04] border border-white/[0.1] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold text-paper font-mono">{previewAsset.publicId}</h3>
@@ -548,7 +548,7 @@ export function CloudinaryMediaManager({
                   type="text"
                   readOnly
                   value={previewAsset.secureUrl}
-                  className="flex-1 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 font-mono text-[10px] text-[#ccc]"
+                  className="flex-1 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] text-[#ccc]"
                 />
                 <button
                   type="button"
@@ -559,17 +559,17 @@ export function CloudinaryMediaManager({
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[8px] text-ember w-28">DEV.TO PNG URL:</span>
+                <span className="font-mono text-[8px] text-zinc-200 w-28">DEV.TO PNG URL:</span>
                 <input
                   type="text"
                   readOnly
                   value={previewAsset.devtoUrl}
-                  className="flex-1 px-2.5 py-1.5 rounded bg-[#181614] border border-ember/30 font-mono text-[10px] text-ember"
+                  className="flex-1 px-2.5 py-1.5 rounded bg-white/[0.04] border border-ember/30 font-mono text-[10px] text-zinc-200"
                 />
                 <button
                   type="button"
                   onClick={() => copyToClipboard(previewAsset.devtoUrl, 'DEV.to Compatible Cover URL')}
-                  className="px-3 py-1.5 rounded bg-ember text-ink font-mono text-[9px] font-bold cursor-pointer"
+                  className="px-3 py-1.5 rounded bg-white text-[#09090b] font-mono text-[9px] font-bold cursor-pointer"
                 >
                   COPY
                 </button>
@@ -589,7 +589,7 @@ export function CloudinaryMediaManager({
             if (e.target === e.currentTarget && !editAsset.saving) setEditAsset(null);
           }}
         >
-          <div className="relative w-full max-w-md rounded-2xl bg-[#141210] border border-white/15 p-6 shadow-2xl space-y-4">
+          <div className="relative w-full max-w-md rounded-2xl bg-white/[0.04] border border-white/[0.1] p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-paper">Edit Cloudinary Asset</h3>
               <button
@@ -610,7 +610,7 @@ export function CloudinaryMediaManager({
                   type="text"
                   value={editAsset.newPublicId}
                   onChange={(e) => setEditAsset({ ...editAsset, newPublicId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                 />
               </div>
 
@@ -623,7 +623,7 @@ export function CloudinaryMediaManager({
                   value={editAsset.tags}
                   onChange={(e) => setEditAsset({ ...editAsset, tags: e.target.value })}
                   placeholder="portfolio, blog-cover, react"
-                  className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                 />
               </div>
 
@@ -636,7 +636,7 @@ export function CloudinaryMediaManager({
                   value={editAsset.alt}
                   onChange={(e) => setEditAsset({ ...editAsset, alt: e.target.value })}
                   placeholder="Describe the image..."
-                  className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper focus:border-ember outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                 />
               </div>
 
@@ -649,7 +649,7 @@ export function CloudinaryMediaManager({
                   value={editAsset.caption}
                   onChange={(e) => setEditAsset({ ...editAsset, caption: e.target.value })}
                   placeholder="Optional caption"
-                  className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper focus:border-ember outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                 />
               </div>
             </div>
@@ -659,7 +659,7 @@ export function CloudinaryMediaManager({
                 type="button"
                 onClick={() => setEditAsset(null)}
                 disabled={editAsset.saving}
-                className="px-4 py-2 rounded-xl border border-white/15 font-mono text-[9px] text-[#888] hover:text-paper cursor-pointer"
+                className="px-4 py-2 rounded-xl border border-white/[0.1] font-mono text-[9px] text-[#888] hover:text-paper cursor-pointer"
               >
                 CANCEL
               </button>
@@ -667,7 +667,7 @@ export function CloudinaryMediaManager({
                 type="button"
                 onClick={handleSaveEdit}
                 disabled={editAsset.saving}
-                className="px-5 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
+                className="px-5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
               >
                 {editAsset.saving ? 'SAVING…' : 'SAVE CHANGES'}
               </button>

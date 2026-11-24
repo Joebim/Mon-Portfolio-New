@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import type { BlogArticle } from '../../lib/schemas';
@@ -151,13 +151,18 @@ export function AutomationAndNewsletterManager({
   const [publishingSocialId, setPublishingSocialId] = useState<string | null>(null);
   const [syncingComments, setSyncingComments] = useState(false);
 
-  // New comment reply generator state
-  const [newCommentInput, setNewCommentInput] = useState({
-    platform: 'linkedin' as 'linkedin' | 'devto',
+  // Separate LinkedIn & DEV.to comment composer state
+  const [linkedinCommentInput, setLinkedinCommentInput] = useState({
     articleTitle: '',
     authorName: '',
     commentText: '',
   });
+  const [devtoCommentInput, setDevtoCommentInput] = useState({
+    articleTitle: '',
+    authorName: '',
+    commentText: '',
+  });
+  const [linkedinSyncNotice, setLinkedinSyncNotice] = useState<string | null>(null);
   const [generatingReplyId, setGeneratingReplyId] = useState<string | null>(null);
 
   // Newsletter state
@@ -219,7 +224,8 @@ export function AutomationAndNewsletterManager({
     if (blogs.length > 0 && !selectedSlugForSocial) {
       setSelectedSlugForSocial(blogs[0].slug);
       setSelectedSlugForBlast(blogs[0].slug);
-      setNewCommentInput((prev) => ({ ...prev, articleTitle: blogs[0].title }));
+      setLinkedinCommentInput((prev) => ({ ...prev, articleTitle: blogs[0].title }));
+      setDevtoCommentInput((prev) => ({ ...prev, articleTitle: blogs[0].title }));
     }
   }, [blogs, selectedSlugForSocial]);
 
@@ -235,7 +241,7 @@ export function AutomationAndNewsletterManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
       setConfig(data.config);
-      showToast('Automation configuration saved ✓');
+      showToast('Automation configuration saved');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to save config', 'error');
     } finally {
@@ -267,8 +273,8 @@ export function AutomationAndNewsletterManager({
       if (data.config) setConfig(data.config);
       setCustomRunTopic('');
       const parts = [`Generated "${data.article?.title}" via ${data.modelUsed}`];
-      if (data.devtoResult?.success) parts.push('DEV.to + Hero Featured Updated ✓');
-      if (data.newsletterResult?.success) parts.push(`Emailed ${data.newsletterResult.sentCount} subscribers ✓`);
+      if (data.devtoResult?.success) parts.push('DEV.to + Hero Featured Updated');
+      if (data.newsletterResult?.success) parts.push(`Emailed ${data.newsletterResult.sentCount} subscribers`);
       showToast(parts.join(' · '));
       await loadAll();
     } catch (err) {
@@ -299,8 +305,8 @@ export function AutomationAndNewsletterManager({
       if (data.config) setConfig(data.config);
       showToast(
         data.socialPost?.reviewEmailSent
-          ? `Generated LinkedIn post for "${data.articleTitle}" & emailed review alert ✓`
-          : `Generated LinkedIn post for "${data.articleTitle}" (ready for review) ✓`
+          ? `Generated LinkedIn post for "${data.articleTitle}" & emailed review alert`
+          : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`
       );
       await loadAll();
     } catch (err) {
@@ -347,15 +353,15 @@ export function AutomationAndNewsletterManager({
       }
       if (target === 'both') {
         showToast(
-          `AI generated weekly queues: ${data.devtoCount} DEV.to topic(s) + ${data.linkedinCount} LinkedIn topic(s) for week of ${data.weekKey} ✓`
+          `AI generated weekly queues: ${data.devtoCount} DEV.to topic(s) + ${data.linkedinCount} LinkedIn topic(s) for week of ${data.weekKey}`
         );
       } else if (target === 'devto') {
         showToast(
-          `AI generated ${data.devtoCount} DEV.to blog topic(s) for this week's schedule ✓`
+          `AI generated ${data.devtoCount} DEV.to blog topic(s) for this week's schedule`
         );
       } else {
         showToast(
-          `AI generated ${data.linkedinCount} LinkedIn post topic(s) for this week's schedule ✓`
+          `AI generated ${data.linkedinCount} LinkedIn post topic(s) for this week's schedule`
         );
       }
     } catch (err) {
@@ -407,8 +413,8 @@ export function AutomationAndNewsletterManager({
       }
       showToast(
         data.socialPost?.reviewEmailSent
-          ? `Generated LinkedIn draft + sent review alert email to ${data.socialPost.reviewEmailSentTo} ✓`
-          : 'Generated official LinkedIn draft (held for your review) ✓'
+          ? `Generated LinkedIn draft + sent review alert email to ${data.socialPost.reviewEmailSentTo}`
+          : 'Generated official LinkedIn draft (held for your review)'
       );
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Social generation failed', 'error');
@@ -438,7 +444,7 @@ export function AutomationAndNewsletterManager({
           p.id === post.id ? { ...p, reviewEmailSent: true, reviewEmailSentTo: data.sentTo } : p
         )
       );
-      showToast(`Sent LinkedIn review email to ${data.sentTo} ✓`);
+      showToast(`Sent LinkedIn review email to ${data.sentTo}`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Review email failed', 'error');
     } finally {
@@ -464,7 +470,7 @@ export function AutomationAndNewsletterManager({
 
       if (targetTopicOrNew === '__new__') {
         setNewLinkedinTopicImageUrl(data.url);
-        showToast('Uploaded LinkedIn image to Cloudinary (will attach when you add the topic) ✓');
+        showToast('Uploaded LinkedIn image to Cloudinary (will attach when you add the topic)');
       } else {
         const nextImages = {
           ...(config.linkedinTopicImages || {}),
@@ -475,7 +481,7 @@ export function AutomationAndNewsletterManager({
           linkedinTopicImages: nextImages,
         }));
         await handleSaveConfig({ linkedinTopicImages: nextImages });
-        showToast('Uploaded authentic image to Cloudinary & attached to LinkedIn queue topic ✓');
+        showToast('Uploaded authentic image to Cloudinary & attached to LinkedIn queue topic');
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Cloudinary image upload failed', 'error');
@@ -512,7 +518,7 @@ export function AutomationAndNewsletterManager({
       }
 
       await handleUpdateSocialRecord(postId, { linkedinImageUrl: data.url });
-      showToast('Attached authentic Cloudinary image to LinkedIn draft ✓');
+      showToast('Attached authentic Cloudinary image to LinkedIn draft');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Image upload failed', 'error');
     } finally {
@@ -545,7 +551,7 @@ export function AutomationAndNewsletterManager({
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Direct API publish unavailable');
       }
-      showToast(`Published directly to ${platform.toUpperCase()} ✓`);
+      showToast(`Published directly to ${platform.toUpperCase()}`);
       await loadAll();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'API publish failed', 'error');
@@ -567,7 +573,7 @@ export function AutomationAndNewsletterManager({
       });
       if (res.ok) {
         setSocialPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-        showToast('Saved social post edits ✓');
+        showToast('Saved social post edits');
       }
     } catch {
       showToast('Failed to update social post', 'error');
@@ -585,7 +591,12 @@ export function AutomationAndNewsletterManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Comment sync failed');
       if (Array.isArray(data.comments)) setComments(data.comments);
-      showToast(`Synced comments & reactions across ${data.syncedArticles || 0} DEV.to articles ✓`);
+      setLinkedinSyncNotice(data.linkedinSyncNote || null);
+      showToast(
+        `Synced ${data.syncedArticles || 0} DEV.to article(s)${
+          data.syncedLinkedinPosts ? ` & ${data.syncedLinkedinPosts} LinkedIn post(s)` : ''
+        }`
+      );
       await loadAll();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Comment sync failed', 'error');
@@ -594,23 +605,24 @@ export function AutomationAndNewsletterManager({
     }
   };
 
-  const handleAddAndReplyComment = async () => {
-    if (!newCommentInput.commentText.trim()) {
-      showToast('Paste or enter a comment to generate a tailored reply', 'error');
+  const handleAddAndReplyComment = async (platform: 'linkedin' | 'devto') => {
+    const inputState = platform === 'linkedin' ? linkedinCommentInput : devtoCommentInput;
+    if (!inputState.commentText.trim()) {
+      showToast(`Paste or enter a ${platform.toUpperCase()} comment first`, 'error');
       return;
     }
-    setGeneratingReplyId('new');
+    setGeneratingReplyId(`new-${platform}`);
     try {
       const res = await fetch('/api/admin/automation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'add-comment',
-          platform: newCommentInput.platform,
+          platform,
           articleSlug: selectedSlugForSocial || 'general',
-          articleTitle: newCommentInput.articleTitle || 'Engineering Article',
-          authorName: newCommentInput.authorName || 'Commenter',
-          commentText: newCommentInput.commentText.trim(),
+          articleTitle: inputState.articleTitle || 'Engineering Article',
+          authorName: inputState.authorName || 'Commenter',
+          commentText: inputState.commentText.trim(),
         }),
       });
       const data = await res.json();
@@ -618,8 +630,12 @@ export function AutomationAndNewsletterManager({
       if (data.comment) {
         setComments((prev) => [data.comment, ...prev]);
       }
-      setNewCommentInput((prev) => ({ ...prev, authorName: '', commentText: '' }));
-      showToast(`Generated tailored ${newCommentInput.platform.toUpperCase()} reply ✓`);
+      if (platform === 'linkedin') {
+        setLinkedinCommentInput((prev) => ({ ...prev, authorName: '', commentText: '' }));
+      } else {
+        setDevtoCommentInput((prev) => ({ ...prev, authorName: '', commentText: '' }));
+      }
+      showToast(`Generated tailored ${platform.toUpperCase()} reply`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Reply generation failed', 'error');
     } finally {
@@ -649,7 +665,7 @@ export function AutomationAndNewsletterManager({
           item.id === c.id ? { ...item, aiSuggestedReply: data.reply, status: 'replied' } : item
         )
       );
-      showToast(`Crafted ${c.platform.toUpperCase()} reply ✓`);
+      showToast(`Crafted ${c.platform.toUpperCase()} reply`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to generate reply', 'error');
     } finally {
@@ -672,7 +688,7 @@ export function AutomationAndNewsletterManager({
       if (!res.ok) throw new Error(data.error || 'Failed to add emails');
       if (Array.isArray(data.subscribers)) setSubscribers(data.subscribers);
       setBulkEmailsInput('');
-      showToast(`Added ${data.added} subscriber email(s) ✓ (Total: ${data.total})`);
+      showToast(`Added ${data.added} subscriber email(s) (Total: ${data.total})`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to add subscribers', 'error');
     } finally {
@@ -696,7 +712,7 @@ export function AutomationAndNewsletterManager({
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Newsletter send failed');
       }
-      showToast(`Sent article to ${data.sentCount} subscriber(s) via ${data.provider.toUpperCase()} ✓`);
+      showToast(`Sent article to ${data.sentCount} subscriber(s) via ${data.provider.toUpperCase()}`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Newsletter send failed', 'error');
     } finally {
@@ -731,7 +747,7 @@ export function AutomationAndNewsletterManager({
       });
       if (res.ok) {
         setLogs([]);
-        showToast('Cleared automation debug logs ✓');
+        showToast('Cleared automation debug logs');
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Failed to clear logs', 'error');
@@ -763,11 +779,11 @@ export function AutomationAndNewsletterManager({
 
         <div className="flex items-center gap-2 flex-wrap">
           {[
-            { id: 'schedule', label: '⚡ AUTOMATION & SCHEDULE' },
-            { id: 'prompts', label: '🧠 MASTER PROMPTS (LINKEDIN / BLOG)' },
-            { id: 'social', label: `💬 LINKEDIN & COMMENTS (${socialPosts.length})` },
-            { id: 'newsletter', label: `✉ NEWSLETTER (${subscribers.length})` },
-            { id: 'logs', label: `🪵 DEBUG LOGS (${logs.length})` },
+            { id: 'schedule', label: 'AUTOMATION & SCHEDULE' },
+            { id: 'prompts', label: 'MASTER PROMPTS (LINKEDIN / BLOG)' },
+            { id: 'social', label: `LINKEDIN & COMMENTS (${socialPosts.length})` },
+            { id: 'newsletter', label: `NEWSLETTER (${subscribers.length})` },
+            { id: 'logs', label: `DEBUG LOGS (${logs.length})` },
           ].map((t) => (
             <button
               key={t.id}
@@ -775,8 +791,8 @@ export function AutomationAndNewsletterManager({
               onClick={() => handleSelectSubTab(t.id as any)}
               className={`px-3.5 py-2 rounded-xl font-mono text-[9px] tracking-[0.08em] transition-all cursor-pointer ${
                 subTab === t.id
-                  ? 'bg-ember text-ink font-bold shadow'
-                  : 'bg-[#141210] text-[#999] border border-white/10 hover:text-paper'
+                  ? 'bg-white text-[#09090b] font-bold shadow'
+                  : 'bg-white/[0.04] text-[#999] border border-white/10 hover:text-paper'
               }`}
             >
               {t.label}
@@ -791,10 +807,10 @@ export function AutomationAndNewsletterManager({
       {subTab === 'schedule' && (
         <div className="space-y-6">
           {/* Instant Trigger Card */}
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-[#191512] to-[#11100f] border border-ember/40 shadow-xl space-y-4">
+          <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] shadow-xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <span className="font-mono text-[8px] text-ember uppercase tracking-[0.14em] font-bold">
+                <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-[0.14em] font-bold">
                   ONE-CLICK END-TO-END PIPELINE
                 </span>
                 <h3 className="text-base font-medium text-paper mt-1">
@@ -814,23 +830,23 @@ export function AutomationAndNewsletterManager({
                 value={customRunTopic}
                 onChange={(e) => setCustomRunTopic(e.target.value)}
                 placeholder="Optional custom topic (leave blank to auto-pick next topic from queue)…"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper focus:border-ember outline-none"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
               />
               <button
                 type="button"
                 onClick={handleRunAutomationNow}
                 disabled={runningPipeline}
-                className="px-5 py-2.5 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
+                className="px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
               >
-                {runningPipeline ? '⏳ RUNNING BLOG PIPELINE…' : '⚡ RUN BLOG AUTOMATION NOW'}
+                {runningPipeline ? 'RUNNING BLOG PIPELINE…' : 'RUN BLOG AUTOMATION NOW'}
               </button>
               <button
                 type="button"
                 onClick={handleRunLinkedinAutomationNow}
                 disabled={runningLinkedinPipeline}
-                className="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
+                className="px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
               >
-                {runningLinkedinPipeline ? '⏳ RUNNING LINKEDIN…' : 'in RUN LINKEDIN AUTOMATION NOW'}
+                {runningLinkedinPipeline ? 'RUNNING LINKEDIN…' : 'in RUN LINKEDIN AUTOMATION NOW'}
               </button>
             </div>
 
@@ -839,11 +855,11 @@ export function AutomationAndNewsletterManager({
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
                 ● AI-ENGINE LOOP: {providers?.geminiConfigured ? 'GEMINI 2.0 FLASH' : 'GEMINI (NO KEY)'} →{' '}
                 {providers?.cloudflareWorkersAiConfigured
-                  ? 'CLOUDFLARE WORKERS AI ✓'
+                  ? 'CLOUDFLARE WORKERS AI'
                   : 'WORKERS AI (ADD KEY)'}{' '}
                 → POLLINATIONS FREE
               </span>
-              <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-sky-500/40 text-sky-400 bg-sky-500/10">
+              <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-sky-500/40 text-zinc-200 bg-sky-500/10">
                 ● FREE IMAGE AI: POLLINATIONS FLUX 1200×630 → CLOUDINARY → DEV.TO
               </span>
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-500/10">
@@ -854,7 +870,7 @@ export function AutomationAndNewsletterManager({
 
           {/* Schedule & Cadence Configuration (Individual Schedules per Post Type) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-5">
+            <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <h3 className="text-base font-medium text-paper">
@@ -867,7 +883,7 @@ export function AutomationAndNewsletterManager({
                 <select
                   value={config.timezone}
                   onChange={(e) => setConfig({ ...config, timezone: e.target.value })}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#181614] border border-white/15 text-[10px] text-paper font-mono focus:border-ember outline-none"
+                  className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-[10px] text-paper font-mono focus:border-white/25 outline-none"
                 >
                   <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
                   <option value="UTC">UTC</option>
@@ -883,8 +899,8 @@ export function AutomationAndNewsletterManager({
                   <div className="p-4 rounded-xl bg-[#161513] border border-ember/30 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-mono text-[9px] text-ember font-bold uppercase tracking-wider">
-                          📝 1. BLOG POST SCHEDULE (DEV.TO + HERO + NEWSLETTER)
+                        <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-wider">
+                          1. BLOG POST SCHEDULE (DEV.TO + HERO + NEWSLETTER)
                         </span>
                         {blogSched.lastRunAt && (
                           <p className="font-mono text-[8px] text-[#777] mt-0.5">
@@ -922,7 +938,7 @@ export function AutomationAndNewsletterManager({
                               scheduleMode: e.target.value as 'days_of_week' | 'interval_days',
                             })
                           }
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         >
                           <option value="days_of_week">Specific Days of Week (Mon–Sun)</option>
                           <option value="interval_days">Every N Days (Interval)</option>
@@ -936,7 +952,7 @@ export function AutomationAndNewsletterManager({
                           type="time"
                           value={blogSched.timeOfDay}
                           onChange={(e) => updateSubSchedule('blogSchedule', { timeOfDay: e.target.value })}
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                       </div>
                     </div>
@@ -986,8 +1002,8 @@ export function AutomationAndNewsletterManager({
                                 }}
                                 className={`px-2.5 py-1.5 rounded-lg font-mono text-[9px] border cursor-pointer transition-colors ${
                                   active
-                                    ? 'bg-ember text-ink border-ember font-bold'
-                                    : 'bg-[#11100f] text-[#888] border-white/10 hover:text-paper'
+                                    ? 'bg-white text-[#09090b] border-ember font-bold'
+                                    : 'bg-white/[0.04] text-[#888] border-white/10 hover:text-paper'
                                 }`}
                               >
                                 {d.label}
@@ -1009,10 +1025,10 @@ export function AutomationAndNewsletterManager({
                               intervalDays: Math.max(1, parseInt(e.target.value, 10) || 1),
                             })
                           }
-                          className="w-16 px-2.5 py-1 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-16 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                         <span className="font-mono text-[9px] text-[#aaa]">
-                          day(s) at <strong className="text-ember">{blogSched.timeOfDay}</strong>
+                          day(s) at <strong className="text-zinc-200">{blogSched.timeOfDay}</strong>
                         </span>
                       </div>
                     )}
@@ -1028,7 +1044,7 @@ export function AutomationAndNewsletterManager({
                   <div className="p-4 rounded-xl bg-[#161513] border border-sky-500/30 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-mono text-[9px] text-sky-400 font-bold uppercase tracking-wider">
+                        <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-wider">
                           in 2. LINKEDIN POST SCHEDULE (PRE-POST REVIEW EMAIL + OAUTH)
                         </span>
                         {liSched.lastRunAt && (
@@ -1069,7 +1085,7 @@ export function AutomationAndNewsletterManager({
                               scheduleMode: e.target.value as 'days_of_week' | 'interval_days',
                             })
                           }
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         >
                           <option value="days_of_week">Specific Days of Week (Mon–Sun)</option>
                           <option value="interval_days">Every N Days (Interval)</option>
@@ -1085,7 +1101,7 @@ export function AutomationAndNewsletterManager({
                           onChange={(e) =>
                             updateSubSchedule('linkedinSchedule', { timeOfDay: e.target.value })
                           }
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                       </div>
                     </div>
@@ -1143,8 +1159,8 @@ export function AutomationAndNewsletterManager({
                                 }}
                                 className={`px-2.5 py-1.5 rounded-lg font-mono text-[9px] border cursor-pointer transition-colors ${
                                   active
-                                    ? 'bg-sky-500 text-black border-sky-400 font-bold'
-                                    : 'bg-[#11100f] text-[#888] border-white/10 hover:text-paper'
+                                    ? 'bg-white text-[#09090b] border-sky-400 font-bold'
+                                    : 'bg-white/[0.04] text-[#888] border-white/10 hover:text-paper'
                                 }`}
                               >
                                 {d.label}
@@ -1166,10 +1182,10 @@ export function AutomationAndNewsletterManager({
                               intervalDays: Math.max(1, parseInt(e.target.value, 10) || 1),
                             })
                           }
-                          className="w-16 px-2.5 py-1 rounded-lg bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
+                          className="w-16 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                         <span className="font-mono text-[9px] text-[#aaa]">
-                          day(s) at <strong className="text-sky-400">{liSched.timeOfDay}</strong>
+                          day(s) at <strong className="text-zinc-200">{liSched.timeOfDay}</strong>
                         </span>
                       </div>
                     )}
@@ -1186,7 +1202,7 @@ export function AutomationAndNewsletterManager({
                   <select
                     value={config.textModel}
                     onChange={(e) => setConfig({ ...config, textModel: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   >
                     <option value="auto">
                       Auto AI-Engine Loop (Gemini 2.0 Flash → Cloudflare Workers AI → Pollinations Free)
@@ -1205,7 +1221,7 @@ export function AutomationAndNewsletterManager({
                   <select
                     value={config.imageModel}
                     onChange={(e) => setConfig({ ...config, imageModel: e.target.value as any })}
-                    className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   >
                     <option value="pollinations-flux">Pollinations Flux (Free 1200×630 → Cloudinary)</option>
                     <option value="pollinations-turbo">Pollinations SDXL Turbo (Fast Free)</option>
@@ -1244,7 +1260,7 @@ export function AutomationAndNewsletterManager({
 
                 {/* Admin Review Alert Email Input */}
                 <div className="pt-2">
-                  <label className="block font-mono text-[8px] text-ember uppercase mb-1 font-bold">
+                  <label className="block font-mono text-[8px] text-zinc-200 uppercase mb-1 font-bold">
                     Admin Review Alert Email (Receives LinkedIn Draft + Reputation Check Before Posting)
                   </label>
                   <input
@@ -1252,7 +1268,7 @@ export function AutomationAndNewsletterManager({
                     value={config.adminAlertEmail || ''}
                     onChange={(e) => setConfig({ ...config, adminAlertEmail: e.target.value })}
                     placeholder="you@gmail.com"
-                    className="w-full px-3 py-2 rounded-xl bg-[#181614] border border-ember/30 text-xs text-paper font-mono focus:border-ember outline-none"
+                    className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-ember/30 text-xs text-paper font-mono focus:border-white/25 outline-none"
                   />
                 </div>
               </div>
@@ -1262,7 +1278,7 @@ export function AutomationAndNewsletterManager({
                   type="button"
                   onClick={() => handleSaveConfig()}
                   disabled={savingConfig}
-                  className="px-5 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
                 >
                   {savingConfig ? 'SAVING…' : 'SAVE SCHEDULE & SETTINGS'}
                 </button>
@@ -1270,14 +1286,14 @@ export function AutomationAndNewsletterManager({
             </div>
 
             {/* Weekly AI Queues (Separate DEV.to Blog Queue & LinkedIn Queue) & Niche Pillars */}
-            <div className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-5 flex flex-col justify-between">
+            <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-5 flex flex-col justify-between">
               <div className="space-y-4">
                 {/* Weekly Cycle Auto-Generation Header */}
-                <div className="p-3.5 rounded-xl bg-[#181614] border border-white/12 space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-white/[0.04] border border-white/12 space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <span className="font-mono text-[8px] text-ember uppercase tracking-[0.12em] font-bold">
-                        🔄 WEEKLY AI QUEUE CYCLE
+                      <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-[0.12em] font-bold">
+                        WEEKLY AI QUEUE CYCLE
                       </span>
                       <h3 className="text-sm font-medium text-paper mt-0.5">
                         Separate Weekly Queues for DEV.to Blog &amp; LinkedIn
@@ -1297,11 +1313,11 @@ export function AutomationAndNewsletterManager({
                       type="button"
                       onClick={() => handleGenerateWeeklyQueues('both')}
                       disabled={generatingQueuesTarget !== null}
-                      className="px-3.5 py-1.5 rounded-lg bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
+                      className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
                     >
                       {generatingQueuesTarget === 'both'
-                        ? '⏳ AI GENERATING WEEKLY QUEUES…'
-                        : `✨ AI GENERATE THIS WEEK'S QUEUES (${getWeeklySlotCount(config.blogSchedule)} DEV.TO + ${getWeeklySlotCount(config.linkedinSchedule)} LINKEDIN)`}
+                        ? 'AI GENERATING WEEKLY QUEUES…'
+                        : `AI GENERATE THIS WEEK'S QUEUES (${getWeeklySlotCount(config.blogSchedule)} DEV.TO + ${getWeeklySlotCount(config.linkedinSchedule)} LINKEDIN)`}
                     </button>
                   </div>
                 </div>
@@ -1311,14 +1327,14 @@ export function AutomationAndNewsletterManager({
                   const devtoQueue = config.devtoTopicsQueue || config.topicsQueue || [];
                   const devtoSlots = getWeeklySlotCount(config.blogSchedule);
                   return (
-                    <div className="p-4 rounded-xl bg-[#161412] border border-ember/25 space-y-3">
+                    <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[9px] text-ember font-bold uppercase tracking-[0.08em]">
-                              📝 DEV.TO &amp; PORTFOLIO BLOG QUEUE
+                            <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-[0.08em]">
+                              DEV.TO &amp; PORTFOLIO BLOG QUEUE
                             </span>
-                            <span className="px-2 py-0.5 rounded-full bg-ember/15 text-ember border border-ember/30 font-mono text-[8px] font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-ember/15 text-zinc-200 border border-ember/30 font-mono text-[8px] font-bold">
                               {devtoQueue.length} / {devtoSlots} DAYS THIS WEEK
                             </span>
                           </div>
@@ -1330,11 +1346,11 @@ export function AutomationAndNewsletterManager({
                           type="button"
                           onClick={() => handleGenerateWeeklyQueues('devto')}
                           disabled={generatingQueuesTarget !== null}
-                          className="px-2.5 py-1 rounded-lg bg-ember/20 hover:bg-ember/30 border border-ember/40 text-ember font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1 rounded-lg bg-ember/20 hover:bg-ember/30 border border-white/[0.12] text-zinc-200 font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
                         >
                           {generatingQueuesTarget === 'devto'
-                            ? '⏳ GENERATING…'
-                            : `✨ AI FILL DEV.TO WEEK (${devtoSlots})`}
+                            ? 'GENERATING…'
+                            : `AI FILL DEV.TO WEEK (${devtoSlots})`}
                         </button>
                       </div>
 
@@ -1356,7 +1372,7 @@ export function AutomationAndNewsletterManager({
                             }
                           }}
                           placeholder="Add a custom DEV.to blog topic to this week's queue…"
-                          className="flex-1 px-3 py-1.5 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper focus:border-ember outline-none"
+                          className="flex-1 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                         />
                         <button
                           type="button"
@@ -1370,7 +1386,7 @@ export function AutomationAndNewsletterManager({
                             });
                             setNewDevtoQueueTopic('');
                           }}
-                          className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 font-mono text-[9px] text-paper cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer"
                         >
                           + DEV.TO
                         </button>
@@ -1380,9 +1396,9 @@ export function AutomationAndNewsletterManager({
                         {devtoQueue.map((topic, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-[#11100f] border border-white/10"
+                            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10"
                           >
-                            <span className="px-1.5 py-0.5 rounded bg-ember/15 text-ember font-mono text-[8px] font-bold shrink-0">
+                            <span className="px-1.5 py-0.5 rounded bg-ember/15 text-zinc-200 font-mono text-[8px] font-bold shrink-0">
                               {getSlotDayLabel(config.blogSchedule, idx)}
                             </span>
                             <span className="flex-1 text-xs text-paper truncate">{topic}</span>
@@ -1436,14 +1452,14 @@ export function AutomationAndNewsletterManager({
                   };
 
                   return (
-                    <div className="p-4 rounded-xl bg-[#13171b] border border-sky-500/25 space-y-3">
+                    <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[9px] text-sky-400 font-bold uppercase tracking-[0.08em]">
+                            <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-[0.08em]">
                               in LINKEDIN POST WEEKLY QUEUE
                             </span>
-                            <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30 font-mono text-[8px] font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-zinc-300 border border-sky-500/30 font-mono text-[8px] font-bold">
                               {linkedinQueue.length} / {linkedinSlots} DAYS THIS WEEK
                             </span>
                           </div>
@@ -1455,16 +1471,16 @@ export function AutomationAndNewsletterManager({
                           type="button"
                           onClick={() => handleGenerateWeeklyQueues('linkedin')}
                           disabled={generatingQueuesTarget !== null}
-                          className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-zinc-300 font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
                         >
                           {generatingQueuesTarget === 'linkedin'
-                            ? '⏳ GENERATING…'
-                            : `✨ AI FILL LINKEDIN WEEK (${linkedinSlots})`}
+                            ? 'GENERATING…'
+                            : `AI FILL LINKEDIN WEEK (${linkedinSlots})`}
                         </button>
                       </div>
 
                       <div className="space-y-1.5">
-                        <div className="flex gap-2">
+                        <div className="flex max-sm:flex-col gap-2">
                           <input
                             type="text"
                             value={newLinkedinQueueTopic}
@@ -1476,14 +1492,14 @@ export function AutomationAndNewsletterManager({
                               }
                             }}
                             placeholder="Add a custom LinkedIn topic to this week's queue…"
-                            className="flex-1 px-3 py-1.5 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper focus:border-sky-400 outline-none"
+                            className="flex-1 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                           />
-                          <label className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-sky-300 font-bold cursor-pointer flex items-center gap-1 whitespace-nowrap">
+                          <label className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 font-bold cursor-pointer flex items-center gap-1 whitespace-nowrap">
                             {uploadingLinkedinImageKey === '__new__'
-                              ? '⏳ UPLOADING…'
+                              ? 'UPLOADING…'
                               : newLinkedinTopicImageUrl
-                              ? '📷 IMAGE READY ✓'
-                              : '📷 ATTACH IMAGE'}
+                              ? 'IMAGE READY'
+                              : 'ATTACH IMAGE'}
                             <input
                               type="file"
                               accept="image/*"
@@ -1499,7 +1515,7 @@ export function AutomationAndNewsletterManager({
                           <button
                             type="button"
                             onClick={addNewLinkedinTopicWithOptionalImage}
-                            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 font-mono text-[9px] text-paper cursor-pointer"
+                            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer"
                           >
                             + LINKEDIN
                           </button>
@@ -1509,7 +1525,7 @@ export function AutomationAndNewsletterManager({
                             <img
                               src={newLinkedinTopicImageUrl}
                               alt="Pending LinkedIn Topic Attachment"
-                              className="w-7 h-7 rounded object-cover border border-white/15"
+                              className="w-7 h-7 rounded object-cover border border-white/[0.1]"
                             />
                             <span className="font-mono text-[8px] text-emerald-400 flex-1 truncate">
                               Cloudinary image ready to attach to new topic
@@ -1532,22 +1548,22 @@ export function AutomationAndNewsletterManager({
                           return (
                             <div
                               key={idx}
-                              className="p-2.5 rounded-xl bg-[#11100f] border border-white/10 space-y-2"
+                              className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2"
                             >
                               <div className="flex items-center justify-between gap-2">
-                                <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 font-mono text-[8px] font-bold shrink-0">
+                                <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-zinc-300 font-mono text-[8px] font-bold shrink-0">
                                   {getSlotDayLabel(config.linkedinSchedule, idx)}
                                 </span>
                                 <span className="flex-1 text-xs text-paper truncate">{topic}</span>
                                 <label
-                                  className="px-2 py-0.5 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-sky-300 cursor-pointer shrink-0"
+                                  className="px-2 py-0.5 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 cursor-pointer shrink-0"
                                   title="Upload an authentic image to Cloudinary and attach it to this LinkedIn topic"
                                 >
                                   {isUploadingThis
-                                    ? '⏳ UPLOADING…'
+                                    ? 'UPLOADING…'
                                     : attachedImg
-                                    ? '📷 CHANGE IMG'
-                                    : '📷 ATTACH IMG'}
+                                    ? 'CHANGE IMG'
+                                    : 'ATTACH IMG'}
                                   <input
                                     type="file"
                                     accept="image/*"
@@ -1579,16 +1595,16 @@ export function AutomationAndNewsletterManager({
                               </div>
 
                               {attachedImg ? (
-                                <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-[#161b20] border border-emerald-500/30">
+                                <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-emerald-500/30">
                                   <div className="flex items-center gap-2 min-w-0">
                                     <img
                                       src={attachedImg}
                                       alt={topic}
-                                      className="w-9 h-9 rounded object-cover border border-white/15 shrink-0"
+                                      className="w-9 h-9 rounded object-cover border border-white/[0.1] shrink-0"
                                     />
                                     <div className="min-w-0">
                                       <span className="block font-mono text-[8px] text-emerald-400 font-bold">
-                                        ✓ AUTHENTIC CLOUDINARY IMAGE ATTACHED
+                                        AUTHENTIC CLOUDINARY IMAGE ATTACHED
                                       </span>
                                       <a
                                         href={attachedImg}
@@ -1605,7 +1621,7 @@ export function AutomationAndNewsletterManager({
                                     onClick={() => handleRemoveLinkedinQueueImage(topic)}
                                     className="px-2 py-0.5 rounded bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer shrink-0"
                                   >
-                                    ✕ REMOVE IMG
+                                    REMOVE IMG
                                   </button>
                                 </div>
                               ) : (
@@ -1660,7 +1676,7 @@ export function AutomationAndNewsletterManager({
                         }
                       }}
                       placeholder="e.g. WebAssembly, Rust in Frontend, Edge Computing (comma-separated)"
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper focus:border-ember outline-none"
+                      className="flex-1 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                     />
                     <button
                       type="button"
@@ -1694,7 +1710,7 @@ export function AutomationAndNewsletterManager({
                     {config.nicheKeywords.map((kw, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#181614] border border-white/10 font-mono text-[9px] text-[#ccc]"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 font-mono text-[9px] text-[#ccc]"
                       >
                         {kw}
                         <button
@@ -1723,7 +1739,7 @@ export function AutomationAndNewsletterManager({
                   type="button"
                   onClick={() => handleSaveConfig()}
                   disabled={savingConfig}
-                  className="px-4 py-2 rounded-xl bg-ember text-ink font-mono text-[9px] font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-white text-[#09090b] font-mono text-[9px] font-bold cursor-pointer"
                 >
                   SAVE QUEUES
                 </button>
@@ -1732,11 +1748,11 @@ export function AutomationAndNewsletterManager({
           </div>
 
           {/* Live Inline Debug Trace Preview */}
-          <div className="p-5 rounded-2xl bg-[#0e0d0c] border border-white/12 space-y-3">
+          <div className="p-5 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/12 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[9px] text-ember font-bold uppercase tracking-[0.1em]">
-                  🪵 LIVE AUTOMATION EXECUTION &amp; DEBUG LOGS ({logs.length})
+                <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-[0.1em]">
+                  LIVE AUTOMATION EXECUTION &amp; DEBUG LOGS ({logs.length})
                 </span>
                 <span className="font-mono text-[8px] text-[#777]">
                   (Also logged in server terminal with timestamps &amp; step durations)
@@ -1753,7 +1769,7 @@ export function AutomationAndNewsletterManager({
                 <button
                   type="button"
                   onClick={() => handleSelectSubTab('logs')}
-                  className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-ember/30 font-mono text-[8px] text-ember font-bold cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-ember/30 font-mono text-[8px] text-zinc-200 font-bold cursor-pointer"
                 >
                   OPEN FULL DEBUG CONSOLE →
                 </button>
@@ -1784,7 +1800,7 @@ export function AutomationAndNewsletterManager({
                     {entry.step}
                   </span>
                   {entry.durationMs !== undefined && (
-                    <span className="text-[8px] text-ember font-bold shrink-0">
+                    <span className="text-[8px] text-zinc-200 font-bold shrink-0">
                       +{entry.durationMs}ms
                     </span>
                   )}
@@ -1805,7 +1821,7 @@ export function AutomationAndNewsletterManager({
           SUB-TAB 2: PLATFORM MASTER PROMPTS STUDIO
       ════════════════════════════════════════════════════════════════ */}
       {subTab === 'prompts' && (
-        <div className="space-y-6 p-6 rounded-2xl bg-[#111110] border border-white/13">
+        <div className="space-y-6 p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09]">
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
               <h3 className="text-base font-medium text-paper">
@@ -1824,7 +1840,7 @@ export function AutomationAndNewsletterManager({
                     masterPrompts: DEFAULT_MASTER_PROMPTS,
                   })
                 }
-                className="px-3.5 py-2 rounded-xl border border-white/15 font-mono text-[9px] text-[#aaa] hover:text-paper cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-white/[0.1] font-mono text-[9px] text-[#aaa] hover:text-paper cursor-pointer"
               >
                 RESET TO DEFAULTS
               </button>
@@ -1832,7 +1848,7 @@ export function AutomationAndNewsletterManager({
                 type="button"
                 onClick={() => handleSaveConfig()}
                 disabled={savingConfig}
-                className="px-5 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer"
               >
                 {savingConfig ? 'SAVING…' : 'SAVE MASTER PROMPTS'}
               </button>
@@ -1841,7 +1857,7 @@ export function AutomationAndNewsletterManager({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div>
-              <label className="block font-mono text-[9px] text-ember uppercase mb-1.5 font-bold">
+              <label className="block font-mono text-[9px] text-zinc-200 uppercase mb-1.5 font-bold">
                 1. Blog Article Master Prompt (Deep Technical & Pragmatic)
               </label>
               <textarea
@@ -1853,12 +1869,12 @@ export function AutomationAndNewsletterManager({
                     masterPrompts: { ...config.masterPrompts, blogMasterPrompt: e.target.value },
                   })
                 }
-                className="w-full p-3 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono leading-relaxed focus:border-ember outline-none"
+                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
             </div>
 
             <div>
-              <label className="block font-mono text-[9px] text-sky-400 uppercase mb-1.5 font-bold">
+              <label className="block font-mono text-[9px] text-zinc-200 uppercase mb-1.5 font-bold">
                 2. LinkedIn Master Prompt (Official, Executive & Structured)
               </label>
               <textarea
@@ -1870,7 +1886,7 @@ export function AutomationAndNewsletterManager({
                     masterPrompts: { ...config.masterPrompts, linkedinMasterPrompt: e.target.value },
                   })
                 }
-                className="w-full p-3 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono leading-relaxed focus:border-ember outline-none"
+                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
             </div>
 
@@ -1887,7 +1903,7 @@ export function AutomationAndNewsletterManager({
                     masterPrompts: { ...config.masterPrompts, imageMasterPrompt: e.target.value },
                   })
                 }
-                className="w-full p-3 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono leading-relaxed focus:border-ember outline-none"
+                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
             </div>
           </div>
@@ -1895,7 +1911,7 @@ export function AutomationAndNewsletterManager({
           {/* Comment Reply Master Prompts */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
             <div>
-              <label className="block font-mono text-[8px] text-sky-400 uppercase mb-1 font-bold">
+              <label className="block font-mono text-[8px] text-zinc-200 uppercase mb-1 font-bold">
                 LinkedIn Comment Reply Prompt (Official &amp; Executive)
               </label>
               <textarea
@@ -1910,11 +1926,11 @@ export function AutomationAndNewsletterManager({
                     },
                   })
                 }
-                className="w-full p-2.5 rounded-xl bg-[#181614] border border-white/15 text-[11px] text-paper font-mono focus:border-ember outline-none"
+                className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-[11px] text-paper font-mono focus:border-white/25 outline-none"
               />
             </div>
             <div>
-              <label className="block font-mono text-[8px] text-ember uppercase mb-1 font-bold">
+              <label className="block font-mono text-[8px] text-zinc-200 uppercase mb-1 font-bold">
                 DEV.to Comment Reply Prompt (Deep Technical)
               </label>
               <textarea
@@ -1926,7 +1942,7 @@ export function AutomationAndNewsletterManager({
                     masterPrompts: { ...config.masterPrompts, commentReplyDevtoPrompt: e.target.value },
                   })
                 }
-                className="w-full p-2.5 rounded-xl bg-[#181614] border border-white/15 text-[11px] text-paper font-mono focus:border-ember outline-none"
+                className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-[11px] text-paper font-mono focus:border-white/25 outline-none"
               />
             </div>
           </div>
@@ -1939,11 +1955,11 @@ export function AutomationAndNewsletterManager({
       {subTab === 'social' && (
         <div className="space-y-6">
           {/* LinkedIn OAuth 2.0 + OpenID Connect + Posts API Verification Card */}
-          <div className="p-5 rounded-2xl bg-[#111110] border border-sky-500/30 space-y-4">
+          <div className="p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-sky-500/30 space-y-4">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="font-mono text-[9px] text-sky-400 font-bold uppercase tracking-wider">
+                  <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-wider">
                     in LINKEDIN OAUTH 2.0 &amp; POSTS API VERIFICATION
                   </span>
                   {providers?.linkedinAuth?.connected ? (
@@ -1963,8 +1979,8 @@ export function AutomationAndNewsletterManager({
                 </div>
                 <p className="font-mono text-[9px] text-[#999] leading-relaxed">
                   1. In LinkedIn Developer Portal → <strong>Products</strong>: enable{' '}
-                  <code className="text-sky-300">Share on LinkedIn</code> &amp;{' '}
-                  <code className="text-sky-300">Sign In with LinkedIn using OpenID Connect</code> (scopes:{' '}
+                  <code className="text-zinc-300">Share on LinkedIn</code> &amp;{' '}
+                  <code className="text-zinc-300">Sign In with LinkedIn using OpenID Connect</code> (scopes:{' '}
                   <code>openid profile email w_member_social</code>).
                   <br />
                   2. In <strong>Auth</strong> tab: add the exact Redirect URL below and copy{' '}
@@ -1976,11 +1992,11 @@ export function AutomationAndNewsletterManager({
               <div className="flex items-center gap-2 flex-wrap">
                 <a
                   href="/api/auth/linkedin"
-                  className="px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 text-black font-mono text-[9px] font-bold tracking-[0.06em] transition-colors"
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.06em] transition-colors"
                 >
                   {providers?.linkedinAuth?.connected
-                    ? '🔄 REFRESH 60-DAY LINKEDIN OAUTH TOKEN'
-                    : '🔐 VERIFY LINKEDIN ACCOUNT VIA OAUTH 2.0'}
+                    ? 'REFRESH 60-DAY LINKEDIN OAUTH TOKEN'
+                    : 'VERIFY LINKEDIN ACCOUNT VIA OAUTH 2.0'}
                 </a>
               </div>
             </div>
@@ -1990,7 +2006,7 @@ export function AutomationAndNewsletterManager({
               <span className="font-mono text-[8px] text-[#888] uppercase">
                 LINKEDIN AUTH REDIRECT URL:
               </span>
-              <code className="px-2.5 py-1 rounded bg-[#181614] border border-white/10 font-mono text-[10px] text-sky-300">
+              <code className="px-2.5 py-1 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] text-zinc-300">
                 {providers?.linkedinAuth?.redirectUri ||
                   (typeof window !== 'undefined'
                     ? `${window.location.origin}/api/auth/linkedin/callback`
@@ -2003,7 +2019,7 @@ export function AutomationAndNewsletterManager({
                     providers?.linkedinAuth?.redirectUri ||
                     `${window.location.origin}/api/auth/linkedin/callback`;
                   navigator.clipboard.writeText(uri);
-                  showToast('Copied LinkedIn Redirect URL ✓');
+                  showToast('Copied LinkedIn Redirect URL');
                 }}
                 className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 font-mono text-[8px] text-paper cursor-pointer"
               >
@@ -2018,7 +2034,7 @@ export function AutomationAndNewsletterManager({
           </div>
 
           {/* Generate LinkedIn Posts for any Article */}
-          <div className="p-5 rounded-2xl bg-[#111110] border border-white/13 flex flex-wrap items-center justify-between gap-4">
+          <div className="p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] flex flex-wrap items-center justify-between gap-4">
             <div>
               <h3 className="text-sm font-medium text-paper">
                 Generate Official LinkedIn Companion Post
@@ -2031,7 +2047,7 @@ export function AutomationAndNewsletterManager({
               <select
                 value={selectedSlugForSocial}
                 onChange={(e) => setSelectedSlugForSocial(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none max-w-xs"
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none max-w-xs"
               >
                 {blogs.map((b) => (
                   <option key={b.slug} value={b.slug}>
@@ -2043,9 +2059,9 @@ export function AutomationAndNewsletterManager({
                 type="button"
                 onClick={handleGenerateSocialForBlog}
                 disabled={generatingSocial || !selectedSlugForSocial}
-                className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
               >
-                {generatingSocial ? '⏳ CRAFTING POST…' : '✨ GENERATE LINKEDIN POST'}
+                {generatingSocial ? 'CRAFTING POST…' : 'GENERATE LINKEDIN POST'}
               </button>
             </div>
           </div>
@@ -2055,11 +2071,11 @@ export function AutomationAndNewsletterManager({
             {socialPosts.map((post) => (
               <div
                 key={post.id}
-                className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4"
+                className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
                   <div>
-                    <span className="font-mono text-[8px] text-ember uppercase tracking-widest">
+                    <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-widest">
                       SOCIAL CAMPAIGN · {new Date(post.createdAt).toLocaleDateString()}
                     </span>
                     <h4 className="text-sm font-medium text-paper mt-0.5">{post.articleTitle}</h4>
@@ -2073,7 +2089,7 @@ export function AutomationAndNewsletterManager({
                       </span>
                     ) : (
                       <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 font-mono text-[8px] text-emerald-400">
-                        ✓ REPUTATION GUARDRAIL: PASSED
+                        REPUTATION GUARDRAIL: PASSED
                       </span>
                     )}
 
@@ -2081,37 +2097,37 @@ export function AutomationAndNewsletterManager({
                       type="button"
                       onClick={() => handleSendReviewEmail(post)}
                       disabled={publishingSocialId === `${post.id}-email`}
-                      className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-ember/40 font-mono text-[8px] text-ember font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-white/[0.12] font-mono text-[8px] text-zinc-200 font-bold cursor-pointer"
                     >
                       {publishingSocialId === `${post.id}-email`
-                        ? '⏳ SENDING REVIEW EMAIL…'
+                        ? 'SENDING REVIEW EMAIL…'
                         : post.reviewEmailSent
-                        ? '✉ RESEND REVIEW EMAIL TO ME'
-                        : '✉ EMAIL ME FOR REVIEW'}
+                        ? 'RESEND REVIEW EMAIL TO ME'
+                        : 'EMAIL ME FOR REVIEW'}
                     </button>
 
                     <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-mono text-[8px] text-[#ccc]">
-                      ♥ DEV.TO REACTIONS: <strong className="text-ember">{post.reactions?.devtoReactions || 0}</strong>
+                      ♥ DEV.TO REACTIONS: <strong className="text-zinc-200">{post.reactions?.devtoReactions || 0}</strong>
                     </span>
                     <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-mono text-[8px] text-[#ccc]">
-                      💬 COMMENTS: <strong className="text-ember">{post.reactions?.devtoComments || 0}</strong>
+                      COMMENTS: <strong className="text-zinc-200">{post.reactions?.devtoComments || 0}</strong>
                     </span>
                   </div>
                 </div>
 
                 {/* LinkedIn Official Card */}
-                <div className="p-4 rounded-xl bg-[#161514] border border-sky-500/25 space-y-3">
+                <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-mono text-[9px] text-sky-400 font-bold">
+                    <span className="font-mono text-[9px] text-zinc-200 font-bold">
                       in LINKEDIN POST (OFFICIAL &amp; EXECUTIVE)
                     </span>
                     <div className="flex items-center gap-2">
-                      <label className="px-2.5 py-1 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-sky-300 font-bold cursor-pointer">
+                      <label className="px-2.5 py-1 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 font-bold cursor-pointer">
                         {uploadingLinkedinImageKey === `post-${post.id}`
-                          ? '⏳ UPLOADING…'
+                          ? 'UPLOADING…'
                           : post.linkedinImageUrl
-                          ? '📷 CHANGE ATTACHED IMAGE'
-                          : '📷 ATTACH AUTHENTIC IMAGE'}
+                          ? 'CHANGE ATTACHED IMAGE'
+                          : 'ATTACH AUTHENTIC IMAGE'}
                         <input
                           type="file"
                           accept="image/*"
@@ -2124,7 +2140,7 @@ export function AutomationAndNewsletterManager({
                           }}
                         />
                       </label>
-                      <span className="font-mono text-[8px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-300">
+                      <span className="font-mono text-[8px] px-2 py-0.5 rounded bg-sky-500/10 text-zinc-300">
                         {post.linkedinStatus.toUpperCase()}
                       </span>
                     </div>
@@ -2132,16 +2148,16 @@ export function AutomationAndNewsletterManager({
 
                   {/* Attached Image Preview (or explicit Text-Only indicator) */}
                   {post.linkedinImageUrl ? (
-                    <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[#11100f] border border-emerald-500/30">
+                    <div className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white/[0.04] border border-emerald-500/30">
                       <div className="flex items-center gap-3 min-w-0">
                         <img
                           src={post.linkedinImageUrl}
                           alt={post.articleTitle}
-                          className="w-14 h-14 rounded-lg object-cover border border-white/15 shrink-0"
+                          className="w-14 h-14 rounded-lg object-cover border border-white/[0.1] shrink-0"
                         />
                         <div className="min-w-0">
                           <span className="block font-mono text-[8px] text-emerald-400 font-bold">
-                            ✓ AUTHENTIC IMAGE ATTACHED (WILL UPLOAD &amp; POST WITH LINKEDIN UPDATE)
+                            AUTHENTIC IMAGE ATTACHED (WILL UPLOAD &amp; POST WITH LINKEDIN UPDATE)
                           </span>
                           <a
                             href={post.linkedinImageUrl}
@@ -2160,12 +2176,12 @@ export function AutomationAndNewsletterManager({
                         }
                         className="px-2.5 py-1 rounded bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer shrink-0"
                       >
-                        ✕ REMOVE IMAGE
+                        REMOVE IMAGE
                       </button>
                     </div>
                   ) : (
-                    <div className="px-3 py-1.5 rounded-lg bg-[#11100f] border border-white/8 font-mono text-[8px] text-[#777]">
-                      📷 No image attached — will publish to LinkedIn as a text-only post (no AI image fallback).
+                    <div className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/8 font-mono text-[8px] text-[#777]">
+                      No image attached — will publish to LinkedIn as a text-only post (no AI image fallback).
                     </div>
                   )}
 
@@ -2179,7 +2195,7 @@ export function AutomationAndNewsletterManager({
                         )
                       )
                     }
-                    className="w-full p-2.5 rounded-lg bg-[#11100f] border border-white/10 text-xs text-paper leading-relaxed focus:border-sky-400 outline-none"
+                    className="w-full p-2.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs text-paper leading-relaxed focus:border-white/25 outline-none"
                   />
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -2195,7 +2211,7 @@ export function AutomationAndNewsletterManager({
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(post.linkedinContent);
-                        showToast('Copied LinkedIn post ✓');
+                        showToast('Copied LinkedIn post');
                       }}
                       className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
                     >
@@ -2211,10 +2227,10 @@ export function AutomationAndNewsletterManager({
                           post.id
                         )}&autoPublish=true`;
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-black font-mono text-[8px] font-bold cursor-pointer"
+                      className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
                       title="Runs the LinkedIn OAuth verification flow in your browser, exchanges the code & /v2/userinfo person ID, and publishes directly to your LinkedIn profile"
                     >
-                      🔐 VERIFY VIA OAUTH &amp; PUBLISH
+                      VERIFY VIA OAUTH &amp; PUBLISH
                     </button>
                     {providers?.linkedinAuth?.connected && (
                       <button
@@ -2226,7 +2242,7 @@ export function AutomationAndNewsletterManager({
                       >
                         {publishingSocialId === `${post.id}-linkedin`
                           ? 'POSTING…'
-                          : '⚡ PUBLISH (60-DAY TOKEN)'}
+                          : 'PUBLISH (60-DAY TOKEN)'}
                       </button>
                     )}
                     {post.linkedinPostUrl && (
@@ -2245,153 +2261,345 @@ export function AutomationAndNewsletterManager({
             ))}
           </div>
 
-          {/* Comments & Reactions Manager */}
-          <div className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
-              <div>
-                <h3 className="text-base font-medium text-paper">
-                  Comments &amp; Reactions Manager ({comments.length})
-                </h3>
-                <p className="font-mono text-[9px] text-[#888]">
-                  Sync live DEV.to comments &amp; reactions or paste incoming LinkedIn comments to craft platform-tailored replies.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleSyncComments}
-                disabled={syncingComments}
-                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 font-mono text-[9px] text-paper cursor-pointer"
-              >
-                {syncingComments ? '↺ SYNCING DEV.TO…' : '↺ SYNC LIVE DEV.TO COMMENTS & REACTIONS'}
-              </button>
-            </div>
-
-            {/* Craft Reply for Incoming LinkedIn / DEV.to Comment */}
-            <div className="p-4 rounded-xl bg-[#161514] border border-white/10 space-y-3">
-              <span className="block font-mono text-[8px] text-ember uppercase tracking-wider font-bold">
-                + Craft AI Reply for Incoming Comment (Tailored to Platform Persona)
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <select
-                  value={newCommentInput.platform}
-                  onChange={(e) =>
-                    setNewCommentInput({ ...newCommentInput, platform: e.target.value as any })
-                  }
-                  className="px-3 py-2 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper font-mono"
-                >
-                  <option value="linkedin">LinkedIn (Official &amp; Executive Reply)</option>
-                  <option value="devto">DEV.to (Deep Technical Reply)</option>
-                </select>
-                <input
-                  type="text"
-                  value={newCommentInput.authorName}
-                  onChange={(e) => setNewCommentInput({ ...newCommentInput, authorName: e.target.value })}
-                  placeholder="Commenter Name / @handle"
-                  className="px-3 py-2 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper"
-                />
-                <input
-                  type="text"
-                  value={newCommentInput.articleTitle}
-                  onChange={(e) => setNewCommentInput({ ...newCommentInput, articleTitle: e.target.value })}
-                  placeholder="Article / Post Title"
-                  className="px-3 py-2 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper"
-                />
-              </div>
-              <div className="flex max-sm:flex-col gap-2">
-                <input
-                  type="text"
-                  value={newCommentInput.commentText}
-                  onChange={(e) => setNewCommentInput({ ...newCommentInput, commentText: e.target.value })}
-                  placeholder="Paste the comment they left on your post…"
-                  className="flex-1 px-3 py-2 rounded-xl bg-[#11100f] border border-white/15 text-xs text-paper"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAndReplyComment}
-                  disabled={generatingReplyId === 'new'}
-                  className="px-5 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer whitespace-nowrap"
-                >
-                  {generatingReplyId === 'new' ? '⏳ CRAFTING REPLY…' : '✨ GENERATE TAILORED REPLY'}
-                </button>
-              </div>
-            </div>
-
-            {/* Comments List */}
-            <div className="space-y-3">
-              {comments.map((c) => (
-                <div
-                  key={c.id}
-                  className="p-4 rounded-xl bg-[#161514] border border-white/10 space-y-2.5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`px-2 py-0.5 rounded font-mono text-[8px] font-bold uppercase ${
-                          c.platform === 'linkedin'
-                            ? 'bg-sky-500/20 text-sky-300'
-                            : 'bg-ember/20 text-ember'
-                        }`}
-                      >
-                        {c.platform}
+          {/* Comments & Reactions Manager (Separated LinkedIn & DEV.to Workspaces) */}
+          {(() => {
+            const linkedinComments = comments.filter((c) => c.platform === 'linkedin');
+            const devtoComments = comments.filter((c) => c.platform === 'devto');
+            return (
+              <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-medium text-paper">
+                        Comments &amp; Engagement Studio
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 font-mono text-[8px] text-zinc-300 font-bold">
+                        in LINKEDIN ({linkedinComments.length})
                       </span>
-                      <span className="text-xs font-semibold text-paper">{c.authorName}</span>
-                      <span className="font-mono text-[9px] text-[#777]">on {c.articleTitle}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-ember/15 border border-ember/30 font-mono text-[8px] text-zinc-200 font-bold">
+                        DEV.TO ({devtoComments.length})
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {c.externalUrl && (
-                        <a
-                          href={c.externalUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-mono text-[8px] text-ember hover:underline"
+                    <p className="font-mono text-[9px] text-[#888] mt-1">
+                      Separate engagement panels for LinkedIn executive replies &amp; DEV.to deep technical discussions.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSyncComments}
+                    disabled={syncingComments}
+                    className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer disabled:opacity-50"
+                  >
+                    {syncingComments ? 'SYNCING DEV.TO & LINKEDIN…' : 'SYNC LIVE COMMENTS & REACTIONS'}
+                  </button>
+                </div>
+
+                {/* Split 2-Column Workspace: LinkedIn Left | DEV.to Right */}
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {/* ─── LEFT PANEL: LINKEDIN COMMENTS ─── */}
+                  <div className="p-5 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-4 flex flex-col">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-sky-500/20">
+                      <div>
+                        <span className="font-mono text-[10px] text-zinc-200 font-bold uppercase tracking-wider">
+                          in LINKEDIN COMMENTS ({linkedinComments.length})
+                        </span>
+                        <p className="font-mono text-[8px] text-[#8aa0b5] mt-0.5">
+                          Official, executive &amp; career-safe AI replies for LinkedIn discussions.
+                        </p>
+                      </div>
+                    </div>
+
+                    {linkedinSyncNotice && (
+                      <div className="p-2.5 rounded-xl bg-sky-950/40 border border-sky-500/30 font-mono text-[8px] text-sky-200 leading-relaxed">
+                        ℹ {linkedinSyncNotice}
+                      </div>
+                    )}
+
+                    {/* LinkedIn Comment Composer */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.03] border border-sky-500/20 space-y-2.5">
+                      <span className="block font-mono text-[8px] text-zinc-300 uppercase tracking-wider font-bold">
+                        + Craft LinkedIn Executive Reply
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={linkedinCommentInput.authorName}
+                          onChange={(e) =>
+                            setLinkedinCommentInput({
+                              ...linkedinCommentInput,
+                              authorName: e.target.value,
+                            })
+                          }
+                          placeholder="LinkedIn Commenter Name"
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={linkedinCommentInput.articleTitle}
+                          onChange={(e) =>
+                            setLinkedinCommentInput({
+                              ...linkedinCommentInput,
+                              articleTitle: e.target.value,
+                            })
+                          }
+                          placeholder="LinkedIn Post Title / Topic"
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
+                      </div>
+                      <div className="flex max-sm:flex-col gap-2">
+                        <input
+                          type="text"
+                          value={linkedinCommentInput.commentText}
+                          onChange={(e) =>
+                            setLinkedinCommentInput({
+                              ...linkedinCommentInput,
+                              commentText: e.target.value,
+                            })
+                          }
+                          placeholder="Paste their LinkedIn comment here…"
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddAndReplyComment('linkedin')}
+                          disabled={generatingReplyId === 'new-linkedin'}
+                          className="px-4 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-50"
                         >
-                          VIEW COMMENT ↗
-                        </a>
+                          {generatingReplyId === 'new-linkedin' ? 'CRAFTING…' : 'LINKEDIN REPLY'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* LinkedIn Comments List */}
+                    <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                      {linkedinComments.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-4 rounded-xl bg-white/[0.03] border border-sky-500/20 space-y-2.5"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-zinc-300 font-mono text-[8px] font-bold uppercase">
+                                  LINKEDIN
+                                </span>
+                                <span className="text-xs font-semibold text-paper">{c.authorName}</span>
+                              </div>
+                              <p className="font-mono text-[8px] text-[#7c90a3] truncate mt-0.5">
+                                on {c.articleTitle}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {c.externalUrl && (
+                                <a
+                                  href={c.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-[8px] text-zinc-200 hover:underline"
+                                >
+                                  OPEN POST ↗
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRegenerateReply(c)}
+                                disabled={generatingReplyId === c.id}
+                                className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
+                              >
+                                {generatingReplyId === c.id ? '⏳…' : 'AI REPLY'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-[#d1d9e0] bg-white/[0.04] p-3 rounded-lg border border-white/5">
+                            “{c.commentText}”
+                          </p>
+
+                          {c.aiSuggestedReply && (
+                            <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-[8px] text-zinc-300 font-bold uppercase">
+                                  Suggested Executive LinkedIn Reply:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(c.aiSuggestedReply!);
+                                    showToast('Copied LinkedIn reply');
+                                  }}
+                                  className="px-2.5 py-0.5 rounded bg-white text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
+                                >
+                                  COPY REPLY
+                                </button>
+                              </div>
+                              <p className="text-xs text-paper leading-relaxed">{c.aiSuggestedReply}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {linkedinComments.length === 0 && (
+                        <div className="p-6 rounded-xl bg-white/[0.03] border border-white/5 text-center space-y-1.5">
+                          <p className="font-mono text-[10px] text-[#8aa0b5]">
+                            No LinkedIn comments tracked yet.
+                          </p>
+                          <p className="font-mono text-[8px] text-[#667788] leading-relaxed">
+                            Note: LinkedIn&apos;s standard self-serve OAuth only grants write permission (w_member_social). Paste any LinkedIn comment above to generate &amp; copy an executive reply.
+                          </p>
+                        </div>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleRegenerateReply(c)}
-                        disabled={generatingReplyId === c.id}
-                        className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
-                      >
-                        {generatingReplyId === c.id ? '⏳…' : '✨ AI REPLY'}
-                      </button>
                     </div>
                   </div>
 
-                  <p className="text-xs text-[#ccc] bg-[#11100f] p-3 rounded-lg border border-white/5">
-                    “{c.commentText}”
-                  </p>
-
-                  {c.aiSuggestedReply && (
-                    <div className="p-3 rounded-lg bg-ember/10 border border-ember/30 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[8px] text-ember font-bold uppercase">
-                          Suggested {c.platform.toUpperCase()} Reply:
+                  {/* ─── RIGHT PANEL: DEV.TO COMMENTS ─── */}
+                  <div className="p-5 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-4 flex flex-col">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-ember/20">
+                      <div>
+                        <span className="font-mono text-[10px] text-zinc-200 font-bold uppercase tracking-wider">
+                          DEV.TO COMMENTS ({devtoComments.length})
                         </span>
+                        <p className="font-mono text-[8px] text-[#9b8d83] mt-0.5">
+                          Live synced comments from your DEV.to articles with technical AI replies.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* DEV.to Comment Composer */}
+                    <div className="p-3.5 rounded-xl bg-white/[0.04] border border-ember/20 space-y-2.5">
+                      <span className="block font-mono text-[8px] text-zinc-200 uppercase tracking-wider font-bold">
+                        + Craft DEV.to Technical Reply
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={devtoCommentInput.authorName}
+                          onChange={(e) =>
+                            setDevtoCommentInput({
+                              ...devtoCommentInput,
+                              authorName: e.target.value,
+                            })
+                          }
+                          placeholder="DEV.to Commenter (@handle)"
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={devtoCommentInput.articleTitle}
+                          onChange={(e) =>
+                            setDevtoCommentInput({
+                              ...devtoCommentInput,
+                              articleTitle: e.target.value,
+                            })
+                          }
+                          placeholder="DEV.to Article Title"
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
+                      </div>
+                      <div className="flex max-sm:flex-col gap-2">
+                        <input
+                          type="text"
+                          value={devtoCommentInput.commentText}
+                          onChange={(e) =>
+                            setDevtoCommentInput({
+                              ...devtoCommentInput,
+                              commentText: e.target.value,
+                            })
+                          }
+                          placeholder="Paste a DEV.to comment here…"
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
+                        />
                         <button
                           type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(c.aiSuggestedReply!);
-                            showToast('Copied reply to clipboard ✓');
-                          }}
-                          className="px-2.5 py-0.5 rounded bg-ember text-ink font-mono text-[8px] font-bold cursor-pointer"
+                          onClick={() => handleAddAndReplyComment('devto')}
+                          disabled={generatingReplyId === 'new-devto'}
+                          className="px-4 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-50"
                         >
-                          COPY REPLY
+                          {generatingReplyId === 'new-devto' ? 'CRAFTING…' : 'DEV.TO REPLY'}
                         </button>
                       </div>
-                      <p className="text-xs text-paper leading-relaxed">{c.aiSuggestedReply}</p>
                     </div>
-                  )}
+
+                    {/* DEV.to Comments List */}
+                    <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                      {devtoComments.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-4 rounded-xl bg-white/[0.04] border border-ember/20 space-y-2.5"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded bg-ember/20 text-zinc-200 font-mono text-[8px] font-bold uppercase">
+                                  DEV.TO
+                                </span>
+                                <span className="text-xs font-semibold text-paper">{c.authorName}</span>
+                              </div>
+                              <p className="font-mono text-[8px] text-[#777] truncate mt-0.5">
+                                on {c.articleTitle}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {c.externalUrl && (
+                                <a
+                                  href={c.externalUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono text-[8px] text-zinc-200 hover:underline"
+                                >
+                                  VIEW ON DEV.TO ↗
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleRegenerateReply(c)}
+                                disabled={generatingReplyId === c.id}
+                                className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
+                              >
+                                {generatingReplyId === c.id ? '⏳…' : 'AI REPLY'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-[#ccc] bg-white/[0.04] p-3 rounded-lg border border-white/5">
+                            “{c.commentText}”
+                          </p>
+
+                          {c.aiSuggestedReply && (
+                            <div className="p-3 rounded-lg bg-ember/10 border border-ember/30 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-[8px] text-zinc-200 font-bold uppercase">
+                                  Suggested Technical DEV.to Reply:
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(c.aiSuggestedReply!);
+                                    showToast('Copied DEV.to reply');
+                                  }}
+                                  className="px-2.5 py-0.5 rounded bg-white text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
+                                >
+                                  COPY REPLY
+                                </button>
+                              </div>
+                              <p className="text-xs text-paper leading-relaxed">{c.aiSuggestedReply}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+
+                      {devtoComments.length === 0 && (
+                        <div className="p-6 rounded-xl bg-white/[0.04] border border-white/5 text-center">
+                          <p className="font-mono text-[10px] text-[#777]">
+                            No DEV.to comments yet. Click &ldquo;Sync Live Comments &amp; Reactions&rdquo; above.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ))}
-              {comments.length === 0 && (
-                <p className="text-center font-mono text-[10px] text-[#666] py-6">
-                  No comments tracked yet. Click &ldquo;Sync Live DEV.to Comments&rdquo; or paste a LinkedIn comment above.
-                </p>
-              )}
-            </div>
-          </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2401,7 +2609,7 @@ export function AutomationAndNewsletterManager({
       {subTab === 'newsletter' && (
         <div className="space-y-6">
           {/* Email Provider Status Banner */}
-          <div className="p-5 rounded-2xl bg-[#111110] border border-white/13 flex flex-wrap items-center justify-between gap-4">
+          <div className="p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-[9px] text-paper font-bold uppercase">
@@ -2433,7 +2641,7 @@ export function AutomationAndNewsletterManager({
               <select
                 value={selectedSlugForBlast}
                 onChange={(e) => setSelectedSlugForBlast(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono max-w-xs"
+                className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono max-w-xs"
               >
                 {blogs.map((b) => (
                   <option key={b.slug} value={b.slug}>
@@ -2445,9 +2653,9 @@ export function AutomationAndNewsletterManager({
                 type="button"
                 onClick={handleSendNewsletterBlast}
                 disabled={sendingBlast || !selectedSlugForBlast}
-                className="px-4 py-2 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
               >
-                {sendingBlast ? '⏳ SENDING…' : `✉ SEND ARTICLE TO LIST (${subscribers.length})`}
+                {sendingBlast ? 'SENDING…' : `SEND ARTICLE TO LIST (${subscribers.length})`}
               </button>
             </div>
           </div>
@@ -2455,7 +2663,7 @@ export function AutomationAndNewsletterManager({
           {/* Add Emails from Admin + Subscriber List */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Add Subscriber(s) Box */}
-            <div className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <div>
                 <h3 className="text-base font-medium text-paper">Add Subscriber Emails</h3>
                 <p className="font-mono text-[9px] text-[#888] mt-0.5">
@@ -2467,20 +2675,20 @@ export function AutomationAndNewsletterManager({
                 value={bulkEmailsInput}
                 onChange={(e) => setBulkEmailsInput(e.target.value)}
                 placeholder={'reader1@gmail.com\nreader2@company.com, friend@domain.com'}
-                className="w-full p-3 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
               />
               <button
                 type="button"
                 onClick={handleAddSubscribersFromAdmin}
                 disabled={addingEmails || !bulkEmailsInput.trim()}
-                className="w-full py-2.5 px-4 rounded-xl bg-ember hover:bg-ember-soft text-ink font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
               >
                 {addingEmails ? 'ADDING…' : '+ ADD TO NEWSLETTER LIST'}
               </button>
             </div>
 
             {/* Subscribers Table */}
-            <div className="lg:col-span-2 p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-base font-medium text-paper">
                   Subscriber List ({filteredSubscribers.length})
@@ -2491,14 +2699,14 @@ export function AutomationAndNewsletterManager({
                     value={subscriberSearch}
                     onChange={(e) => setSubscriberSearch(e.target.value)}
                     placeholder="Filter emails…"
-                    className="px-3 py-1.5 rounded-xl bg-[#181614] border border-white/15 text-xs text-paper font-mono focus:border-ember outline-none"
+                    className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => {
                       const csv = subscribers.map((s) => `${s.email},${s.source},${s.subscribedAt}`).join('\n');
                       navigator.clipboard.writeText(csv);
-                      showToast('Copied subscriber list as CSV ✓');
+                      showToast('Copied subscriber list as CSV');
                     }}
                     className="px-3 py-1.5 rounded-xl bg-white/10 font-mono text-[8px] text-paper cursor-pointer"
                   >
@@ -2511,12 +2719,12 @@ export function AutomationAndNewsletterManager({
                 {filteredSubscribers.map((sub) => (
                   <div
                     key={sub.email}
-                    className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-[#181614] border border-white/10"
+                    className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10"
                   >
                     <div className="min-w-0">
                       <p className="font-mono text-xs text-paper truncate">{sub.email}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="font-mono text-[8px] text-ember uppercase">
+                        <span className="font-mono text-[8px] text-zinc-200 uppercase">
                           {sub.source === 'frontend' ? 'CURVED INPUT (FRONTEND)' : 'ADMIN ADDED'}
                         </span>
                         <span className="font-mono text-[8px] text-[#666]">
@@ -2548,7 +2756,7 @@ export function AutomationAndNewsletterManager({
           SUB-TAB 5: AUTOMATION EXECUTION & DEBUG LOGS CONSOLE
       ════════════════════════════════════════════════════════════════ */}
       {subTab === 'logs' && (
-        <div className="p-6 rounded-2xl bg-[#0e0d0c] border border-white/13 space-y-5">
+        <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
               <h3 className="text-base font-medium text-paper">
@@ -2566,8 +2774,8 @@ export function AutomationAndNewsletterManager({
                   onClick={() => setLogFilterPipeline(p)}
                   className={`px-2.5 py-1 rounded-lg font-mono text-[8px] uppercase cursor-pointer border ${
                     logFilterPipeline === p
-                      ? 'bg-ember text-ink border-ember font-bold'
-                      : 'bg-[#161412] text-[#999] border-white/10 hover:text-paper'
+                      ? 'bg-white text-[#09090b] border-ember font-bold'
+                      : 'bg-white/[0.03] backdrop-blur-xl text-[#999] border-white/10 hover:text-paper'
                   }`}
                 >
                   {p}
@@ -2586,7 +2794,7 @@ export function AutomationAndNewsletterManager({
                 disabled={clearingLogs || logs.length === 0}
                 className="px-3 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer disabled:opacity-40"
               >
-                {clearingLogs ? 'CLEARING…' : '🗑 CLEAR LOGS'}
+                {clearingLogs ? 'CLEARING…' : 'CLEAR LOGS'}
               </button>
             </div>
           </div>
@@ -2602,7 +2810,7 @@ export function AutomationAndNewsletterManager({
                     ? 'bg-amber-950/30 border-amber-500/35 text-amber-100'
                     : entry.level === 'success'
                     ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-100'
-                    : 'bg-[#161412] border-white/10 text-paper'
+                    : 'bg-white/[0.03] backdrop-blur-xl border-white/10 text-paper'
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2623,11 +2831,11 @@ export function AutomationAndNewsletterManager({
                     <span className="px-2 py-0.5 rounded bg-white/10 text-[8px] uppercase font-bold">
                       {entry.pipeline}
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-black/50 text-[9px] text-ember font-bold">
+                    <span className="px-2 py-0.5 rounded bg-black/50 text-[9px] text-zinc-200 font-bold">
                       {entry.step}
                     </span>
                     {entry.durationMs !== undefined && (
-                      <span className="text-[9px] text-sky-300 font-bold">
+                      <span className="text-[9px] text-zinc-300 font-bold">
                         +{entry.durationMs}ms
                       </span>
                     )}

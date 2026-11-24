@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,19 +20,27 @@ import { PrismaticLoader } from '../../components/PrismaticLoader';
 import { ConfirmModal } from '../../components/admin/ConfirmModal';
 import { CloudinaryMediaManager } from '../../components/admin/CloudinaryMediaManager';
 import { AutomationAndNewsletterManager } from '../../components/admin/AutomationAndNewsletterManager';
+import { AdminOverviewDashboard } from '../../components/admin/AdminOverviewDashboard';
 import { portfolio as defaultPortfolio } from '../../data';
+
+const AdminOverviewDashboardPromise = null;
+const GradientWaves = dynamic_import(() => import('../../components/GradientWaves'), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 bg-[#09090b]" />,
+});
 
 // Rich-text editor is client-only (Tiptap)
 const RichTextEditor = dynamic_import(() => import('../../components/admin/RichTextEditor'), {
   ssr: false,
   loading: () => (
-    <div className="rounded-xl border border-white/10 bg-[#181614] h-64 flex items-center justify-center">
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] h-64 flex items-center justify-center">
       <span className="font-mono text-[10px] text-[#666]">Loading editor…</span>
     </div>
   ),
 });
 
 type AdminTab =
+  | 'dashboard'
   | 'profile'
   | 'projects'
   | 'smallWorks'
@@ -43,6 +51,7 @@ type AdminTab =
   | 'automation';
 
 const VALID_ADMIN_TABS: AdminTab[] = [
+  'dashboard',
   'profile',
   'projects',
   'smallWorks',
@@ -53,10 +62,91 @@ const VALID_ADMIN_TABS: AdminTab[] = [
   'automation',
 ];
 
+function SidebarIcon({ name }: { name: string }) {
+  const cls = 'w-4 h-4 shrink-0';
+  switch (name) {
+    case 'dashboard':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />
+        </svg>
+      );
+    case 'blogs':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 6h16M4 12h16M4 18h10" />
+        </svg>
+      );
+    case 'automation':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+      );
+    case 'media':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="16" rx="2.5" />
+          <circle cx="8.5" cy="9.5" r="1.5" />
+          <path d="M21 15l-5-5L5 20" />
+        </svg>
+      );
+    case 'projects':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case 'profile':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c1.8-3.5 5-5 8-5s6.2 1.5 8 5" />
+        </svg>
+      );
+    case 'smallWorks':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
+        </svg>
+      );
+    case 'experience':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+      );
+    case 'skills':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+        </svg>
+      );
+    case 'newsletter':
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="M3 7l9 6 9-6" />
+        </svg>
+      );
+    default:
+      return (
+        <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6M8 13h8M8 17h5" />
+        </svg>
+      );
+  }
+}
+
 /* ─── small reusable helpers ─────────────────────── */
 const inputCls =
-  'w-full px-3 py-2 rounded bg-[#181614] border border-white/10 text-xs focus:border-ember outline-none transition-colors';
-const labelCls = 'block font-mono text-[8px] text-[#888] uppercase mb-1 tracking-[0.08em]';
+  'w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.09] text-xs text-zinc-100 placeholder:text-zinc-500 focus:border-[#f36d45]/60 outline-none transition-colors';
+const labelCls = 'block text-[11px] font-medium text-zinc-400 mb-1.5';
 
 function Field({
   label,
@@ -147,7 +237,7 @@ function CommaSeparatedInput({
               <button
                 type="button"
                 onClick={() => handleRemove(i)}
-                className="text-white/40 hover:text-ember text-xs font-bold leading-none cursor-pointer"
+                className="text-white/40 hover:text-zinc-200 text-xs font-bold leading-none cursor-pointer"
                 title={`Remove ${item}`}
               >
                 ×
@@ -224,8 +314,11 @@ export default function AdminDashboardPage() {
         return tabParam;
       }
     }
-    return 'profile';
+    return 'dashboard';
   });
+  const [sidebarSearch, setSidebarSearch] = useState('');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [automationSubTabKey, setAutomationSubTabKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
@@ -281,12 +374,16 @@ export default function AdminDashboardPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  const handleSelectTab = (nextTab: AdminTab) => {
+  const handleSelectTab = (nextTab: AdminTab, subTab?: string) => {
     setActiveTab(nextTab);
+    setMobileSidebarOpen(false);
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', nextTab);
-      if (nextTab !== 'automation') {
+      if (subTab && nextTab === 'automation') {
+        url.searchParams.set('subTab', subTab);
+        setAutomationSubTabKey((k) => k + 1);
+      } else if (nextTab !== 'automation') {
         url.searchParams.delete('subTab');
       }
       window.history.replaceState({}, '', url.pathname + url.search);
@@ -315,10 +412,10 @@ export default function AdminDashboardPage() {
       const liErr = params.get('linkedinError');
       if (liStatus === 'published') {
         handleSelectTab('automation');
-        showToast('LinkedIn OAuth verified & post published to your profile ✓');
+        showToast('LinkedIn OAuth verified & post published to your profile');
       } else if (liStatus === 'connected') {
         handleSelectTab('automation');
-        showToast('LinkedIn OAuth verified ✓ (60-day member access token saved)');
+        showToast('LinkedIn OAuth verified (60-day member access token saved)');
       } else if (liErr) {
         handleSelectTab('automation');
         showToast(`LinkedIn OAuth: ${liErr}`, 'error');
@@ -441,7 +538,7 @@ export default function AdminDashboardPage() {
         setPortfolio(pData.data);
         setDataSource(pData.source);
       }
-      showToast(`Seeded to Firestore ✓ — ${data.counts?.projects} projects, ${data.counts?.experiences} experiences`);
+      showToast(`Seeded to Firestore — ${data.counts?.projects} projects, ${data.counts?.experiences} experiences`);
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Seed failed', 'error');
     } finally {
@@ -537,8 +634,8 @@ export default function AdminDashboardPage() {
       setCloudinaryConfigured(true);
       showToast(
         folder === 'portfolio/blogs'
-          ? 'Uploaded to Cloudinary (formatted for DEV.to cover compatibility) ✓'
-          : 'Image uploaded to Cloudinary ✓'
+          ? 'Uploaded to Cloudinary (formatted for DEV.to cover compatibility)'
+          : 'Image uploaded to Cloudinary'
       );
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Image upload failed', 'error');
@@ -602,8 +699,8 @@ export default function AdminDashboardPage() {
 
       showToast(
         data.source === 'devto-storage'
-          ? 'Attached to DEV.to & pulled DEV.to cover storage URL into field ✓'
-          : 'Formatted Cloudinary URL for DEV.to cover image storage ✓'
+          ? 'Attached to DEV.to & pulled DEV.to cover storage URL into field'
+          : 'Formatted Cloudinary URL for DEV.to cover image storage'
       );
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Cover sync failed', 'error');
@@ -647,7 +744,7 @@ export default function AdminDashboardPage() {
       } else if (activeBlogEdit) {
         setActiveBlogEdit({ ...activeBlogEdit, coverImage: finalCover });
       }
-      showToast('Generated free AI cover image & uploaded to Cloudinary ✓');
+      showToast('Generated free AI cover image & uploaded to Cloudinary');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'AI cover generation failed', 'error');
     } finally {
@@ -697,9 +794,9 @@ export default function AdminDashboardPage() {
         publishTo: { devto: true },
       });
 
-      const msgs: string[] = ['Article created ✓'];
-      if (data.devto?.success) msgs.push('DEV.to + Cover Synced ✓');
-      if (data.newsletter?.success) msgs.push(`Newsletter (${data.newsletter.sentCount}) ✓`);
+      const msgs: string[] = ['Article created'];
+      if (data.devto?.success) msgs.push('DEV.to + Cover Synced');
+      if (data.newsletter?.success) msgs.push(`Newsletter (${data.newsletter.sentCount})`);
       showToast(msgs.join(' · '));
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Create failed', 'error');
@@ -732,7 +829,7 @@ export default function AdminDashboardPage() {
             : b
         )
       );
-      showToast('Posted to DEV.to & pulled DEV.to cover image ✓');
+      showToast('Posted to DEV.to & pulled DEV.to cover image');
     } catch (err) {
       showToast(err instanceof Error ? err.message : `${platform} cross-post failed`, 'error');
     } finally {
@@ -829,162 +926,384 @@ export default function AdminDashboardPage() {
   };
 
   /* ─────────────────────────────────────────── RENDER ─── */
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+  const formattedDate = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const primaryTiles: Array<{ id: AdminTab; label: string }> = [
+    { id: 'dashboard', label: 'Overview' },
+    { id: 'blogs', label: 'Blogs' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'media', label: 'Media' },
+    { id: 'projects', label: 'Works' },
+    { id: 'profile', label: 'Profile' },
+  ];
+
+  const secondaryItems: Array<{
+    id: string;
+    tab: AdminTab;
+    subTab?: string;
+    label: string;
+    icon: string;
+  }> = [
+    { id: 'smallWorks', tab: 'smallWorks', label: 'Little Things', icon: 'smallWorks' },
+    { id: 'experience', tab: 'experience', label: 'Career Timeline', icon: 'experience' },
+    { id: 'skills', tab: 'skills', label: 'Skills & Toolkit', icon: 'skills' },
+    { id: 'newsletter', tab: 'automation', subTab: 'newsletter', label: 'Newsletter', icon: 'newsletter' },
+    { id: 'logs', tab: 'automation', subTab: 'logs', label: 'Debug Logs', icon: 'logs' },
+  ];
+
+  const q = sidebarSearch.trim().toLowerCase();
+  const visibleTiles = q
+    ? primaryTiles.filter((t) => t.label.toLowerCase().includes(q))
+    : primaryTiles;
+  const visibleSecondary = q
+    ? secondaryItems.filter((s) => s.label.toLowerCase().includes(q))
+    : secondaryItems;
+
   return (
     <>
-      {loading && (
-        <PrismaticLoader isFadingOut={fadingOut} fadeDuration={800} />
-      )}
-      <div className="min-h-screen bg-[#0B0B0B] text-paper font-sans">
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl font-mono text-xs shadow-2xl border transition-all ${
-            toast.type === 'success'
-              ? 'bg-[#182315] border-[#b4d579]/40 text-[#b4d579]'
-              : 'bg-[#291414] border-red-500/40 text-red-300'
-          }`}
-        >
-          {toast.message}
+      {loading && <PrismaticLoader isFadingOut={fadingOut} fadeDuration={800} />}
+      <div className="relative min-h-screen bg-[#09090b] text-zinc-100 font-sans overflow-x-hidden">
+        {/* Fixed Full-Screen GradientWaves Background (Same component as lower portfolio section) */}
+        <div className="fixed inset-0 h-screen w-screen z-0 pointer-events-none opacity-65">
+          <GradientWaves
+            horizonColor="#150d1e"
+            waveColor="#6e2d63"
+            crestColor="#f36d45"
+            backgroundColor="#09090b"
+            speed={0.28}
+            amplitude={2.1}
+            relief={1}
+            lightAngle={120}
+            mouseInteraction={false}
+            swellOnClick={false}
+            lightMode={false}
+            waveScale={0.65}
+            waveRatio={0.9}
+            swell={28}
+            turbulence={16}
+            tilt={64}
+            zoom={1}
+            height={5.5}
+            fogDepth={15}
+            sheen={0.22}
+            brightness={0.95}
+            opacity={0.85}
+            grain={0.14}
+            quality="medium"
+            intro={false}
+          />
         </div>
-      )}
 
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-40 bg-[#0B0B0B]/90 backdrop-blur-md border-b border-white/13 px-8 max-sm:px-4 py-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="grid w-7 h-7 place-items-center rounded bg-ember -rotate-6">
-              <img src="/joseph-logo-light.svg" alt="Logo" className="w-4 h-4 object-contain" />
-            </span>
-            <span className="font-mono text-[9px] font-bold tracking-[0.1em]">ADMIN CONSOLE</span>
-          </Link>
-
-          {/* Source badge */}
-          <span
-            className={`font-mono text-[7px] tracking-[0.1em] px-2.5 py-0.5 rounded-full border ${
-              dataSource === 'firestore'
-                ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                : 'border-amber-500/40 text-amber-400 bg-amber-500/10'
+        {/* Toast */}
+        {toast && (
+          <div
+            className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-2xl text-xs shadow-2xl border backdrop-blur-2xl transition-all ${
+              toast.type === 'success'
+                ? 'bg-zinc-900/90 border-white/[0.1] text-zinc-100'
+                : 'bg-zinc-900/90 border-red-400/35 text-red-200'
             }`}
           >
-            {dataSource === 'firestore' ? '● FIRESTORE CLOUD' : '○ LOCAL JSON'}
-          </span>
-
-          {/* Cloudinary badge */}
-          <span
-            className={`font-mono text-[7px] tracking-[0.1em] px-2.5 py-0.5 rounded-full border ${
-              cloudinaryConfigured
-                ? 'border-sky-500/40 text-sky-400 bg-sky-500/10'
-                : 'border-white/10 text-[#666]'
-            }`}
-          >
-            {cloudinaryConfigured ? '● CLOUDINARY READY' : '○ CLOUDINARY'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Seed button — shown when on local JSON */}
-          {dataSource === 'local' && (
-            <button
-              onClick={handleSeedToCloud}
-              disabled={seeding}
-              className="px-3 py-1.5 rounded-lg border border-emerald-500/40 text-emerald-400 font-mono text-[9px] hover:bg-emerald-500/10 transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
-            >
-              {seeding ? (
-                <><span className="animate-spin inline-block">↺</span> SEEDING…</>
-              ) : (
-                <>↑ SEED TO CLOUD</>
-              )}
-            </button>
-          )}
-
-          <button
-            onClick={handleSavePortfolio}
-            disabled={saving}
-            className="px-4 py-1.5 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold tracking-[0.1em] hover:bg-ember-soft transition-colors cursor-pointer disabled:opacity-50"
-          >
-            {saving ? 'SAVING...' : 'SAVE CHANGES'}
-          </button>
-          <Link
-            href="/"
-            target="_blank"
-            className="text-[#999] hover:text-paper font-mono text-[8px] tracking-[0.1em] transition-colors"
-          >
-            VIEW SITE ↗
-          </Link>
-          {userEmail && (
-            <span className="text-[#888] font-mono text-[7px] tracking-[0.1em] truncate max-w-[160px]">
-              {userEmail}
-            </span>
-          )}
-          <button
-            onClick={handleLogout}
-            className="text-[#666] hover:text-red-400 font-mono text-[8px] tracking-[0.1em] transition-colors cursor-pointer"
-          >
-            SIGN OUT
-          </button>
-        </div>
-      </header>
-
-      {/* ── Main ── */}
-      <div className="max-w-[1400px] mx-auto px-8 max-sm:px-4 py-8">
-        {/* Tab Nav */}
-        <div className="flex flex-wrap gap-2 pb-6 border-b border-white/13 mb-8">
-          {[
-            { id: 'profile', label: '01 / Profile & Contact' },
-            { id: 'projects', label: '02 / Selected Works' },
-            { id: 'smallWorks', label: '03 / Little Things' },
-            { id: 'experience', label: '04 / Career Timeline' },
-            { id: 'skills', label: '05 / Skills & Toolkit' },
-            { id: 'blogs', label: '06 / Blog Engine' },
-            { id: 'media', label: '07 / Media Library' },
-            { id: 'automation', label: '08 / AI Automation & Newsletter' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleSelectTab(tab.id as AdminTab)}
-              className={`px-4 py-2 rounded-lg font-mono text-[9px] tracking-[0.08em] transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? 'bg-white/10 text-paper border border-white/20'
-                  : 'text-[#888] hover:text-paper hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Fallback if portfolio data fails to load */}
-        {!portfolio &&
-          activeTab !== 'blogs' &&
-          activeTab !== 'media' &&
-          activeTab !== 'automation' && (
-          <div className="p-8 rounded-2xl bg-[#111110] border border-white/13 text-center space-y-4 max-w-lg mx-auto my-12">
-            <div className="w-3 h-3 rounded-full bg-ember animate-ping mx-auto" />
-            <h3 className="text-base font-medium text-paper">Portfolio Content Not Loaded</h3>
-            <p className="font-mono text-xs text-[#8e8883]">
-              Unable to load portfolio details. Click below to retry.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold hover:bg-ember-soft transition-colors cursor-pointer"
-            >
-              RELOAD CONSOLE
-            </button>
+            {toast.message}
           </div>
         )}
+
+        {/* Mobile Sidebar Backdrop */}
+        {mobileSidebarOpen && (
+          <div
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
+          />
+        )}
+
+        {/* ── Fixed Full-Screen-Height Left Frosted Sidebar ── */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 h-screen w-[264px] bg-[#101014]/75 backdrop-blur-2xl border-r border-white/[0.08] shadow-[inset_-1px_0_0_rgba(255,255,255,0.04)] p-5 flex flex-col justify-between transition-transform duration-200 ${
+            mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
+        >
+            <div className="space-y-5 overflow-y-auto pr-0.5">
+              {/* Brand Row */}
+              <div className="flex items-center justify-between">
+                <Link href="/" className="flex items-center gap-2.5">
+                  <span className="grid w-8 h-8 place-items-center rounded-lg bg-[#f36d45] -rotate-6 shadow-[0_4px_14px_rgba(243,109,69,0.35)]">
+                    <img
+                      src="/joseph-logo-light.svg"
+                      alt="Joseph Akinwole Logo"
+                      className="w-5 h-5 object-contain"
+                    />
+                  </span>
+                  <span className="text-sm font-semibold tracking-tight text-white">
+                    JOSEPH<span className="text-[#f36d45]">®</span>
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="lg:hidden w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  ×
+                </button>
+                <Link
+                  href="/"
+                  target="_blank"
+                  title="Open Public Portfolio"
+                  className="hidden lg:flex w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] items-center justify-center text-zinc-400 hover:text-white text-xs"
+                >
+                  ↗
+                </Link>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative">
+                <svg
+                  className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+                <input
+                  type="text"
+                  value={sidebarSearch}
+                  onChange={(e) => setSidebarSearch(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.07] text-xs text-zinc-200 placeholder:text-zinc-500 focus:border-white/20 outline-none"
+                />
+              </div>
+
+              {/* 2-Column Primary Tile Grid (6 Cards matching reference) */}
+              <div className="grid grid-cols-2 gap-2.5">
+                {visibleTiles.map((tile) => {
+                  const isActive = activeTab === tile.id;
+                  return (
+                    <button
+                      key={tile.id}
+                      type="button"
+                      onClick={() => handleSelectTab(tile.id)}
+                      className={`p-3.5 rounded-2xl flex flex-col items-center justify-center gap-2 text-center transition-all cursor-pointer border ${
+                        isActive
+                          ? 'bg-white text-[#09090b] border-[#f36d45]/60 shadow-[0_8px_24px_rgba(243,109,69,0.2)] font-semibold'
+                          : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 border-white/[0.06] hover:border-[#f36d45]/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+                      }`}
+                    >
+                      <SidebarIcon name={tile.id} />
+                      <span className="text-[11px] tracking-tight">{tile.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Secondary Clean List Navigation */}
+              <div className="pt-2 space-y-1">
+                {visibleSecondary.map((item) => {
+                  const isActive =
+                    activeTab === item.tab &&
+                    (!item.subTab ||
+                      (typeof window !== 'undefined' &&
+                        new URLSearchParams(window.location.search).get('subTab') === item.subTab));
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectTab(item.tab, item.subTab)}
+                      className={`w-full px-3 py-2.5 rounded-xl flex items-center gap-3 text-left text-xs transition-colors cursor-pointer ${
+                        isActive
+                          ? 'bg-white/[0.09] text-white font-medium border-l-2 border-[#f36d45]'
+                          : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.04]'
+                      }`}
+                    >
+                      <SidebarIcon name={item.icon} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Frosted Status Card */}
+            <div className="mt-4 pt-4 border-t border-white/[0.07]">
+              <div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] space-y-2.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium text-zinc-200">System Status</span>
+                  <span className="text-[10px] text-emerald-400">
+                    {dataSource === 'firestore' ? 'Cloud Live' : 'Local'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-zinc-400">
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        dataSource === 'firestore' ? 'bg-emerald-400' : 'bg-zinc-500'
+                      }`}
+                    />
+                    DB
+                  </span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        cloudinaryConfigured ? 'bg-emerald-400' : 'bg-zinc-500'
+                      }`}
+                    />
+                    Media
+                  </span>
+                  <span>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        platformStatus?.devto.connected ? 'bg-emerald-400' : 'bg-zinc-500'
+                      }`}
+                    />
+                    DEV.to
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  {dataSource === 'local' ? (
+                    <button
+                      type="button"
+                      onClick={handleSeedToCloud}
+                      disabled={seeding}
+                      className="text-[10px] text-zinc-200 hover:underline cursor-pointer"
+                    >
+                      {seeding ? 'Seeding…' : 'Seed to Cloud'}
+                    </button>
+                  ) : (
+                    <span className="text-[10px] text-zinc-500 truncate max-w-[120px]">
+                      {userEmail || 'Admin'}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="text-[10px] text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* ── Right Main Workspace (Offset by fixed 264px sidebar on desktop) ── */}
+          <div className="relative z-10 lg:pl-[264px] min-h-screen flex flex-col min-w-0">
+            <div className="flex-1 m-2 sm:m-5 rounded-[20px] sm:rounded-[24px] bg-[#111114]/65 backdrop-blur-2xl border border-white/[0.08] shadow-[0_24px_80px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.07)] flex flex-col overflow-hidden min-w-0">
+              {/* Top Greeting & Action Bar (Matching Reference Image) */}
+              <header className="px-4 sm:px-8 py-4 sm:py-5 border-b border-white/[0.07] flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="lg:hidden w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-200 cursor-pointer"
+                  aria-label="Open navigation"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M4 7h16M4 12h16M4 17h16" />
+                  </svg>
+                </button>
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-white truncate">
+                    {greeting}, Joseph
+                  </h1>
+                  <p className="text-xs text-zinc-400 mt-0.5">{formattedDate}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSyncDevTo}
+                  disabled={syncingDevTo}
+                  className="px-3.5 py-2 rounded-full bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] text-xs font-medium text-zinc-200 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {syncingDevTo ? 'Syncing…' : 'Sync DEV.to'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSavePortfolio}
+                  disabled={saving}
+                  className="px-4 py-2 rounded-full bg-[#f36d45] text-[#09090b] hover:bg-[#ff855f] text-xs font-semibold shadow-[0_6px_20px_rgba(243,109,69,0.28)] transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {saving ? 'Saving…' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectTab('automation', 'logs')}
+                  className="w-9 h-9 rounded-full bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] flex items-center justify-center text-zinc-300 cursor-pointer"
+                  title="Debug Logs"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                </button>
+                <Link
+                  href="/"
+                  target="_blank"
+                  className="w-9 h-9 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/[0.14] flex items-center justify-center overflow-hidden transition-colors"
+                  title={userEmail || 'Joseph Akinwole'}
+                >
+                  <img
+                    src="/joseph-logo.svg"
+                    alt="Joseph Akinwole"
+                    className="w-5 h-5 object-contain"
+                  />
+                </Link>
+              </div>
+            </header>
+
+            {/* Main Content Body */}
+            <main className="flex-1 p-3.5 sm:p-6 lg:p-8 overflow-y-auto min-w-0">
+              {/* ══════════════════════════════════════
+                  TAB 00 — Overview Analytics Dashboard
+              ══════════════════════════════════════ */}
+              {activeTab === 'dashboard' && (
+                <AdminOverviewDashboard
+                  onNavigateTab={(tab, subTab) => handleSelectTab(tab, subTab)}
+                />
+              )}
+
+              {/* Fallback if portfolio data fails to load */}
+              {!portfolio &&
+                activeTab !== 'dashboard' &&
+                activeTab !== 'blogs' &&
+                activeTab !== 'media' &&
+                activeTab !== 'automation' && (
+                <div className="p-8 rounded-2xl bg-white/[0.03] border border-white/[0.08] text-center space-y-4 max-w-lg mx-auto my-12">
+                  <h3 className="text-base font-medium text-white">Portfolio Content Not Loaded</h3>
+                  <p className="text-xs text-zinc-400">
+                    Unable to load portfolio details. Click below to retry.
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-4 py-2 rounded-full bg-white text-[#09090b] text-xs font-semibold hover:bg-zinc-200 transition-colors cursor-pointer"
+                  >
+                    RELOAD CONSOLE
+                  </button>
+                </div>
+              )}
 
         {/* ══════════════════════════════════════
             TAB 01 — Profile & Contact
         ══════════════════════════════════════ */}
         {activeTab === 'profile' && portfolio && (
-          <div className="space-y-8 max-w-[800px]">
+          <div className="space-y-6 w-full">
 
             {/* Hero Section (Homepage) */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-ember/30 space-y-4 shadow-[0_0_24px_rgba(243,109,69,0.06)]">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
               <div className="flex justify-between items-center mb-1">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-ember inline-block animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-[#f36d45] inline-block" />
                     <h2 className="text-lg font-medium tracking-tight">Hero Section (Homepage Hero)</h2>
                   </div>
                   <p className="font-mono text-[9px] text-[#777] mt-1">
@@ -1140,7 +1459,7 @@ export default function AdminDashboardPage() {
             </section>
 
             {/* Hero Featured Article Card */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <div className="flex justify-between items-center mb-1">
                 <div>
                   <h2 className="text-lg font-medium tracking-tight">Hero Featured Article Card</h2>
@@ -1176,7 +1495,7 @@ export default function AdminDashboardPage() {
                         });
                         showToast(`Selected latest article: "${latest.title.slice(0, 32)}…"`);
                       }}
-                      className="px-3 py-1 rounded bg-ember/15 border border-ember/30 text-ember hover:bg-ember/25 font-mono text-[8.5px] uppercase tracking-wider transition-colors cursor-pointer"
+                      className="px-3 py-1 rounded bg-ember/15 border border-ember/30 text-zinc-200 hover:bg-ember/25 font-mono text-[8.5px] uppercase tracking-wider transition-colors cursor-pointer"
                     >
                       ★ Pick Latest
                     </button>
@@ -1306,7 +1625,7 @@ export default function AdminDashboardPage() {
                         href={portfolio.latestArticle.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-ember hover:underline flex items-center gap-1 font-semibold"
+                        className="text-zinc-200 hover:underline flex items-center gap-1 font-semibold"
                       >
                         VIEW ARTICLE ↗
                       </a>
@@ -1321,7 +1640,7 @@ export default function AdminDashboardPage() {
             </section>
 
             {/* General Identity */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <h2 className="text-lg font-medium tracking-tight mb-4">General Identity</h2>
               <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
                 <Field label="Name">
@@ -1362,7 +1681,7 @@ export default function AdminDashboardPage() {
             </section>
 
             {/* Contact Info */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <h2 className="text-lg font-medium tracking-tight mb-4">Contact Information</h2>
               <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-4">
                 <Field label="Email">
@@ -1389,7 +1708,7 @@ export default function AdminDashboardPage() {
             </section>
 
             {/* Social Profiles */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-medium tracking-tight">Social Profiles</h2>
                 <button
@@ -1405,7 +1724,7 @@ export default function AdminDashboardPage() {
                       },
                     })
                   }
-                  className="font-mono text-[9px] text-ember hover:underline cursor-pointer"
+                  className="font-mono text-[9px] text-zinc-200 hover:underline cursor-pointer"
                 >
                   + ADD PROFILE
                 </button>
@@ -1422,7 +1741,7 @@ export default function AdminDashboardPage() {
                         next[pIdx] = { ...next[pIdx], platform: e.target.value };
                         setPortfolio({ ...portfolio, contact: { ...portfolio.contact, profiles: next } });
                       }}
-                      className="w-32 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-xs focus:border-ember outline-none"
+                      className="w-32 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-xs focus:border-white/25 outline-none"
                     />
                     <input
                       type="text"
@@ -1433,7 +1752,7 @@ export default function AdminDashboardPage() {
                         next[pIdx] = { ...next[pIdx], username: e.target.value };
                         setPortfolio({ ...portfolio, contact: { ...portfolio.contact, profiles: next } });
                       }}
-                      className="w-32 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-xs focus:border-ember outline-none"
+                      className="w-32 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-xs focus:border-white/25 outline-none"
                     />
                     <input
                       type="text"
@@ -1444,7 +1763,7 @@ export default function AdminDashboardPage() {
                         next[pIdx] = { ...next[pIdx], url: e.target.value };
                         setPortfolio({ ...portfolio, contact: { ...portfolio.contact, profiles: next } });
                       }}
-                      className="flex-1 min-w-[180px] px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-xs focus:border-ember outline-none"
+                      className="flex-1 min-w-[180px] px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-xs focus:border-white/25 outline-none"
                     />
                     <button
                       onClick={() => {
@@ -1488,7 +1807,7 @@ export default function AdminDashboardPage() {
                   };
                   setPortfolio({ ...portfolio, projects: [newProj, ...(portfolio.projects || [])] });
                 }}
-                className="px-3 py-1.5 rounded-lg border border-ember/40 text-ember font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-white/[0.12] text-zinc-200 font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
               >
                 + ADD PROJECT
               </button>
@@ -1496,7 +1815,7 @@ export default function AdminDashboardPage() {
 
             <div className="grid grid-cols-2 max-lg:grid-cols-1 gap-6">
               {(portfolio.projects || []).map((proj, idx) => (
-                <div key={idx} className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+                <div key={idx} className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
                   {/* Card header with reorder + delete */}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-1">
@@ -1504,7 +1823,7 @@ export default function AdminDashboardPage() {
                         disabled={idx === 0} className="text-[#888] font-mono text-[10px] hover:text-paper disabled:opacity-30 cursor-pointer px-1">↑</button>
                       <button onClick={() => setPortfolio({ ...portfolio, projects: moveItem(portfolio.projects, idx, 1) })}
                         disabled={idx === portfolio.projects.length - 1} className="text-[#888] font-mono text-[10px] hover:text-paper disabled:opacity-30 cursor-pointer px-1">↓</button>
-                      <span className="font-mono text-[8px] text-ember ml-2">{proj.kind?.toUpperCase()}</span>
+                      <span className="font-mono text-[8px] text-zinc-200 ml-2">{proj.kind?.toUpperCase()}</span>
                     </div>
                     <button
                       onClick={() => {
@@ -1591,7 +1910,7 @@ export default function AdminDashboardPage() {
                   <div>
                     <div className="flex justify-between items-center mb-1">
                       <label className={labelCls}>Media / Cover Image</label>
-                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer flex items-center gap-1">
+                      <label className="font-mono text-[8px] text-zinc-200 hover:text-zinc-200-soft cursor-pointer flex items-center gap-1">
                         <span>{uploadingImage === `proj-${idx}` ? 'UPLOADING...' : '↑ UPLOAD'}</span>
                         <input type="file" accept="image/*" className="hidden"
                           disabled={uploadingImage === `proj-${idx}`}
@@ -1626,13 +1945,13 @@ export default function AdminDashboardPage() {
                   const newWork: AdditionalProject = { name: 'New Experiment', note: 'Micro-library or demo', year: '2026', stack: 'TypeScript', url: '' };
                   setPortfolio({ ...portfolio, smallWorks: [newWork, ...(portfolio.smallWorks || [])] });
                 }}
-                className="px-3 py-1.5 rounded-lg border border-ember/40 text-ember font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-white/[0.12] text-zinc-200 font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
               >
                 + ADD EXPERIMENT
               </button>
             </div>
 
-            <div className="border border-white/13 rounded-2xl overflow-hidden bg-[#111110]">
+            <div className="border border-white/[0.09] rounded-2xl overflow-hidden bg-white/[0.04] backdrop-blur-2xl">
               {(portfolio.smallWorks || []).map((work, idx) => (
                 <div key={idx} className="p-4 border-b border-white/10 flex items-center gap-3 text-xs flex-wrap last:border-b-0">
                   {/* reorder */}
@@ -1649,19 +1968,19 @@ export default function AdminDashboardPage() {
 
                   <input type="text" value={work.name} placeholder="Name"
                     onChange={(e) => setWork(idx, { name: e.target.value })}
-                    className="flex-1 min-w-[100px] px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 font-medium focus:border-ember outline-none" />
+                    className="flex-1 min-w-[100px] px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 font-medium focus:border-white/25 outline-none" />
                   <input type="text" value={work.note} placeholder="Short description"
                     onChange={(e) => setWork(idx, { note: e.target.value })}
-                    className="flex-[2] min-w-[120px] px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-[#aaa] focus:border-ember outline-none" />
+                    className="flex-[2] min-w-[120px] px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-[#aaa] focus:border-white/25 outline-none" />
                   <input type="text" value={work.stack} placeholder="Stack"
                     onChange={(e) => setWork(idx, { stack: e.target.value })}
-                    className="w-40 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 font-mono text-[10px] focus:border-ember outline-none" />
+                    className="w-40 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] focus:border-white/25 outline-none" />
                   <input type="text" value={work.year} placeholder="Year"
                     onChange={(e) => setWork(idx, { year: e.target.value })}
-                    className="w-16 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 font-mono text-[10px] focus:border-ember outline-none" />
+                    className="w-16 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] focus:border-white/25 outline-none" />
                   <input type="text" value={work.url || ''} placeholder="URL (optional)"
                     onChange={(e) => setWork(idx, { url: e.target.value })}
-                    className="w-44 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-[10px] text-ember focus:border-ember outline-none" />
+                    className="w-44 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-[10px] text-zinc-200 focus:border-white/25 outline-none" />
                   <button
                     onClick={() => {
                       setConfirmModal({
@@ -1711,21 +2030,21 @@ export default function AdminDashboardPage() {
                   };
                   setPortfolio({ ...portfolio, experiences: [newExp, ...(portfolio.experiences || [])] });
                 }}
-                className="px-3 py-1.5 rounded-lg border border-ember/40 text-ember font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-white/[0.12] text-zinc-200 font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
               >
                 + ADD POSITION
               </button>
             </div>
 
             {(portfolio.experiences || []).map((exp, idx) => (
-              <div key={idx} className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+              <div key={idx} className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <button onClick={() => setPortfolio({ ...portfolio, experiences: moveItem(portfolio.experiences, idx, -1) })}
                       disabled={idx === 0} className="text-[#888] font-mono text-[10px] hover:text-paper disabled:opacity-30 cursor-pointer">↑</button>
                     <button onClick={() => setPortfolio({ ...portfolio, experiences: moveItem(portfolio.experiences, idx, 1) })}
                       disabled={idx === portfolio.experiences.length - 1} className="text-[#888] font-mono text-[10px] hover:text-paper disabled:opacity-30 cursor-pointer">↓</button>
-                    <span className="font-mono text-[8px] text-ember">
+                    <span className="font-mono text-[8px] text-zinc-200">
                       {String(idx + 1).padStart(2, '0')} / POSITION
                     </span>
                   </div>
@@ -1778,7 +2097,7 @@ export default function AdminDashboardPage() {
                     <label className={labelCls}>Achievements</label>
                     <button
                       onClick={() => setExp(idx, { achievements: [...exp.achievements, ''] })}
-                      className="font-mono text-[8px] text-ember hover:underline cursor-pointer"
+                      className="font-mono text-[8px] text-zinc-200 hover:underline cursor-pointer"
                     >
                       + ADD BULLET
                     </button>
@@ -1795,7 +2114,7 @@ export default function AdminDashboardPage() {
                             next[aIdx] = e.target.value;
                             setExp(idx, { achievements: next });
                           }}
-                          className="flex-1 px-2.5 py-1.5 rounded bg-[#181614] border border-white/10 text-xs focus:border-ember outline-none resize-none"
+                          className="flex-1 px-2.5 py-1.5 rounded bg-white/[0.04] border border-white/10 text-xs focus:border-white/25 outline-none resize-none"
                         />
                         <button
                           onClick={() => {
@@ -1829,7 +2148,7 @@ export default function AdminDashboardPage() {
                     const newGroup: SkillGroup = { title: 'New Category', items: [{ name: 'New Skill', note: 'Context note' }] };
                     setPortfolio({ ...portfolio, skillGroups: [...portfolio.skillGroups, newGroup] });
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-ember/40 text-ember font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-white/[0.12] text-zinc-200 font-mono text-[9px] hover:bg-ember/10 transition-colors cursor-pointer"
                 >
                   + ADD GROUP
                 </button>
@@ -1837,7 +2156,7 @@ export default function AdminDashboardPage() {
 
               <div className="space-y-6">
                 {(portfolio.skillGroups || []).map((group, gIdx) => (
-                  <div key={gIdx} className="p-6 rounded-2xl bg-[#111110] border border-white/13 space-y-4">
+                  <div key={gIdx} className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-2">
                         <button onClick={() => setPortfolio({ ...portfolio, skillGroups: moveItem(portfolio.skillGroups, gIdx, -1) })}
@@ -1848,12 +2167,12 @@ export default function AdminDashboardPage() {
                           type="text"
                           value={group.title}
                           onChange={(e) => setGroup(gIdx, { title: e.target.value })}
-                          className="text-base font-medium px-2 py-1 rounded bg-[#181614] border border-white/10 text-paper focus:border-ember outline-none"
+                          className="text-base font-medium px-2 py-1 rounded bg-white/[0.04] border border-white/10 text-paper focus:border-white/25 outline-none"
                         />
                       </div>
                       <div className="flex items-center gap-3">
                         <button onClick={() => setGroup(gIdx, { items: [...(group.items || []), { name: 'New Skill', note: '' }] })}
-                          className="font-mono text-[8px] text-ember hover:underline cursor-pointer">
+                          className="font-mono text-[8px] text-zinc-200 hover:underline cursor-pointer">
                           + ADD SKILL
                         </button>
                         <button
@@ -1882,7 +2201,7 @@ export default function AdminDashboardPage() {
 
                     <div className="grid grid-cols-2 max-sm:grid-cols-1 gap-3">
                       {(group.items || []).map((item, iIdx) => (
-                        <div key={iIdx} className="p-3 rounded-lg bg-[#181614] border border-white/10 flex items-center gap-2">
+                        <div key={iIdx} className="p-3 rounded-lg bg-white/[0.04] border border-white/10 flex items-center gap-2">
                           <input
                             type="text"
                             value={item.name}
@@ -1890,7 +2209,7 @@ export default function AdminDashboardPage() {
                               const next = group.items.map((it, i) => (i === iIdx ? { ...it, name: e.target.value } : it));
                               setGroup(gIdx, { items: next });
                             }}
-                            className="w-1/2 px-2 py-1 rounded bg-[#201e1b] border border-white/10 text-xs font-medium focus:border-ember outline-none"
+                            className="w-1/2 px-2 py-1 rounded bg-[#201e1b] border border-white/10 text-xs font-medium focus:border-white/25 outline-none"
                           />
                           <input
                             type="text"
@@ -1900,7 +2219,7 @@ export default function AdminDashboardPage() {
                               const next = group.items.map((it, i) => (i === iIdx ? { ...it, note: e.target.value } : it));
                               setGroup(gIdx, { items: next });
                             }}
-                            className="w-1/2 px-2 py-1 rounded bg-[#201e1b] border border-white/10 text-[10px] text-[#aaa] focus:border-ember outline-none"
+                            className="w-1/2 px-2 py-1 rounded bg-[#201e1b] border border-white/10 text-[10px] text-[#aaa] focus:border-white/25 outline-none"
                           />
                           <button
                             onClick={() => setGroup(gIdx, { items: group.items.filter((_, i) => i !== iIdx) })}
@@ -1917,19 +2236,19 @@ export default function AdminDashboardPage() {
             </div>
 
             {/* Soft Skills */}
-            <section className="p-6 rounded-2xl bg-[#111110] border border-white/13">
+            <section className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09]">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-medium tracking-tight">Soft Skills</h2>
                 <button
                   onClick={() => setPortfolio({ ...portfolio, softSkills: [...portfolio.softSkills, 'New Skill'] })}
-                  className="font-mono text-[9px] text-ember hover:underline cursor-pointer"
+                  className="font-mono text-[9px] text-zinc-200 hover:underline cursor-pointer"
                 >
                   + ADD
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(portfolio.softSkills || []).map((skill, sIdx) => (
-                  <div key={sIdx} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#181614] border border-white/10">
+                  <div key={sIdx} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10">
                     <input
                       type="text"
                       value={skill}
@@ -1959,10 +2278,10 @@ export default function AdminDashboardPage() {
           <div className="space-y-6">
             {/* ── ISOLATED CREATE ARTICLE VIEW (Other posts hidden while creating) ── */}
             {isCreatingBlog && (
-              <div className="relative rounded-2xl bg-[#111110] border border-ember/30 p-6 space-y-5">
+              <div className="relative rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-ember/30 p-6 space-y-5">
                 <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-white/10">
                   <div>
-                    <span className="font-mono text-[8px] text-ember uppercase tracking-[0.14em] font-bold">
+                    <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-[0.14em] font-bold">
                       FOCUSED EDITOR MODE · NEW ARTICLE
                     </span>
                     <h3 className="text-lg font-medium text-paper mt-0.5">
@@ -1972,7 +2291,7 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setIsCreatingBlog(false)}
-                    className="px-3.5 py-1.5 rounded-lg border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg border border-white/[0.1] text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
                   >
                     ← BACK TO ARTICLES
                   </button>
@@ -2016,8 +2335,8 @@ export default function AdminDashboardPage() {
                       Cover Image (Cloudinary &amp; DEV.to Cover Storage Ready)
                     </label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer flex items-center gap-1 font-bold">
-                        <span>{uploadingImage === 'newBlog' ? '⏳ UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
+                      <label className="font-mono text-[8px] text-zinc-200 hover:text-zinc-200-soft cursor-pointer flex items-center gap-1 font-bold">
+                        <span>{uploadingImage === 'newBlog' ? 'UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2041,7 +2360,7 @@ export default function AdminDashboardPage() {
                             setMediaPickerCallback(null);
                           })
                         }
-                        className="font-mono text-[8px] text-sky-400 hover:underline cursor-pointer"
+                        className="font-mono text-[8px] text-zinc-200 hover:underline cursor-pointer"
                       >
                         🗂 PICK FROM LIBRARY
                       </button>
@@ -2052,17 +2371,17 @@ export default function AdminDashboardPage() {
                         disabled={generatingCoverAi}
                         className="font-mono text-[8px] text-emerald-400 hover:underline cursor-pointer disabled:opacity-40"
                       >
-                        {generatingCoverAi ? '⏳ GENERATING AI COVER…' : '✨ GENERATE FREE AI COVER'}
+                        {generatingCoverAi ? 'GENERATING AI COVER…' : 'GENERATE FREE AI COVER'}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSyncCoverWithDevTo('new')}
                         disabled={syncingCoverDevTo || !newBlog.coverImage.trim()}
-                        className="px-2 py-0.5 rounded bg-ember/15 border border-ember/40 font-mono text-[8px] text-ember hover:bg-ember/25 cursor-pointer disabled:opacity-40"
+                        className="px-2 py-0.5 rounded bg-ember/15 border border-white/[0.12] font-mono text-[8px] text-zinc-200 hover:bg-ember/25 cursor-pointer disabled:opacity-40"
                         title="Uploads/attaches the Cloudinary image to DEV.to cover image storage and pulls DEV.to's cover URL into this field"
                       >
-                        {syncingCoverDevTo ? '⏳ SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
+                        {syncingCoverDevTo ? 'SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
                       </button>
                     </div>
                   </div>
@@ -2080,7 +2399,7 @@ export default function AdminDashboardPage() {
                       <img
                         src={newBlog.coverImage}
                         alt="Cover preview"
-                        className="w-16 h-10 object-cover rounded-lg border border-white/15 flex-none bg-black"
+                        className="w-16 h-10 object-cover rounded-lg border border-white/[0.1] flex-none bg-black"
                       />
                     )}
                   </div>
@@ -2104,7 +2423,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Sticky Bottom Save & Publish Action Menu */}
-                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-[#111110]/95 backdrop-blur-md border border-ember/40 shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
+                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-white/[0.04] backdrop-blur-2xl/95 backdrop-blur-md border border-white/[0.12] shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
                   <div className="flex flex-wrap items-center gap-5">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2151,7 +2470,7 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={() => setIsCreatingBlog(false)}
-                      className="px-4 py-2 rounded-xl border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                      className="px-4 py-2 rounded-xl border border-white/[0.1] text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
                     >
                       CANCEL
                     </button>
@@ -2159,7 +2478,7 @@ export default function AdminDashboardPage() {
                       type="button"
                       onClick={handleCreateBlog}
                       disabled={saving}
-                      className="px-6 py-2 rounded-xl bg-ember text-ink font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
+                      className="px-6 py-2 rounded-xl bg-white text-[#09090b] font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
                     >
                       {saving ? 'PUBLISHING…' : newBlog.isDraft ? 'SAVE DRAFT' : 'PUBLISH ARTICLE'}
                     </button>
@@ -2170,10 +2489,10 @@ export default function AdminDashboardPage() {
 
             {/* ── ISOLATED EDIT ARTICLE VIEW (Other posts hidden while editing) ── */}
             {!isCreatingBlog && activeBlogEdit && (
-              <div className="relative rounded-2xl bg-[#111110] border border-ember/30 p-6 space-y-5">
+              <div className="relative rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-ember/30 p-6 space-y-5">
                 <div className="flex flex-wrap justify-between items-center gap-3 pb-4 border-b border-white/10">
                   <div>
-                    <span className="font-mono text-[8px] text-ember uppercase tracking-[0.14em] font-bold">
+                    <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-[0.14em] font-bold">
                       FOCUSED EDITOR MODE · EDITING ARTICLE
                     </span>
                     <h3 className="text-lg font-medium text-paper mt-0.5">{activeBlogEdit.title}</h3>
@@ -2181,7 +2500,7 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setActiveBlogEdit(null)}
-                    className="px-3.5 py-1.5 rounded-lg border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-lg border border-white/[0.1] text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
                   >
                     ← BACK TO ARTICLES
                   </button>
@@ -2222,8 +2541,8 @@ export default function AdminDashboardPage() {
                       Cover Image (Cloudinary &amp; DEV.to Cover Storage Ready)
                     </label>
                     <div className="flex flex-wrap items-center gap-3">
-                      <label className="font-mono text-[8px] text-ember hover:text-ember-soft cursor-pointer font-bold">
-                        <span>{uploadingImage === 'editBlog' ? '⏳ UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
+                      <label className="font-mono text-[8px] text-zinc-200 hover:text-zinc-200-soft cursor-pointer font-bold">
+                        <span>{uploadingImage === 'editBlog' ? 'UPLOADING…' : '↑ UPLOAD TO CLOUDINARY'}</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2247,7 +2566,7 @@ export default function AdminDashboardPage() {
                             setMediaPickerCallback(null);
                           })
                         }
-                        className="font-mono text-[8px] text-sky-400 hover:underline cursor-pointer"
+                        className="font-mono text-[8px] text-zinc-200 hover:underline cursor-pointer"
                       >
                         🗂 PICK FROM LIBRARY
                       </button>
@@ -2258,17 +2577,17 @@ export default function AdminDashboardPage() {
                         disabled={generatingCoverAi}
                         className="font-mono text-[8px] text-emerald-400 hover:underline cursor-pointer disabled:opacity-40"
                       >
-                        {generatingCoverAi ? '⏳ GENERATING AI COVER…' : '✨ GENERATE FREE AI COVER'}
+                        {generatingCoverAi ? 'GENERATING AI COVER…' : 'GENERATE FREE AI COVER'}
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleSyncCoverWithDevTo('edit')}
                         disabled={syncingCoverDevTo || !activeBlogEdit.coverImage?.trim()}
-                        className="px-2 py-0.5 rounded bg-ember/15 border border-ember/40 font-mono text-[8px] text-ember hover:bg-ember/25 cursor-pointer disabled:opacity-40"
+                        className="px-2 py-0.5 rounded bg-ember/15 border border-white/[0.12] font-mono text-[8px] text-zinc-200 hover:bg-ember/25 cursor-pointer disabled:opacity-40"
                         title="Attaches this image to DEV.to cover image storage and pulls DEV.to's hosted cover URL into this field"
                       >
-                        {syncingCoverDevTo ? '⏳ SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
+                        {syncingCoverDevTo ? 'SYNCING WITH DEV.TO…' : '⇄ ATTACH & PULL DEV.TO COVER URL'}
                       </button>
                     </div>
                   </div>
@@ -2288,7 +2607,7 @@ export default function AdminDashboardPage() {
                       <img
                         src={activeBlogEdit.coverImage}
                         alt=""
-                        className="w-16 h-10 object-cover rounded-lg border border-white/15 flex-none bg-black"
+                        className="w-16 h-10 object-cover rounded-lg border border-white/[0.1] flex-none bg-black"
                       />
                     )}
                   </div>
@@ -2337,7 +2656,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 {/* Sticky Bottom Save Menu */}
-                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-[#111110]/95 backdrop-blur-md border border-ember/40 shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
+                <div className="sticky bottom-3 z-30 p-4 rounded-2xl bg-white/[0.04] backdrop-blur-2xl/95 backdrop-blur-md border border-white/[0.12] shadow-[0_-12px_36px_rgba(0,0,0,0.85)] flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2361,7 +2680,7 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={() => setActiveBlogEdit(null)}
-                      className="px-4 py-2 rounded-xl border border-white/15 text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
+                      className="px-4 py-2 rounded-xl border border-white/[0.1] text-[#aaa] font-mono text-[9px] hover:text-paper cursor-pointer"
                     >
                       CANCEL
                     </button>
@@ -2369,7 +2688,7 @@ export default function AdminDashboardPage() {
                       type="button"
                       onClick={() => handleSaveBlogArticle(activeBlogEdit)}
                       disabled={saving}
-                      className="px-6 py-2 rounded-xl bg-ember text-ink font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
+                      className="px-6 py-2 rounded-xl bg-white text-[#09090b] font-mono text-[10px] font-bold hover:bg-ember-soft disabled:opacity-50 cursor-pointer shadow-lg"
                     >
                       {saving ? 'SAVING…' : 'SAVE ARTICLE'}
                     </button>
@@ -2433,13 +2752,13 @@ export default function AdminDashboardPage() {
                     </button>
                     <button
                       onClick={() => handleSelectTab('automation')}
-                      className="px-4 py-2 rounded-lg bg-ember/15 border border-ember/40 text-ember font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember/25 transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-lg bg-ember/15 border border-white/[0.12] text-zinc-200 font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember/25 transition-colors cursor-pointer"
                     >
-                      ⚡ AI AUTOMATION
+                      AI AUTOMATION
                     </button>
                     <button
                       onClick={() => setIsCreatingBlog(true)}
-                      className="px-4 py-2 rounded-lg bg-ember text-ink font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember-soft transition-colors cursor-pointer"
+                      className="px-4 py-2 rounded-lg bg-white text-[#09090b] font-mono text-[9px] font-bold tracking-[0.08em] hover:bg-ember-soft transition-colors cursor-pointer"
                     >
                       + NEW ARTICLE
                     </button>
@@ -2451,7 +2770,7 @@ export default function AdminDashboardPage() {
                   {blogs.map((article) => (
                     <div
                       key={article.slug}
-                      className="p-4 sm:p-5 rounded-xl bg-[#111110] border border-white/13 space-y-3 overflow-hidden min-w-0"
+                      className="p-4 sm:p-5 rounded-xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-3 overflow-hidden min-w-0"
                     >
                       <div className="flex max-sm:flex-col items-start sm:items-center justify-between gap-4 min-w-0">
                         <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full sm:flex-1 min-w-0">
@@ -2460,12 +2779,12 @@ export default function AdminDashboardPage() {
                             <img
                               src={article.coverImage}
                               alt=""
-                              className="w-16 h-12 object-cover rounded flex-none bg-[#1a1714]"
+                              className="w-16 h-12 object-cover rounded flex-none bg-white/[0.05]"
                             />
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-mono text-[7px] text-ember px-2 py-0.5 rounded bg-ember/10">
+                              <span className="font-mono text-[7px] text-zinc-200 px-2 py-0.5 rounded bg-ember/10">
                                 {article.tagList[0]?.toUpperCase() || 'ARTICLE'}
                               </span>
                               <span className="font-mono text-[8px] text-[#777]">
@@ -2499,7 +2818,7 @@ export default function AdminDashboardPage() {
                             <button
                               onClick={() => handleCrossPost(article.slug, 'devto')}
                               disabled={crossPosting[`${article.slug}-devto`]}
-                              className="px-3 py-1.5 rounded-lg border border-white/15 text-[#888] font-mono text-[8px] hover:text-paper hover:border-white/30 disabled:opacity-50 transition-colors cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg border border-white/[0.1] text-[#888] font-mono text-[8px] hover:text-paper hover:border-white/30 disabled:opacity-50 transition-colors cursor-pointer"
                             >
                               {crossPosting[`${article.slug}-devto`] ? '...' : '→ DEV.TO'}
                             </button>
@@ -2516,7 +2835,7 @@ export default function AdminDashboardPage() {
                           )}
                           <button
                             onClick={() => setActiveBlogEdit(article)}
-                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/15 text-[#aaa] font-mono text-[8px] hover:text-paper transition-colors cursor-pointer"
+                            className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/[0.1] text-[#aaa] font-mono text-[8px] hover:text-paper transition-colors cursor-pointer"
                           >
                             EDIT
                           </button>
@@ -2555,18 +2874,21 @@ export default function AdminDashboardPage() {
         {/* ══════════════════════════════════════
             TAB 08 — AI Automation, Social & Newsletter
         ══════════════════════════════════════ */}
-        {activeTab === 'automation' && (
-          <AutomationAndNewsletterManager
-            blogs={blogs}
-            onArticleCreated={(newArt) => {
-              setBlogs((prev) => [newArt, ...prev]);
-              syncLatestToPortfolioState(newArt);
-            }}
-            showToast={showToast}
-          />
-        )}
+              {activeTab === 'automation' && (
+                <AutomationAndNewsletterManager
+                  key={automationSubTabKey}
+                  blogs={blogs}
+                  onArticleCreated={(newArt) => {
+                    setBlogs((prev) => [newArt, ...prev]);
+                    syncLatestToPortfolioState(newArt);
+                  }}
+                  showToast={showToast}
+                />
+              )}
+              </main>
+            </div>
+          </div>
       </div>
-    </div>
 
     {/* Global Cloudinary Media Picker Modal (when triggered from Blog Editor) */}
     {mediaPickerCallback && (
@@ -2578,7 +2900,7 @@ export default function AdminDashboardPage() {
           if (e.target === e.currentTarget) setMediaPickerCallback(null);
         }}
       >
-        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-[#0e0d0c] border border-white/15 p-6 shadow-2xl">
+        <div className="w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.1] p-6 shadow-2xl">
           <CloudinaryMediaManager
             showToast={showToast}
             pickerTitle="Select Image from Cloudinary Media Library"

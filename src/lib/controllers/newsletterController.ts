@@ -1,5 +1,11 @@
 import { getFirestoreDb } from '../firebase-admin';
-import { sendEmail, buildBlogNewsletterHtml, buildWelcomeEmailHtml, type EmailConfigOverride } from '../email';
+import {
+  sendEmail,
+  buildBlogNewsletterHtml,
+  buildWelcomeEmailHtml,
+  buildUnsubscribeUrl,
+  type EmailConfigOverride,
+} from '../email';
 import type { BlogArticle } from '../schemas';
 
 export interface Subscriber {
@@ -77,7 +83,7 @@ export async function addSubscriber(
       await sendEmail({
         to: email,
         subject: "Welcome to Joseph Akinwole's Engineering Dispatch",
-        html: buildWelcomeEmailHtml(),
+        html: buildWelcomeEmailHtml(email),
         configOverride: options.emailConfig,
       });
     } catch (err) {
@@ -114,6 +120,31 @@ export async function removeSubscriber(rawEmail: string): Promise<boolean> {
   return true;
 }
 
+export async function unsubscribeSubscriber(rawEmail: string): Promise<boolean> {
+  const email = normalizeEmail(rawEmail);
+  const db = getFirestoreDb();
+  if (db) {
+    const docId = email.replace(/[^a-z0-9@._-]/gi, '_');
+    const docRef = db.collection('subscribers').doc(docId);
+    const snap = await docRef.get();
+    if (snap.exists) {
+      await docRef.set(
+        {
+          ...snap.data(),
+          status: 'unsubscribed',
+          unsubscribedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    }
+  }
+  const mem = memorySubscribers.get(email);
+  if (mem) {
+    memorySubscribers.set(email, { ...mem, status: 'unsubscribed' });
+  }
+  return true;
+}
+
 export async function sendArticleToSubscribers(
   article: BlogArticle,
   emailConfig?: EmailConfigOverride
@@ -130,29 +161,51 @@ export async function sendArticleToSubscribers(
     };
   }
 
-  const html = buildBlogNewsletterHtml({
-    title: article.title,
-    description: article.description,
-    slug: article.slug,
-    coverImage: article.coverImage,
-    readingTimeMinutes: article.readingTimeMinutes,
-    tagList: article.tagList,
-    url: article.url,
-  });
+  let sentCount = 0;
+  let lastProvider = 'none';
+  let lastError: string | undefined;
 
-  const res = await sendEmail({
-    to: activeEmails,
-    subject: `New Article: ${article.title}`,
-    html,
-    text: `${article.title}\n\n${article.description}\n\nRead more: ${process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com'}/blog/${article.slug}`,
-    configOverride: emailConfig,
-  });
+  // Send individually so each subscriber gets their own signed one-click Unsubscribe button
+  for (const recipient of activeEmails) {
+    const html = buildBlogNewsletterHtml(
+      {
+        title: article.title,
+        description: article.description,
+        slug: article.slug,
+        coverImage: article.coverImage,
+        readingTimeMinutes: article.readingTimeMinutes,
+        tagList: article.tagList,
+        url: article.url,
+      },
+      recipient
+    );
+
+    const unsubscribeUrl = buildUnsubscribeUrl(recipient);
+    const res = await sendEmail({
+      to: recipient,
+      subject: `New Article: ${article.title}`,
+      html,
+      text: `${article.title}\n\n${article.description}\n\nRead more: ${
+        process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com'
+      }/blog/${article.slug}\n\nUnsubscribe: ${unsubscribeUrl}`,
+      configOverride: emailConfig,
+    });
+
+    if (res.success) {
+      sentCount++;
+    } else if (res.error) {
+      lastError = res.error;
+    }
+    if (res.provider !== 'none') {
+      lastProvider = res.provider;
+    }
+  }
 
   return {
-    success: res.success,
-    sentCount: res.sentCount,
-    provider: res.provider,
-    error: res.error,
+    success: sentCount > 0,
+    sentCount,
+    provider: lastProvider,
+    error: sentCount === 0 ? lastError : undefined,
   };
 }
 

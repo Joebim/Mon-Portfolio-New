@@ -3,6 +3,7 @@ import { DM_Mono, Manrope } from 'next/font/google';
 import './globals.css';
 import { FluidMagneticCursor } from '../components/FluidMagneticCursor';
 import { SiteNavigation } from '../components/SiteNavigation';
+import { VisitTracker } from '../components/VisitTracker';
 import { portfolio, GITHUB_URL, EMAIL } from '../data';
 
 const dmMono = DM_Mono({
@@ -168,6 +169,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#0b0b0b] text-[#eeeae5] antialiased selection:bg-[#ffb490] selection:text-[#0b0b0b]">
+        <VisitTracker />
         <FluidMagneticCursor />
         <SiteNavigation />
         {children}

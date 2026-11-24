@@ -11,7 +11,7 @@ import {
   buildAutomationSuccessAlertEmailHtml,
 } from './email';
 import { getDevToComments, getArticle } from './devto';
-import { publishPostToLinkedInProfile } from './linkedin';
+import { publishPostToLinkedInProfile, fetchLinkedInPostEngagement } from './linkedin';
 import type { BlogArticle } from './schemas';
 
 export interface PostTypeSchedule {
@@ -1393,11 +1393,16 @@ export async function listTrackedComments(): Promise<TrackedComment[]> {
 export async function syncCommentsAndReactions(): Promise<{
   comments: TrackedComment[];
   syncedArticles: number;
+  syncedLinkedinPosts: number;
+  linkedinSyncNote?: string;
 }> {
   const { articles } = await getAllBlogArticles();
   const db = getFirestoreDb();
   let syncedArticles = 0;
+  let syncedLinkedinPosts = 0;
+  let linkedinSyncNote: string | undefined;
 
+  // 1. Sync DEV.to comments & reactions
   for (const article of articles.slice(0, 10)) {
     if (!article.devtoId) continue;
     try {
@@ -1458,8 +1463,57 @@ export async function syncCommentsAndReactions(): Promise<{
     }
   }
 
+  // 2. Attempt to sync LinkedIn comments & likes for published LinkedIn posts
+  const socialPosts = await listSocialPosts();
+  const publishedLinkedinPosts = socialPosts.filter(
+    (p) => p.linkedinStatus === 'published' && p.linkedinPostUrl
+  );
+
+  for (const post of publishedLinkedinPosts.slice(0, 8)) {
+    try {
+      const engagement = await fetchLinkedInPostEngagement(post.linkedinPostUrl!);
+      if (engagement.restricted && !linkedinSyncNote) {
+        linkedinSyncNote = engagement.message;
+      }
+      if (!engagement.restricted) {
+        syncedLinkedinPosts++;
+        for (const lc of engagement.comments) {
+          const commentId = `linkedin-${lc.id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+          const item: TrackedComment = {
+            id: commentId,
+            platform: 'linkedin',
+            articleSlug: post.articleSlug,
+            articleTitle: post.articleTitle,
+            authorName: lc.authorName,
+            commentText: lc.text,
+            status: 'pending',
+            externalUrl: post.linkedinPostUrl,
+            createdAt: lc.createdAt,
+          };
+          memoryComments.set(commentId, item);
+          if (db) {
+            await db
+              .collection('social_comments')
+              .doc(commentId)
+              .set(JSON.parse(JSON.stringify(item)), { merge: true });
+          }
+        }
+        if (engagement.likesCount > 0) {
+          await updateSocialPost(post.id, {
+            reactions: {
+              ...post.reactions,
+              linkedinLikes: engagement.likesCount,
+            },
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`[automation] LinkedIn engagement sync warning for ${post.id}:`, err);
+    }
+  }
+
   const comments = await listTrackedComments();
-  return { comments, syncedArticles };
+  return { comments, syncedArticles, syncedLinkedinPosts, linkedinSyncNote };
 }
 
 export async function generateTailoredCommentReply(input: {

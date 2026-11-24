@@ -528,3 +528,117 @@ export async function publishPostToLinkedInProfile(input: {
       : 'https://www.linkedin.com/feed/',
   };
 }
+
+export interface LinkedInCommentItem {
+  id: string;
+  actorUrn: string;
+  authorName: string;
+  text: string;
+  createdAt: string;
+}
+
+/**
+ * Attempts to fetch live comments & like count for a published LinkedIn post URN/URL
+ * using the stored 60-day member access token.
+ * Note: LinkedIn's standard "Share on LinkedIn" product grants `w_member_social` (write-only).
+ * Reading comments via `/v2/socialActions/{urn}/comments` requires LinkedIn's Community Management API (`r_member_social`).
+ * If LinkedIn returns 403/401, this gracefully reports `restricted: true` without throwing.
+ */
+export async function fetchLinkedInPostEngagement(postUrnOrUrl: string): Promise<{
+  comments: LinkedInCommentItem[];
+  likesCount: number;
+  restricted?: boolean;
+  message?: string;
+}> {
+  const session = await getLinkedInAuthSession();
+  if (!session || new Date(session.expiresAt).getTime() <= Date.now()) {
+    return {
+      comments: [],
+      likesCount: 0,
+      restricted: true,
+      message: 'LinkedIn OAuth session not connected or expired.',
+    };
+  }
+
+  const urnMatch = postUrnOrUrl.match(/urn:li:(?:share|ugcPost|activity):[A-Za-z0-9_-]+/);
+  const targetUrn = urnMatch ? urnMatch[0] : postUrnOrUrl.trim();
+  if (!targetUrn.startsWith('urn:li:')) {
+    return {
+      comments: [],
+      likesCount: 0,
+      restricted: true,
+      message: 'No valid LinkedIn post URN found on post.',
+    };
+  }
+
+  const encodedUrn = encodeURIComponent(targetUrn);
+  const headers = {
+    Authorization: `Bearer ${session.accessToken}`,
+    'X-Restli-Protocol-Version': '2.0.0',
+  };
+
+  let likesCount = 0;
+  try {
+    const likesRes = await fetch(
+      `https://api.linkedin.com/v2/socialActions/${encodedUrn}/likes?count=1`,
+      { headers }
+    );
+    if (likesRes.ok) {
+      const likesData = await likesRes.json();
+      likesCount = likesData?.paging?.total ?? (Array.isArray(likesData?.elements) ? likesData.elements.length : 0);
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    const commentsRes = await fetch(
+      `https://api.linkedin.com/v2/socialActions/${encodedUrn}/comments?count=20`,
+      { headers }
+    );
+
+    if (commentsRes.status === 401 || commentsRes.status === 403) {
+      return {
+        comments: [],
+        likesCount,
+        restricted: true,
+        message:
+          'LinkedIn API read-comments requires Community Management API (r_member_social). Standard Share on LinkedIn is write-only — paste LinkedIn comments manually in the LinkedIn panel.',
+      };
+    }
+
+    if (!commentsRes.ok) {
+      return {
+        comments: [],
+        likesCount,
+        message: `LinkedIn comments endpoint returned HTTP ${commentsRes.status}.`,
+      };
+    }
+
+    const data = await commentsRes.json();
+    const elements = Array.isArray(data?.elements) ? data.elements : [];
+    const comments: LinkedInCommentItem[] = elements
+      .map((el: any, idx: number) => {
+        const text = el?.message?.text || '';
+        if (!text) return null;
+        const actorUrn = String(el?.actor || '');
+        const createdMs = el?.created?.time;
+        return {
+          id: String(el?.id || el?.$URN || `${targetUrn}-c-${idx}`),
+          actorUrn,
+          authorName: actorUrn ? `LinkedIn Member (${actorUrn.split(':').pop()})` : 'LinkedIn Member',
+          text,
+          createdAt: createdMs ? new Date(createdMs).toISOString() : new Date().toISOString(),
+        };
+      })
+      .filter(Boolean) as LinkedInCommentItem[];
+
+    return { comments, likesCount };
+  } catch (err) {
+    return {
+      comments: [],
+      likesCount,
+      message: err instanceof Error ? err.message : 'Failed to fetch LinkedIn comments.',
+    };
+  }
+}

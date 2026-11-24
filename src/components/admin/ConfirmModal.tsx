@@ -64,7 +64,7 @@ export function ConfirmModal({
       }}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl bg-[#141210] border border-white/15 p-6 shadow-2xl space-y-5"
+        className="relative w-full max-w-md rounded-2xl bg-[#121215]/90 backdrop-blur-2xl border border-white/[0.1] p-6 shadow-2xl space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Icon */}
