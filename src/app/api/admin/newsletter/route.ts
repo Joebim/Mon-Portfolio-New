@@ -58,6 +58,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Article "${slug}" not found` }, { status: 404 });
       }
       const res = await sendArticleToSubscribers(article);
+      if (!res.success) {
+        return NextResponse.json(res, { status: 502 });
+      }
       return NextResponse.json(res);
     }
 

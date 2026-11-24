@@ -56,7 +56,12 @@ export function getEmailProviderStatus(override?: EmailConfigOverride) {
     },
     resend: {
       configured: resendConfigured,
-      fromEmail: override?.fromEmail || process.env.EMAIL_FROM || 'onboarding@resend.dev',
+      fromEmail:
+        override?.fromEmail ||
+        process.env.EMAIL_FROM ||
+        process.env.RESEND_FROM_EMAIL ||
+        process.env.RESEND_FROM ||
+        'onboarding@resend.dev',
     },
   };
 }
@@ -116,11 +121,20 @@ export async function sendEmail(input: SendEmailInput): Promise<EmailSendResult>
 
   if (status.activeProvider === 'resend' || status.resend.configured) {
     const apiKey = input.configOverride?.resendApiKey || process.env.RESEND_API_KEY!;
-    const fromAddr = input.configOverride?.fromEmail || process.env.EMAIL_FROM || `${fromName} <onboarding@resend.dev>`;
+    const fromAddr =
+      input.configOverride?.fromEmail ||
+      process.env.EMAIL_FROM ||
+      process.env.RESEND_FROM_EMAIL ||
+      process.env.RESEND_FROM ||
+      `${fromName} <onboarding@resend.dev>`;
 
     try {
       let sent = 0;
       for (const recipient of recipients) {
+        if (sent > 0) {
+          // Stay safely under Resend's 2 requests/second rate limit
+          await new Promise((r) => setTimeout(r, 550));
+        }
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: {
