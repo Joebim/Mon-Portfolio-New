@@ -702,6 +702,11 @@ export async function generateFreeCoverImage(
   topicOrPrompt: string,
   options: {
     blogTitle?: string;
+    topic?: string;
+    description?: string;
+    tags?: string[];
+    articleContent?: string;
+    platform?: string;
     imageMasterPrompt?: string;
     model?: 'pollinations-flux' | 'pollinations-turbo';
     uploadToCloud?: boolean;
@@ -713,14 +718,23 @@ export async function generateFreeCoverImage(
   promptUsed: string;
 }> {
   const resolvedBlogTitle = (options.blogTitle || topicOrPrompt).trim();
+  const resolvedTopic = (options.topic || topicOrPrompt).trim();
   const upperBlogTitle = resolvedBlogTitle.toUpperCase();
   const masterTemplate = options.imageMasterPrompt || DEFAULT_MASTER_PROMPTS.imageMasterPrompt;
 
-  const basePrompt = masterTemplate.includes('{{TOPIC}}')
-    ? masterTemplate
-        .replace(/\{\{TOPIC\}\}/g, topicOrPrompt)
-        .replace(/\{\{TITLE\}\}/g, resolvedBlogTitle)
-    : `${masterTemplate} Subject: ${topicOrPrompt}`;
+  const hasAnyPlaceholder = /\{\{(TOPIC|TITLE|DESCRIPTION|TAGS|ARTICLE_CONTENT|PLATFORM)\}\}/.test(
+    masterTemplate
+  );
+  const replaced = masterTemplate
+    .replace(/\{\{TOPIC\}\}/g, resolvedTopic)
+    .replace(/\{\{TITLE\}\}/g, resolvedBlogTitle)
+    .replace(/\{\{DESCRIPTION\}\}/g, (options.description || '').trim())
+    .replace(/\{\{TAGS\}\}/g, (options.tags || []).join(', '))
+    .replace(/\{\{ARTICLE_CONTENT\}\}/g, (options.articleContent || '').slice(0, 1200).trim())
+    .replace(/\{\{PLATFORM\}\}/g, options.platform || 'DEV.to & Portfolio Blog')
+    .replace(/\{\{[A-Z0-9_]+\}\}/g, '');
+
+  const basePrompt = hasAnyPlaceholder ? replaced : `${replaced} Subject: ${resolvedTopic}`;
 
   // Concatenated addition in CAPITAL LETTERS to tailor the cover image to the exact blog title context
   const titleContextAddition = ` TAILOR THIS COVER IMAGE SPECIFICALLY TO THE CONTEXT AND CORE ENGINEERING SUBJECT OF THE BLOG TITLE: "${upperBlogTitle}". KEEP THE VISUAL METAPHOR AND TECHNICAL ARCHITECTURE DIRECTLY FOCUSED ON "${upperBlogTitle}".`;
@@ -2071,6 +2085,11 @@ IMAGE_PROMPT: <visual description for a dark-mode 3D/abstract tech cover illustr
       try {
         const imgRes = await generateFreeCoverImage(imagePrompt, {
           blogTitle: title,
+          topic,
+          description,
+          tags,
+          articleContent: bodyMarkdown,
+          platform: 'DEV.to & Portfolio Blog',
           imageMasterPrompt: config.masterPrompts.imageMasterPrompt,
           model: config.imageModel,
           uploadToCloud: true,
