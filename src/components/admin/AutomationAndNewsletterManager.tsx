@@ -44,7 +44,7 @@ const CLIENT_DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
   autoSendNewsletter: true,
-  autoPostLinkedin: true,
+  autoPostLinkedin: false,
   requireSocialReviewAlert: true,
   adminAlertEmail: "akinwolejoseph01@gmail.com",
   devtoTopicsQueue: [

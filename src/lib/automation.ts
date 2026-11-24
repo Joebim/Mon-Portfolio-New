@@ -145,7 +145,7 @@ export const DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
   autoSendNewsletter: true,
-  autoPostLinkedin: true,
+  autoPostLinkedin: false,
   requireSocialReviewAlert: true,
   adminAlertEmail:
     process.env.ADMIN_ALERT_EMAIL || process.env.GMAIL_USER || 'akinwolejoseph01@gmail.com',
@@ -2126,35 +2126,9 @@ IMAGE_PROMPT: <visual description for a dark-mode 3D/abstract tech cover illustr
       });
     }
 
-    // 5. Optionally generate tailored LinkedIn companion post if autoPostLinkedin is checked
-    let socialPost: SocialPostRecord | undefined;
-    if (config.autoPostLinkedin) {
-      const socialStart = Date.now();
-      try {
-        socialPost = await generateSocialPostsForArticle(created.article, config);
-        await logAutomationStep({
-          level: 'success',
-          pipeline: 'blog',
-          step: 'STEP_5_LINKEDIN_COMPANION_OK',
-          message: `Generated LinkedIn companion post (id=${socialPost.id}, safetyPassed=${socialPost.safetyCheck?.passed}, reviewEmailSent=${socialPost.reviewEmailSent})`,
-          durationMs: Date.now() - socialStart,
-          meta: {
-            socialPostId: socialPost.id,
-            safetyCheck: socialPost.safetyCheck,
-            reviewEmailSent: socialPost.reviewEmailSent,
-            reviewEmailSentTo: socialPost.reviewEmailSentTo,
-          },
-        });
-      } catch (err) {
-        await logAutomationStep({
-          level: 'warn',
-          pipeline: 'blog',
-          step: 'STEP_5_LINKEDIN_COMPANION_WARN',
-          message: `LinkedIn companion post generation warning: ${err instanceof Error ? err.message : String(err)}`,
-          durationMs: Date.now() - socialStart,
-        });
-      }
-    }
+    // 5. LinkedIn runs on its own independent pipeline & schedule (runAutomatedLinkedInPipeline),
+    // so RUN BLOG AUTOMATION NOW never cross-posts or leaks partial blog text to LinkedIn.
+    const socialPost: SocialPostRecord | undefined = undefined;
 
     // 6. Newsletter was already dispatched immediately inside createBlogArticle upon publish
     const newsletterResult: AutomationRunResult['newsletterResult'] = created.newsletter;
