@@ -2290,10 +2290,55 @@ export async function runAutomatedLinkedInPipeline(options: {
 // Check if an individual PostTypeSchedule (Blog or LinkedIn) is currently due
 // ---------------------------------------------------------------------------
 
+function getZonedDateParts(date: Date, timeZone = 'Africa/Lagos') {
+  const safeFormat = (tz: string) =>
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
+
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = safeFormat(timeZone || 'Africa/Lagos');
+  } catch {
+    formatter = safeFormat('Africa/Lagos');
+  }
+
+  const parts = formatter.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const part of parts) {
+    if (part.type !== 'literal') {
+      map[part.type] = part.value;
+    }
+  }
+  const weekdayMap: Record<string, number> = {
+    Sun: 0,
+    Mon: 1,
+    Tue: 2,
+    Wed: 3,
+    Thu: 4,
+    Fri: 5,
+    Sat: 6,
+  };
+  return {
+    hour: parseInt(map.hour || '0', 10) % 24,
+    minute: parseInt(map.minute || '0', 10),
+    dayOfWeek: weekdayMap[map.weekday || 'Sun'] ?? date.getDay(),
+    dateKey: `${map.year}-${map.month}-${map.day}`,
+  };
+}
+
 export function isPostTypeScheduleDue(
   schedule: PostTypeSchedule,
   label = 'Schedule',
-  now = new Date()
+  now = new Date(),
+  timezone = 'Africa/Lagos'
 ): { due: boolean; reason: string } {
   if (!schedule?.enabled) {
     return { due: false, reason: `${label} is paused.` };
@@ -2302,8 +2347,9 @@ export function isPostTypeScheduleDue(
   const [targetHour, targetMin] = (schedule.timeOfDay || '09:00')
     .split(':')
     .map((n) => parseInt(n, 10) || 0);
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
+  const zonedNow = getZonedDateParts(now, timezone);
+  const currentHour = zonedNow.hour;
+  const currentMin = zonedNow.minute;
 
   if (schedule.lastRunAt) {
     const last = new Date(schedule.lastRunAt);
@@ -2318,18 +2364,19 @@ export function isPostTypeScheduleDue(
         };
       }
     } else {
-      if (hoursSinceLast < 20 && last.toDateString() === now.toDateString()) {
+      const zonedLast = getZonedDateParts(last, timezone);
+      if (hoursSinceLast < 20 && zonedLast.dateKey === zonedNow.dateKey) {
         return { due: false, reason: `${label}: Already executed today.` };
       }
     }
   }
 
   if (schedule.scheduleMode === 'days_of_week') {
-    const todayDay = now.getDay();
+    const todayDay = zonedNow.dayOfWeek;
     if (!schedule.daysOfWeek.includes(todayDay)) {
       return {
         due: false,
-        reason: `${label}: Today (day ${todayDay}) is not in scheduled days [${schedule.daysOfWeek.join(', ')}].`,
+        reason: `${label}: Today (day ${todayDay} in ${timezone}) is not in scheduled days [${schedule.daysOfWeek.join(', ')}].`,
       };
     }
   }
@@ -2337,13 +2384,21 @@ export function isPostTypeScheduleDue(
   const nowMinutes = currentHour * 60 + currentMin;
   const targetMinutes = targetHour * 60 + targetMin;
   if (nowMinutes < targetMinutes) {
-    return { due: false, reason: `${label}: Waiting for scheduled time ${schedule.timeOfDay}.` };
+    return {
+      due: false,
+      reason: `${label}: Waiting for scheduled time ${schedule.timeOfDay} (${timezone}, currently ${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}).`,
+    };
   }
 
   return { due: true, reason: `${label} condition met.` };
 }
 
 export function isAutomationDue(config: AutomationConfig, now = new Date()): { due: boolean; reason: string } {
-  return isPostTypeScheduleDue(config.blogSchedule, 'Blog Schedule', now);
+  return isPostTypeScheduleDue(
+    config.blogSchedule,
+    'Blog Schedule',
+    now,
+    config.timezone || 'Africa/Lagos'
+  );
 }
 

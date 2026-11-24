@@ -39,8 +39,10 @@ async function handleCronRequest(request: Request) {
     // At the start of a new week (or if either queue is empty), auto-generate this week's queues
     // sized to the exact number of scheduled days for DEV.to Blog and LinkedIn
     const config = await ensureWeeklyQueuesPopulated('both');
-    const blogCheck = isPostTypeScheduleDue(config.blogSchedule, 'Blog Schedule');
-    const linkedinCheck = isPostTypeScheduleDue(config.linkedinSchedule, 'LinkedIn Schedule');
+    const timezone = config.timezone || 'Africa/Lagos';
+    const now = new Date();
+    const blogCheck = isPostTypeScheduleDue(config.blogSchedule, 'Blog Schedule', now, timezone);
+    const linkedinCheck = isPostTypeScheduleDue(config.linkedinSchedule, 'LinkedIn Schedule', now, timezone);
 
     const shouldRunBlog = force === 'true' || force === 'blog' || blogCheck.due;
     const shouldRunLinkedin = force === 'true' || force === 'linkedin' || linkedinCheck.due;
