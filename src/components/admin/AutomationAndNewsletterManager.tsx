@@ -1112,7 +1112,7 @@ export function AutomationAndNewsletterManager({
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={!blogSched.enabled}
+                        aria-checked={Boolean(blogSched.enabled)}
                         onClick={() =>
                           updateSubSchedule(
                             "blogSchedule",
@@ -1125,29 +1125,29 @@ export function AutomationAndNewsletterManager({
                         className="inline-flex items-center gap-2.5 cursor-pointer group"
                         title={
                           blogSched.enabled
-                            ? "Pause is OFF (schedule is active). Click to pause."
-                            : "Pause is ON (schedule is paused). Click to resume."
+                            ? "Schedule is ACTIVE. Click to pause."
+                            : "Schedule is PAUSED. Click to activate."
                         }
                       >
                         <span
                           className={`font-mono text-[9px] font-bold tracking-wider ${
-                            !blogSched.enabled
-                              ? "text-amber-300"
-                              : "text-emerald-400"
+                            blogSched.enabled
+                              ? "text-emerald-400"
+                              : "text-zinc-400"
                           }`}
                         >
-                          {!blogSched.enabled ? "PAUSED" : "ACTIVE"}
+                          {blogSched.enabled ? "ACTIVE" : "PAUSED"}
                         </span>
                         <span
                           className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
-                            !blogSched.enabled
-                              ? "bg-amber-500/80 border-amber-400"
+                            blogSched.enabled
+                              ? "bg-emerald-500/80 border-emerald-400"
                               : "bg-white/10 border-white/20"
                           }`}
                         >
                           <span
                             className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                              !blogSched.enabled
+                              blogSched.enabled
                                 ? "translate-x-4"
                                 : "translate-x-0.5"
                             }`}
@@ -1324,7 +1324,7 @@ export function AutomationAndNewsletterManager({
                       <button
                         type="button"
                         role="switch"
-                        aria-checked={!liSched.enabled}
+                        aria-checked={Boolean(liSched.enabled)}
                         onClick={() =>
                           updateSubSchedule(
                             "linkedinSchedule",
@@ -1337,29 +1337,29 @@ export function AutomationAndNewsletterManager({
                         className="inline-flex items-center gap-2.5 cursor-pointer group"
                         title={
                           liSched.enabled
-                            ? "Pause is OFF (schedule is active). Click to pause."
-                            : "Pause is ON (schedule is paused). Click to resume."
+                            ? "Schedule is ACTIVE. Click to pause."
+                            : "Schedule is PAUSED. Click to activate."
                         }
                       >
                         <span
                           className={`font-mono text-[9px] font-bold tracking-wider ${
-                            !liSched.enabled
-                              ? "text-amber-300"
-                              : "text-emerald-400"
+                            liSched.enabled
+                              ? "text-emerald-400"
+                              : "text-zinc-400"
                           }`}
                         >
-                          {!liSched.enabled ? "PAUSED" : "ACTIVE"}
+                          {liSched.enabled ? "ACTIVE" : "PAUSED"}
                         </span>
                         <span
                           className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
-                            !liSched.enabled
-                              ? "bg-amber-500/80 border-amber-400"
+                            liSched.enabled
+                              ? "bg-emerald-500/80 border-emerald-400"
                               : "bg-white/10 border-white/20"
                           }`}
                         >
                           <span
                             className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                              !liSched.enabled
+                              liSched.enabled
                                 ? "translate-x-4"
                                 : "translate-x-0.5"
                             }`}
