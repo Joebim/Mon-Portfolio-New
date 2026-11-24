@@ -1,71 +1,74 @@
-﻿'use client';
+﻿"use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { notifyAdminDataUpdated, subscribeAdminDataUpdated } from '../../lib/adminRealtime';
-import type { BlogArticle } from '../../lib/schemas';
+import { useState, useEffect, useCallback, useRef } from "react";
+import {
+  notifyAdminDataUpdated,
+  subscribeAdminDataUpdated,
+} from "../../lib/adminRealtime";
+import type { BlogArticle } from "../../lib/schemas";
 import type {
   AutomationConfig,
   AutomationLogEntry,
   PostTypeSchedule,
   SocialPostRecord,
   TrackedComment,
-} from '../../lib/automation';
-import { DEFAULT_MASTER_PROMPTS } from '../../lib/prompts/masterPrompts';
-import type { Subscriber } from '../../lib/controllers/newsletterController';
-import { ConfirmModal } from './ConfirmModal';
+} from "../../lib/automation";
+import { DEFAULT_MASTER_PROMPTS } from "../../lib/prompts/masterPrompts";
+import type { Subscriber } from "../../lib/controllers/newsletterController";
+import { ConfirmModal } from "./ConfirmModal";
 
 const CLIENT_DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
   enabled: false,
-  scheduleMode: 'days_of_week',
+  scheduleMode: "days_of_week",
   daysOfWeek: [1, 4],
   intervalDays: 3,
-  timeOfDay: '09:00',
-  timezone: 'Africa/Lagos',
+  timeOfDay: "09:00",
+  timezone: "Africa/Lagos",
   blogSchedule: {
     enabled: false,
-    scheduleMode: 'days_of_week',
+    scheduleMode: "days_of_week",
     daysOfWeek: [1, 4], // Monday & Thursday
     intervalDays: 3,
-    timeOfDay: '09:00',
+    timeOfDay: "09:00",
   },
   linkedinSchedule: {
     enabled: false,
-    scheduleMode: 'days_of_week',
+    scheduleMode: "days_of_week",
     daysOfWeek: [1, 2, 3, 4, 5], // Monday, Tuesday, Wednesday, Thursday, Friday
     intervalDays: 2,
-    timeOfDay: '11:00',
+    timeOfDay: "11:00",
   },
-  textModel: 'auto',
-  imageModel: 'pollinations-flux',
+  textModel: "auto",
+  imageModel: "pollinations-flux",
   autoPublishBlog: true,
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
   autoSendNewsletter: true,
   autoPostLinkedin: true,
   requireSocialReviewAlert: true,
-  adminAlertEmail: 'akinwolejoseph01@gmail.com',
+  adminAlertEmail: "akinwolejoseph01@gmail.com",
   devtoTopicsQueue: [
-    'Designing Idempotent Payment Flows in React & TypeScript Financial Apps',
-    'Why Most Frontend State Machines Fail at Scale (And How to Fix Them)',
+    "Designing Idempotent Payment Flows in React & TypeScript Financial Apps",
+    "Why Most Frontend State Machines Fail at Scale (And How to Fix Them)",
   ],
   linkedinTopicsQueue: [
-    'Why Idempotency Keys Are a Frontend UX Responsibility in Fintech Systems',
-    'The Hidden Cost of Over-Abstracted State Management in Enterprise React',
-    'How We Cut Perceived Latency by 40% Using Optimistic UI Guardrails',
-    'TypeScript Discriminated Unions vs. Boolean Flags in Financial Workflows',
-    'Engineering Leadership Lesson: Designing Interfaces That Fail Gracefully',
+    "Why Idempotency Keys Are a Frontend UX Responsibility in Fintech Systems",
+    "The Hidden Cost of Over-Abstracted State Management in Enterprise React",
+    "How We Cut Perceived Latency by 40% Using Optimistic UI Guardrails",
+    "TypeScript Discriminated Unions vs. Boolean Flags in Financial Workflows",
+    "Engineering Leadership Lesson: Designing Interfaces That Fail Gracefully",
   ],
   linkedinTopicImages: {},
   topicsQueue: [
-    'Designing Idempotent Payment Flows in React & TypeScript Financial Apps',
-    'Why Most Frontend State Machines Fail at Scale (And How to Fix Them)',
+    "Designing Idempotent Payment Flows in React & TypeScript Financial Apps",
+    "Why Most Frontend State Machines Fail at Scale (And How to Fix Them)",
   ],
   nicheKeywords: [
-    'Frontend Architecture',
-    'Financial Tooling & Fintech UX',
-    'TypeScript Design Patterns',
-    'React 19 & Next.js Performance',
-    'Design Systems & Micro-Interactions',
+    "Frontend Architecture",
+    "Financial Tooling & Fintech UX",
+    "TypeScript Design Patterns",
+    "React 19 & Next.js Performance",
+    "Design Systems & Micro-Interactions",
   ],
   masterPrompts: DEFAULT_MASTER_PROMPTS,
 };
@@ -73,17 +76,17 @@ const CLIENT_DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
 interface AutomationAndNewsletterManagerProps {
   blogs: BlogArticle[];
   onArticleCreated: (article: BlogArticle) => void;
-  showToast: (msg: string, type?: 'success' | 'error') => void;
+  showToast: (msg: string, type?: "success" | "error") => void;
 }
 
 const DAYS = [
-  { id: 0, label: 'SUN' },
-  { id: 1, label: 'MON' },
-  { id: 2, label: 'TUE' },
-  { id: 3, label: 'WED' },
-  { id: 4, label: 'THU' },
-  { id: 5, label: 'FRI' },
-  { id: 6, label: 'SAT' },
+  { id: 0, label: "SUN" },
+  { id: 1, label: "MON" },
+  { id: 2, label: "TUE" },
+  { id: 3, label: "WED" },
+  { id: 4, label: "THU" },
+  { id: 5, label: "FRI" },
+  { id: 6, label: "SAT" },
 ];
 
 export function AutomationAndNewsletterManager({
@@ -91,159 +94,183 @@ export function AutomationAndNewsletterManager({
   onArticleCreated,
   showToast,
 }: AutomationAndNewsletterManagerProps) {
-  const [subTab, setSubTab] = useState<'schedule' | 'prompts' | 'social' | 'newsletter' | 'logs'>(() => {
-    if (typeof window !== 'undefined') {
+  const [subTab, setSubTab] = useState<
+    "schedule" | "prompts" | "social" | "newsletter" | "logs"
+  >(() => {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const st = params.get('subTab');
+      const st = params.get("subTab");
       if (
-        st === 'social' ||
-        st === 'schedule' ||
-        st === 'prompts' ||
-        st === 'newsletter' ||
-        st === 'logs'
+        st === "social" ||
+        st === "schedule" ||
+        st === "prompts" ||
+        st === "newsletter" ||
+        st === "logs"
       ) {
         return st;
       }
-      if (params.get('linkedin') || params.get('linkedinError')) {
-        return 'social';
+      if (params.get("linkedin") || params.get("linkedinError")) {
+        return "social";
       }
     }
-    return 'schedule';
+    return "schedule";
   });
 
   const handleSelectSubTab = (
-    nextSubTab: 'schedule' | 'prompts' | 'social' | 'newsletter' | 'logs'
+    nextSubTab: "schedule" | "prompts" | "social" | "newsletter" | "logs",
   ) => {
     setSubTab(nextSubTab);
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', 'automation');
-      url.searchParams.set('subTab', nextSubTab);
-      window.history.replaceState({}, '', url.pathname + url.search);
+      url.searchParams.set("tab", "automation");
+      url.searchParams.set("subTab", nextSubTab);
+      window.history.replaceState({}, "", url.pathname + url.search);
     }
   };
-  const [config, setConfig] = useState<AutomationConfig>(CLIENT_DEFAULT_AUTOMATION_CONFIG);
+  const [config, setConfig] = useState<AutomationConfig>(
+    CLIENT_DEFAULT_AUTOMATION_CONFIG,
+  );
   const [socialPosts, setSocialPosts] = useState<SocialPostRecord[]>([]);
   const [comments, setComments] = useState<TrackedComment[]>([]);
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [logs, setLogs] = useState<AutomationLogEntry[]>([]);
-  const [logFilterPipeline, setLogFilterPipeline] = useState<string>('all');
+  const [logFilterPipeline, setLogFilterPipeline] = useState<string>("all");
   const [clearingLogs, setClearingLogs] = useState(false);
   const [providers, setProviders] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // Run now state
-  const [customRunTopic, setCustomRunTopic] = useState('');
+  const [customRunTopic, setCustomRunTopic] = useState("");
   const [runningPipeline, setRunningPipeline] = useState(false);
   const [runningLinkedinPipeline, setRunningLinkedinPipeline] = useState(false);
-  const [newDevtoQueueTopic, setNewDevtoQueueTopic] = useState('');
-  const [newLinkedinQueueTopic, setNewLinkedinQueueTopic] = useState('');
-  const [newLinkedinTopicImageUrl, setNewLinkedinTopicImageUrl] = useState('');
-  const [uploadingLinkedinImageKey, setUploadingLinkedinImageKey] = useState<string | null>(null);
-  const [generatingQueuesTarget, setGeneratingQueuesTarget] = useState<
-    'both' | 'devto' | 'linkedin' | null
+  const [newDevtoQueueTopic, setNewDevtoQueueTopic] = useState("");
+  const [newLinkedinQueueTopic, setNewLinkedinQueueTopic] = useState("");
+  const [newLinkedinTopicImageUrl, setNewLinkedinTopicImageUrl] = useState("");
+  const [uploadingLinkedinImageKey, setUploadingLinkedinImageKey] = useState<
+    string | null
   >(null);
-  const [newKeyword, setNewKeyword] = useState('');
+  const [generatingQueuesTarget, setGeneratingQueuesTarget] = useState<
+    "both" | "devto" | "linkedin" | null
+  >(null);
+  const [newKeyword, setNewKeyword] = useState("");
 
   // Social generator state
-  const [selectedSlugForSocial, setSelectedSlugForSocial] = useState('');
+  const [selectedSlugForSocial, setSelectedSlugForSocial] = useState("");
   const [generatingSocial, setGeneratingSocial] = useState(false);
-  const [publishingSocialId, setPublishingSocialId] = useState<string | null>(null);
+  const [publishingSocialId, setPublishingSocialId] = useState<string | null>(
+    null,
+  );
   const [syncingComments, setSyncingComments] = useState(false);
 
   // Separate LinkedIn & DEV.to comment composer state
   const [linkedinCommentInput, setLinkedinCommentInput] = useState({
-    articleTitle: '',
-    authorName: '',
-    commentText: '',
+    articleTitle: "",
+    authorName: "",
+    commentText: "",
   });
   const [devtoCommentInput, setDevtoCommentInput] = useState({
-    articleTitle: '',
-    authorName: '',
-    commentText: '',
+    articleTitle: "",
+    authorName: "",
+    commentText: "",
   });
-  const [linkedinSyncNotice, setLinkedinSyncNotice] = useState<string | null>(null);
-  const [generatingReplyId, setGeneratingReplyId] = useState<string | null>(null);
+  const [linkedinSyncNotice, setLinkedinSyncNotice] = useState<string | null>(
+    null,
+  );
+  const [generatingReplyId, setGeneratingReplyId] = useState<string | null>(
+    null,
+  );
 
   // Newsletter state
-  const [bulkEmailsInput, setBulkEmailsInput] = useState('');
+  const [bulkEmailsInput, setBulkEmailsInput] = useState("");
   const [addingEmails, setAddingEmails] = useState(false);
-  const [selectedSlugForBlast, setSelectedSlugForBlast] = useState('');
+  const [selectedSlugForBlast, setSelectedSlugForBlast] = useState("");
   const [sendingBlast, setSendingBlast] = useState(false);
-  const [subscriberSearch, setSubscriberSearch] = useState('');
-  const [deleteSubscriberEmail, setDeleteSubscriberEmail] = useState<string | null>(null);
+  const [subscriberSearch, setSubscriberSearch] = useState("");
+  const [deleteSubscriberEmail, setDeleteSubscriberEmail] = useState<
+    string | null
+  >(null);
 
   const syncingRef = useRef(false);
   const hasUnsavedConfigRef = useRef(false);
 
-  const loadAll = useCallback(async (silent = false) => {
-    if (syncingRef.current) return;
-    syncingRef.current = true;
-    if (!silent) setLoading(true);
-    try {
-      const [autoRes, newsRes] = await Promise.all([
-        fetch('/api/admin/automation', { cache: 'no-store' }),
-        fetch('/api/admin/newsletter', { cache: 'no-store' }),
-      ]);
-      if (autoRes.ok) {
-        const aData = await autoRes.json();
-        if (aData.config && (!silent || !hasUnsavedConfigRef.current)) {
-          setConfig(aData.config);
+  const loadAll = useCallback(
+    async (silent = false) => {
+      if (syncingRef.current) return;
+      syncingRef.current = true;
+      if (!silent) setLoading(true);
+      try {
+        const [autoRes, newsRes] = await Promise.all([
+          fetch("/api/admin/automation", { cache: "no-store" }),
+          fetch("/api/admin/newsletter", { cache: "no-store" }),
+        ]);
+        if (autoRes.ok) {
+          const aData = await autoRes.json();
+          if (aData.config && (!silent || !hasUnsavedConfigRef.current)) {
+            setConfig(aData.config);
+          }
+          if (Array.isArray(aData.socialPosts))
+            setSocialPosts(aData.socialPosts);
+          if (Array.isArray(aData.comments)) setComments(aData.comments);
+          if (Array.isArray(aData.logs)) setLogs(aData.logs);
+          if (aData.providers) setProviders(aData.providers);
         }
-        if (Array.isArray(aData.socialPosts)) setSocialPosts(aData.socialPosts);
-        if (Array.isArray(aData.comments)) setComments(aData.comments);
-        if (Array.isArray(aData.logs)) setLogs(aData.logs);
-        if (aData.providers) setProviders(aData.providers);
+        if (newsRes.ok) {
+          const nData = await newsRes.json();
+          if (Array.isArray(nData.subscribers))
+            setSubscribers(nData.subscribers);
+        }
+      } catch (err) {
+        if (!silent) {
+          showToast(
+            err instanceof Error
+              ? err.message
+              : "Failed to load automation data",
+            "error",
+          );
+        }
+      } finally {
+        syncingRef.current = false;
+        if (!silent) setLoading(false);
       }
-      if (newsRes.ok) {
-        const nData = await newsRes.json();
-        if (Array.isArray(nData.subscribers)) setSubscribers(nData.subscribers);
-      }
-    } catch (err) {
-      if (!silent) {
-        showToast(err instanceof Error ? err.message : 'Failed to load automation data', 'error');
-      }
-    } finally {
-      syncingRef.current = false;
-      if (!silent) setLoading(false);
-    }
-  }, [showToast]);
+    },
+    [showToast],
+  );
 
   useEffect(() => {
     loadAll(false);
     const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         loadAll(true);
       }
     }, 15000);
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === "visible") {
         loadAll(true);
       }
     };
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
     const unsubscribe = subscribeAdminDataUpdated(() => loadAll(true));
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const st = params.get('subTab');
+      const st = params.get("subTab");
       if (
-        st === 'social' ||
-        st === 'schedule' ||
-        st === 'prompts' ||
-        st === 'newsletter' ||
-        st === 'logs'
+        st === "social" ||
+        st === "schedule" ||
+        st === "prompts" ||
+        st === "newsletter" ||
+        st === "logs"
       ) {
         handleSelectSubTab(st);
-      } else if (params.get('linkedin') || params.get('linkedinError')) {
-        handleSelectSubTab('social');
+      } else if (params.get("linkedin") || params.get("linkedinError")) {
+        handleSelectSubTab("social");
       } else {
         handleSelectSubTab(subTab);
       }
     }
     return () => {
       clearInterval(timer);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
       unsubscribe();
     };
   }, [loadAll]);
@@ -252,8 +279,14 @@ export function AutomationAndNewsletterManager({
     if (blogs.length > 0 && !selectedSlugForSocial) {
       setSelectedSlugForSocial(blogs[0].slug);
       setSelectedSlugForBlast(blogs[0].slug);
-      setLinkedinCommentInput((prev) => ({ ...prev, articleTitle: blogs[0].title }));
-      setDevtoCommentInput((prev) => ({ ...prev, articleTitle: blogs[0].title }));
+      setLinkedinCommentInput((prev) => ({
+        ...prev,
+        articleTitle: blogs[0].title,
+      }));
+      setDevtoCommentInput((prev) => ({
+        ...prev,
+        articleTitle: blogs[0].title,
+      }));
     }
   }, [blogs, selectedSlugForSocial]);
 
@@ -261,19 +294,22 @@ export function AutomationAndNewsletterManager({
     const payload = patch ? { ...config, ...patch } : config;
     setSavingConfig(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Save failed');
+      if (!res.ok) throw new Error(data.error || "Save failed");
       hasUnsavedConfigRef.current = false;
       setConfig(data.config);
-      notifyAdminDataUpdated('automation');
-      showToast('Automation configuration saved');
+      notifyAdminDataUpdated("automation");
+      showToast("Automation configuration saved");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to save config', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Failed to save config",
+        "error",
+      );
     } finally {
       setSavingConfig(false);
     }
@@ -282,17 +318,17 @@ export function AutomationAndNewsletterManager({
   const handleRunAutomationNow = async () => {
     setRunningPipeline(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'run-now',
+          action: "run-now",
           topic: customRunTopic.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (Array.isArray(data.logs)) setLogs(data.logs);
-      if (!res.ok) throw new Error(data.error || 'Automation run failed');
+      if (!res.ok) throw new Error(data.error || "Automation run failed");
 
       if (data.article) {
         onArticleCreated(data.article);
@@ -301,16 +337,22 @@ export function AutomationAndNewsletterManager({
         setSocialPosts((prev) => [data.socialPost, ...prev]);
       }
       if (data.config) setConfig(data.config);
-      setCustomRunTopic('');
-      const parts = [`Generated "${data.article?.title}" via ${data.modelUsed}`];
-      if (data.devtoResult?.success) parts.push('DEV.to + Hero Featured Updated');
-      if (data.newsletterResult?.success) parts.push(`Emailed ${data.newsletterResult.sentCount} subscribers`);
-      showToast(parts.join(' · '));
-      await loadAll(true);
-      notifyAdminDataUpdated('automation');
+      setCustomRunTopic("");
+      const parts = [
+        `Generated "${data.article?.title}" via ${data.modelUsed}`,
+      ];
+      if (data.devtoResult?.success)
+        parts.push("DEV.to + Hero Featured Updated");
+      if (data.newsletterResult?.success)
+        parts.push(`Emailed ${data.newsletterResult.sentCount} subscribers`);
+      showToast(parts.join(" · "));
+      await loadAll();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Automation pipeline failed', 'error');
-      await loadAll(true);
+      showToast(
+        err instanceof Error ? err.message : "Automation pipeline failed",
+        "error",
+      );
+      await loadAll();
     } finally {
       setRunningPipeline(false);
     }
@@ -319,17 +361,17 @@ export function AutomationAndNewsletterManager({
   const handleRunLinkedinAutomationNow = async () => {
     setRunningLinkedinPipeline(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'run-linkedin-now',
+          action: "run-linkedin-now",
           topic: customRunTopic.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (Array.isArray(data.logs)) setLogs(data.logs);
-      if (!res.ok) throw new Error(data.error || 'LinkedIn automation failed');
+      if (!res.ok) throw new Error(data.error || "LinkedIn automation failed");
       if (data.socialPost) {
         setSocialPosts((prev) => [data.socialPost, ...prev]);
       }
@@ -337,13 +379,15 @@ export function AutomationAndNewsletterManager({
       showToast(
         data.socialPost?.reviewEmailSent
           ? `Generated LinkedIn post for "${data.articleTitle}" & emailed review alert`
-          : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`
+          : `Generated LinkedIn post for "${data.articleTitle}" (ready for review)`,
       );
-      await loadAll(true);
-      notifyAdminDataUpdated('automation');
+      await loadAll();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'LinkedIn automation failed', 'error');
-      await loadAll(true);
+      showToast(
+        err instanceof Error ? err.message : "LinkedIn automation failed",
+        "error",
+      );
+      await loadAll();
     } finally {
       setRunningLinkedinPipeline(false);
     }
@@ -351,14 +395,24 @@ export function AutomationAndNewsletterManager({
 
   const getWeeklySlotCount = (sched?: PostTypeSchedule) => {
     if (!sched) return 2;
-    if (sched.scheduleMode === 'interval_days') {
-      return Math.max(1, Math.min(7, Math.ceil(7 / Math.max(1, sched.intervalDays || 3))));
+    if (sched.scheduleMode === "interval_days") {
+      return Math.max(
+        1,
+        Math.min(7, Math.ceil(7 / Math.max(1, sched.intervalDays || 3))),
+      );
     }
     return Math.max(1, Math.min(7, sched.daysOfWeek?.length || 2));
   };
 
-  const getSlotDayLabel = (sched: PostTypeSchedule | undefined, idx: number) => {
-    if (sched?.scheduleMode === 'days_of_week' && Array.isArray(sched.daysOfWeek) && sched.daysOfWeek.length > 0) {
+  const getSlotDayLabel = (
+    sched: PostTypeSchedule | undefined,
+    idx: number,
+  ) => {
+    if (
+      sched?.scheduleMode === "days_of_week" &&
+      Array.isArray(sched.daysOfWeek) &&
+      sched.daysOfWeek.length > 0
+    ) {
       const dayId = sched.daysOfWeek[idx % sched.daysOfWeek.length];
       const dayObj = DAYS.find((d) => d.id === dayId);
       return dayObj ? dayObj.label : `D${idx + 1}`;
@@ -366,55 +420,62 @@ export function AutomationAndNewsletterManager({
     return `DAY #${idx + 1}`;
   };
 
-  const handleGenerateWeeklyQueues = async (target: 'both' | 'devto' | 'linkedin' = 'both') => {
+  const handleGenerateWeeklyQueues = async (
+    target: "both" | "devto" | "linkedin" = "both",
+  ) => {
     setGeneratingQueuesTarget(target);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'generate-weekly-queues',
+          action: "generate-weekly-queues",
           target,
         }),
       });
       const data = await res.json();
       if (Array.isArray(data.logs)) setLogs(data.logs);
-      if (!res.ok) throw new Error(data.error || 'Failed to generate weekly queues');
+      if (!res.ok)
+        throw new Error(data.error || "Failed to generate weekly queues");
       if (data.config) {
         setConfig(data.config);
       }
-      if (target === 'both') {
+      if (target === "both") {
         showToast(
-          `AI generated weekly queues: ${data.devtoCount} DEV.to topic(s) + ${data.linkedinCount} LinkedIn topic(s) for week of ${data.weekKey}`
+          `AI generated weekly queues: ${data.devtoCount} DEV.to topic(s) + ${data.linkedinCount} LinkedIn topic(s) for week of ${data.weekKey}`,
         );
-      } else if (target === 'devto') {
+      } else if (target === "devto") {
         showToast(
-          `AI generated ${data.devtoCount} DEV.to blog topic(s) for this week's schedule`
+          `AI generated ${data.devtoCount} DEV.to blog topic(s) for this week's schedule`,
         );
       } else {
         showToast(
-          `AI generated ${data.linkedinCount} LinkedIn post topic(s) for this week's schedule`
+          `AI generated ${data.linkedinCount} LinkedIn post topic(s) for this week's schedule`,
         );
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Weekly queue generation failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Weekly queue generation failed",
+        "error",
+      );
     } finally {
       setGeneratingQueuesTarget(null);
     }
   };
 
   const updateSubSchedule = (
-    type: 'blogSchedule' | 'linkedinSchedule',
+    type: "blogSchedule" | "linkedinSchedule",
     patch: Partial<PostTypeSchedule>,
-    autoSave = false
+    autoSave = false,
   ) => {
     const currentSub = config[type] || CLIENT_DEFAULT_AUTOMATION_CONFIG[type];
     const nextSub = { ...currentSub, ...patch };
     const nextPatch: Partial<AutomationConfig> = {
       [type]: nextSub,
-      ...(type === 'blogSchedule'
+      ...(type === "blogSchedule"
         ? {
-            enabled: nextSub.enabled || Boolean(config.linkedinSchedule?.enabled),
+            enabled:
+              nextSub.enabled || Boolean(config.linkedinSchedule?.enabled),
             scheduleMode: nextSub.scheduleMode,
             daysOfWeek: nextSub.daysOfWeek,
             intervalDays: nextSub.intervalDays,
@@ -438,26 +499,30 @@ export function AutomationAndNewsletterManager({
     if (!selectedSlugForSocial) return;
     setGeneratingSocial(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'generate-social',
+          action: "generate-social",
           slug: selectedSlugForSocial,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate social posts');
+      if (!res.ok)
+        throw new Error(data.error || "Failed to generate social posts");
       if (data.socialPost) {
         setSocialPosts((prev) => [data.socialPost, ...prev]);
       }
       showToast(
         data.socialPost?.reviewEmailSent
           ? `Generated LinkedIn draft + sent review alert email to ${data.socialPost.reviewEmailSentTo}`
-          : 'Generated official LinkedIn draft (held for your review)'
+          : "Generated official LinkedIn draft (held for your review)",
       );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Social generation failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Social generation failed",
+        "error",
+      );
     } finally {
       setGeneratingSocial(false);
     }
@@ -466,51 +531,61 @@ export function AutomationAndNewsletterManager({
   const handleSendReviewEmail = async (post: SocialPostRecord) => {
     setPublishingSocialId(`${post.id}-email`);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'send-review-email',
+          action: "send-review-email",
           id: post.id,
           recipientEmail: config.adminAlertEmail,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to send review email');
+        throw new Error(data.error || "Failed to send review email");
       }
       setSocialPosts((prev) =>
         prev.map((p) =>
-          p.id === post.id ? { ...p, reviewEmailSent: true, reviewEmailSentTo: data.sentTo } : p
-        )
+          p.id === post.id
+            ? { ...p, reviewEmailSent: true, reviewEmailSentTo: data.sentTo }
+            : p,
+        ),
       );
       showToast(`Sent LinkedIn review email to ${data.sentTo}`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Review email failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Review email failed",
+        "error",
+      );
     } finally {
       setPublishingSocialId(null);
     }
   };
 
-  const handleUploadLinkedinQueueImage = async (file: File, targetTopicOrNew: string) => {
+  const handleUploadLinkedinQueueImage = async (
+    file: File,
+    targetTopicOrNew: string,
+  ) => {
     setUploadingLinkedinImageKey(targetTopicOrNew);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', 'portfolio/linkedin');
+      formData.append("file", file);
+      formData.append("folder", "portfolio/linkedin");
 
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Failed to upload image to Cloudinary');
+        throw new Error(data.error || "Failed to upload image to Cloudinary");
       }
 
-      if (targetTopicOrNew === '__new__') {
+      if (targetTopicOrNew === "__new__") {
         setNewLinkedinTopicImageUrl(data.url);
-        showToast('Uploaded LinkedIn image to Cloudinary (will attach when you add the topic)');
+        showToast(
+          "Uploaded LinkedIn image to Cloudinary (will attach when you add the topic)",
+        );
       } else {
         const nextImages = {
           ...(config.linkedinTopicImages || {}),
@@ -521,10 +596,15 @@ export function AutomationAndNewsletterManager({
           linkedinTopicImages: nextImages,
         }));
         await handleSaveConfig({ linkedinTopicImages: nextImages });
-        showToast('Uploaded authentic image to Cloudinary & attached to LinkedIn queue topic');
+        showToast(
+          "Uploaded authentic image to Cloudinary & attached to LinkedIn queue topic",
+        );
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Cloudinary image upload failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Cloudinary image upload failed",
+        "error",
+      );
     } finally {
       setUploadingLinkedinImageKey(null);
     }
@@ -538,42 +618,50 @@ export function AutomationAndNewsletterManager({
       linkedinTopicImages: nextImages,
     }));
     await handleSaveConfig({ linkedinTopicImages: nextImages });
-    showToast('Removed attached image from LinkedIn topic (will post as text-only)');
+    showToast(
+      "Removed attached image from LinkedIn topic (will post as text-only)",
+    );
   };
 
   const handleUploadSocialPostImage = async (file: File, postId: string) => {
     setUploadingLinkedinImageKey(`post-${postId}`);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', 'portfolio/linkedin');
+      formData.append("file", file);
+      formData.append("folder", "portfolio/linkedin");
 
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Failed to upload image to Cloudinary');
+        throw new Error(data.error || "Failed to upload image to Cloudinary");
       }
 
       await handleUpdateSocialRecord(postId, { linkedinImageUrl: data.url });
-      showToast('Attached authentic Cloudinary image to LinkedIn draft');
+      showToast("Attached authentic Cloudinary image to LinkedIn draft");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Image upload failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Image upload failed",
+        "error",
+      );
     } finally {
       setUploadingLinkedinImageKey(null);
     }
   };
 
-  const handlePublishSocialApi = async (post: SocialPostRecord, platform: 'linkedin') => {
+  const handlePublishSocialApi = async (
+    post: SocialPostRecord,
+    platform: "linkedin",
+  ) => {
     setPublishingSocialId(`${post.id}-${platform}`);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'publish-social',
+          action: "publish-social",
           id: post.id,
           platform,
           text: post.linkedinContent,
@@ -583,104 +671,131 @@ export function AutomationAndNewsletterManager({
         }),
       });
       const data = await res.json();
-      if (data.needsOAuth && platform === 'linkedin') {
-        showToast('Redirecting to LinkedIn OAuth verification to authorize and publish…');
+      if (data.needsOAuth && platform === "linkedin") {
+        showToast(
+          "Redirecting to LinkedIn OAuth verification to authorize and publish…",
+        );
         window.location.href = `/api/auth/linkedin?postId=${encodeURIComponent(post.id)}&autoPublish=true`;
         return;
       }
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Direct API publish unavailable');
+        throw new Error(data.error || "Direct API publish unavailable");
       }
       showToast(`Published directly to ${platform.toUpperCase()}`);
-      await loadAll(true);
-      notifyAdminDataUpdated('automation');
+      await loadAll();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'API publish failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "API publish failed",
+        "error",
+      );
     } finally {
       setPublishingSocialId(null);
     }
   };
 
-  const handleUpdateSocialRecord = async (id: string, patch: Partial<SocialPostRecord>) => {
+  const handleUpdateSocialRecord = async (
+    id: string,
+    patch: Partial<SocialPostRecord>,
+  ) => {
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'update-social',
+          action: "update-social",
           id,
           patch,
         }),
       });
       if (res.ok) {
-        setSocialPosts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-        notifyAdminDataUpdated('automation');
-        showToast('Saved social post edits');
+        setSocialPosts((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+        );
+        showToast("Saved social post edits");
       }
     } catch {
-      showToast('Failed to update social post', 'error');
+      showToast("Failed to update social post", "error");
     }
   };
 
   const handleSyncComments = async () => {
     setSyncingComments(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sync-comments' }),
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "sync-comments" }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Comment sync failed');
+      if (!res.ok) throw new Error(data.error || "Comment sync failed");
       if (Array.isArray(data.comments)) setComments(data.comments);
       setLinkedinSyncNotice(data.linkedinSyncNote || null);
       showToast(
         `Synced ${data.syncedArticles || 0} DEV.to article(s)${
-          data.syncedLinkedinPosts ? ` & ${data.syncedLinkedinPosts} LinkedIn post(s)` : ''
-        }`
+          data.syncedLinkedinPosts
+            ? ` & ${data.syncedLinkedinPosts} LinkedIn post(s)`
+            : ""
+        }`,
       );
-      await loadAll(true);
-      notifyAdminDataUpdated('automation');
+      await loadAll();
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Comment sync failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Comment sync failed",
+        "error",
+      );
     } finally {
       setSyncingComments(false);
     }
   };
 
-  const handleAddAndReplyComment = async (platform: 'linkedin' | 'devto') => {
-    const inputState = platform === 'linkedin' ? linkedinCommentInput : devtoCommentInput;
+  const handleAddAndReplyComment = async (platform: "linkedin" | "devto") => {
+    const inputState =
+      platform === "linkedin" ? linkedinCommentInput : devtoCommentInput;
     if (!inputState.commentText.trim()) {
-      showToast(`Paste or enter a ${platform.toUpperCase()} comment first`, 'error');
+      showToast(
+        `Paste or enter a ${platform.toUpperCase()} comment first`,
+        "error",
+      );
       return;
     }
     setGeneratingReplyId(`new-${platform}`);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'add-comment',
+          action: "add-comment",
           platform,
-          articleSlug: selectedSlugForSocial || 'general',
-          articleTitle: inputState.articleTitle || 'Engineering Article',
-          authorName: inputState.authorName || 'Commenter',
+          articleSlug: selectedSlugForSocial || "general",
+          articleTitle: inputState.articleTitle || "Engineering Article",
+          authorName: inputState.authorName || "Commenter",
           commentText: inputState.commentText.trim(),
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Reply generation failed');
+      if (!res.ok) throw new Error(data.error || "Reply generation failed");
       if (data.comment) {
         setComments((prev) => [data.comment, ...prev]);
       }
-      if (platform === 'linkedin') {
-        setLinkedinCommentInput((prev) => ({ ...prev, authorName: '', commentText: '' }));
+      if (platform === "linkedin") {
+        setLinkedinCommentInput((prev) => ({
+          ...prev,
+          authorName: "",
+          commentText: "",
+        }));
       } else {
-        setDevtoCommentInput((prev) => ({ ...prev, authorName: '', commentText: '' }));
+        setDevtoCommentInput((prev) => ({
+          ...prev,
+          authorName: "",
+          commentText: "",
+        }));
       }
       showToast(`Generated tailored ${platform.toUpperCase()} reply`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Reply generation failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Reply generation failed",
+        "error",
+      );
     } finally {
       setGeneratingReplyId(null);
     }
@@ -689,11 +804,11 @@ export function AutomationAndNewsletterManager({
   const handleRegenerateReply = async (c: TrackedComment) => {
     setGeneratingReplyId(c.id);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'reply-comment',
+          action: "reply-comment",
           commentId: c.id,
           platform: c.platform,
           articleTitle: c.articleTitle,
@@ -702,15 +817,20 @@ export function AutomationAndNewsletterManager({
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate reply');
+      if (!res.ok) throw new Error(data.error || "Failed to generate reply");
       setComments((prev) =>
         prev.map((item) =>
-          item.id === c.id ? { ...item, aiSuggestedReply: data.reply, status: 'replied' } : item
-        )
+          item.id === c.id
+            ? { ...item, aiSuggestedReply: data.reply, status: "replied" }
+            : item,
+        ),
       );
       showToast(`Crafted ${c.platform.toUpperCase()} reply`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to generate reply', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Failed to generate reply",
+        "error",
+      );
     } finally {
       setGeneratingReplyId(null);
     }
@@ -720,20 +840,25 @@ export function AutomationAndNewsletterManager({
     if (!bulkEmailsInput.trim()) return;
     setAddingEmails(true);
     try {
-      const res = await fetch('/api/admin/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: bulkEmailsInput,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add emails');
+      if (!res.ok) throw new Error(data.error || "Failed to add emails");
       if (Array.isArray(data.subscribers)) setSubscribers(data.subscribers);
-      setBulkEmailsInput('');
-      showToast(`Added ${data.added} subscriber email(s) (Total: ${data.total})`);
+      setBulkEmailsInput("");
+      showToast(
+        `Added ${data.added} subscriber email(s) (Total: ${data.total})`,
+      );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to add subscribers', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Failed to add subscribers",
+        "error",
+      );
     } finally {
       setAddingEmails(false);
     }
@@ -743,21 +868,26 @@ export function AutomationAndNewsletterManager({
     if (!selectedSlugForBlast) return;
     setSendingBlast(true);
     try {
-      const res = await fetch('/api/admin/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: 'send-article',
+          action: "send-article",
           slug: selectedSlugForBlast,
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Newsletter send failed');
+        throw new Error(data.error || "Newsletter send failed");
       }
-      showToast(`Sent article to ${data.sentCount} subscriber(s) via ${data.provider.toUpperCase()}`);
+      showToast(
+        `Sent article to ${data.sentCount} subscriber(s) via ${data.provider.toUpperCase()}`,
+      );
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Newsletter send failed', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Newsletter send failed",
+        "error",
+      );
     } finally {
       setSendingBlast(false);
     }
@@ -768,43 +898,49 @@ export function AutomationAndNewsletterManager({
     const email = deleteSubscriberEmail;
     setDeleteSubscriberEmail(null);
     try {
-      const res = await fetch(`/api/admin/newsletter?email=${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-      });
+      const res = await fetch(
+        `/api/admin/newsletter?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        },
+      );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to remove subscriber');
+      if (!res.ok) throw new Error(data.error || "Failed to remove subscriber");
       if (Array.isArray(data.subscribers)) setSubscribers(data.subscribers);
       showToast(`Removed ${email} from newsletter list`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Remove failed', 'error');
+      showToast(err instanceof Error ? err.message : "Remove failed", "error");
     }
   };
 
   const handleClearLogs = async () => {
     setClearingLogs(true);
     try {
-      const res = await fetch('/api/admin/automation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'clear-logs' }),
+      const res = await fetch("/api/admin/automation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear-logs" }),
       });
       if (res.ok) {
         setLogs([]);
-        showToast('Cleared automation debug logs');
+        showToast("Cleared automation debug logs");
       }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to clear logs', 'error');
+      showToast(
+        err instanceof Error ? err.message : "Failed to clear logs",
+        "error",
+      );
     } finally {
       setClearingLogs(false);
     }
   };
 
   const filteredSubscribers = subscribers.filter((s) =>
-    s.email.toLowerCase().includes(subscriberSearch.trim().toLowerCase())
+    s.email.toLowerCase().includes(subscriberSearch.trim().toLowerCase()),
   );
 
   const filteredLogs = logs.filter((l) =>
-    logFilterPipeline === 'all' ? true : l.pipeline === logFilterPipeline
+    logFilterPipeline === "all" ? true : l.pipeline === logFilterPipeline,
   );
 
   return (
@@ -816,17 +952,21 @@ export function AutomationAndNewsletterManager({
             AI Blog Automation, LinkedIn Studio &amp; Newsletter
           </h2>
           <p className="text-xs text-[#8e8883] font-mono mt-1">
-            Schedule automated articles · Free AI models &amp; Flux images · Tailored LinkedIn master prompts · Newsletter subscribers.
+            Schedule automated articles · Free AI models &amp; Flux images ·
+            Tailored LinkedIn master prompts · Newsletter subscribers.
           </p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           {[
-            { id: 'schedule', label: 'AUTOMATION & SCHEDULE' },
-            { id: 'prompts', label: 'MASTER PROMPTS (LINKEDIN / BLOG)' },
-            { id: 'social', label: `LINKEDIN & COMMENTS (${socialPosts.length})` },
-            { id: 'newsletter', label: `NEWSLETTER (${subscribers.length})` },
-            { id: 'logs', label: `DEBUG LOGS (${logs.length})` },
+            { id: "schedule", label: "AUTOMATION & SCHEDULE" },
+            { id: "prompts", label: "MASTER PROMPTS (LINKEDIN / BLOG)" },
+            {
+              id: "social",
+              label: `LINKEDIN & COMMENTS (${socialPosts.length})`,
+            },
+            { id: "newsletter", label: `NEWSLETTER (${subscribers.length})` },
+            { id: "logs", label: `DEBUG LOGS (${logs.length})` },
           ].map((t) => (
             <button
               key={t.id}
@@ -834,8 +974,8 @@ export function AutomationAndNewsletterManager({
               onClick={() => handleSelectSubTab(t.id as any)}
               className={`px-3.5 py-2 rounded-xl font-mono text-[9px] tracking-[0.08em] transition-all cursor-pointer ${
                 subTab === t.id
-                  ? 'bg-white text-[#09090b] font-bold shadow'
-                  : 'bg-white/[0.04] text-[#999] border border-white/10 hover:text-paper'
+                  ? "bg-white text-[#09090b] font-bold shadow"
+                  : "bg-white/[0.04] text-[#999] border border-white/10 hover:text-paper"
               }`}
             >
               {t.label}
@@ -847,7 +987,7 @@ export function AutomationAndNewsletterManager({
       {/* ════════════════════════════════════════════════════════════════
           SUB-TAB 1: AUTOMATION PIPELINE & SCHEDULE
       ════════════════════════════════════════════════════════════════ */}
-      {subTab === 'schedule' && (
+      {subTab === "schedule" && (
         <div className="space-y-6">
           {/* Instant Trigger Card */}
           <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] shadow-xl space-y-4">
@@ -857,7 +997,8 @@ export function AutomationAndNewsletterManager({
                   ONE-CLICK END-TO-END PIPELINE
                 </span>
                 <h3 className="text-base font-medium text-paper mt-1">
-                  Generate Blog + Free AI Cover Image + DEV.to + LinkedIn Post + Newsletter
+                  Generate Blog + Free AI Cover Image + DEV.to + LinkedIn Post +
+                  Newsletter
                 </h3>
               </div>
               {config.lastRunAt && (
@@ -881,7 +1022,9 @@ export function AutomationAndNewsletterManager({
                 disabled={runningPipeline}
                 className="px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
               >
-                {runningPipeline ? 'RUNNING BLOG PIPELINE…' : 'RUN BLOG AUTOMATION NOW'}
+                {runningPipeline
+                  ? "RUNNING BLOG PIPELINE…"
+                  : "RUN BLOG AUTOMATION NOW"}
               </button>
               <button
                 type="button"
@@ -889,24 +1032,33 @@ export function AutomationAndNewsletterManager({
                 disabled={runningLinkedinPipeline}
                 className="px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[10px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-lg"
               >
-                {runningLinkedinPipeline ? 'RUNNING LINKEDIN…' : 'in RUN LINKEDIN AUTOMATION NOW'}
+                {runningLinkedinPipeline
+                  ? "RUNNING LINKEDIN…"
+                  : "in RUN LINKEDIN AUTOMATION NOW"}
               </button>
             </div>
 
             {/* Free Models Status Pills */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
-                ● AI-ENGINE LOOP: {providers?.geminiConfigured ? 'GEMINI 2.0 FLASH' : 'GEMINI (NO KEY)'} →{' '}
+                ● AI-ENGINE LOOP:{" "}
+                {providers?.geminiConfigured
+                  ? "GEMINI 2.0 FLASH"
+                  : "GEMINI (NO KEY)"}{" "}
+                →{" "}
                 {providers?.cloudflareWorkersAiConfigured
-                  ? 'CLOUDFLARE WORKERS AI'
-                  : 'WORKERS AI (ADD KEY)'}{' '}
+                  ? "CLOUDFLARE WORKERS AI"
+                  : "WORKERS AI (ADD KEY)"}{" "}
                 → POLLINATIONS FREE
               </span>
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-sky-500/40 text-zinc-200 bg-sky-500/10">
-                ● FREE IMAGE AI: POLLINATIONS FLUX 1200×630 → CLOUDINARY → DEV.TO
+                ● FREE IMAGE AI: POLLINATIONS FLUX 1200×630 → CLOUDINARY →
+                DEV.TO
               </span>
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-500/10">
-                ● EMAIL: {providers?.email?.activeProvider?.toUpperCase() || 'CONFIGURE GMAIL/RESEND'}
+                ● EMAIL:{" "}
+                {providers?.email?.activeProvider?.toUpperCase() ||
+                  "CONFIGURE GMAIL/RESEND"}
               </span>
             </div>
           </div>
@@ -920,15 +1072,15 @@ export function AutomationAndNewsletterManager({
                     Individual Post-Type Schedules
                   </h3>
                   <p className="font-mono text-[9px] text-[#777] mt-0.5">
-                    Set the exact days (Mon, Tue, Wed, Thu, Fri, etc.) and time individually for Blog Posts vs. LinkedIn Posts.
+                    Set the exact days (Mon, Tue, Wed, Thu, Fri, etc.) and time
+                    individually for Blog Posts vs. LinkedIn Posts.
                   </p>
                 </div>
                 <select
                   value={config.timezone}
-                  onChange={(e) => {
-                    hasUnsavedConfigRef.current = true;
-                    setConfig({ ...config, timezone: e.target.value });
-                  }}
+                  onChange={(e) =>
+                    setConfig({ ...config, timezone: e.target.value })
+                  }
                   className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-[10px] text-paper font-mono focus:border-white/25 outline-none"
                 >
                   <option value="Africa/Lagos">Africa/Lagos (WAT)</option>
@@ -938,38 +1090,11 @@ export function AutomationAndNewsletterManager({
                 </select>
               </div>
 
-              {/* Cron Heartbeat Status */}
-              {(() => {
-                const lastCronPing = logs.find((l) => l.pipeline === 'cron' && l.step === 'CRON_SCHEDULE_CHECK');
-                return (
-                  <div
-                    className={`px-3.5 py-2.5 rounded-xl border text-[10px] font-mono flex flex-wrap items-center justify-between gap-2 ${
-                      lastCronPing
-                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-                    }`}
-                  >
-                    {lastCronPing ? (
-                      <span>
-                        ● Cron Heartbeat active · Last ping:{' '}
-                        {new Date(lastCronPing.timestamp).toLocaleString('en-GB', {
-                          timeZone: config.timezone || 'Africa/Lagos',
-                        })}{' '}
-                        ({config.timezone || 'Africa/Lagos'})
-                      </span>
-                    ) : (
-                      <span>
-                        ⚠ No cron pings recorded yet — set an external scheduler (e.g. cron-job.org) to GET{' '}
-                        <code className="text-white">/api/cron/blog-automation</code> every 5–15 min.
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-
               {/* ── 1. BLOG POST SCHEDULE CARD ── */}
               {(() => {
-                const blogSched = config.blogSchedule || CLIENT_DEFAULT_AUTOMATION_CONFIG.blogSchedule;
+                const blogSched =
+                  config.blogSchedule ||
+                  CLIENT_DEFAULT_AUTOMATION_CONFIG.blogSchedule;
                 return (
                   <div className="p-4 rounded-xl bg-[#161513] border border-ember/30 space-y-3.5">
                     <div className="flex items-center justify-between">
@@ -979,25 +1104,55 @@ export function AutomationAndNewsletterManager({
                         </span>
                         {blogSched.lastRunAt && (
                           <p className="font-mono text-[8px] text-[#777] mt-0.5">
-                            Last run: {new Date(blogSched.lastRunAt).toLocaleString()}
+                            Last run:{" "}
+                            {new Date(blogSched.lastRunAt).toLocaleString()}
                           </p>
                         )}
                       </div>
                       <button
                         type="button"
-                        onClick={() => updateSubSchedule('blogSchedule', { enabled: !blogSched.enabled }, true)}
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-[9px] font-bold transition-all cursor-pointer ${
+                        role="switch"
+                        aria-checked={!blogSched.enabled}
+                        onClick={() =>
+                          updateSubSchedule(
+                            "blogSchedule",
+                            {
+                              enabled: !blogSched.enabled,
+                            },
+                            true
+                          )
+                        }
+                        className="inline-flex items-center gap-2.5 cursor-pointer group"
+                        title={
                           blogSched.enabled
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
-                        }`}
+                            ? "Pause is OFF (schedule is active). Click to pause."
+                            : "Pause is ON (schedule is paused). Click to resume."
+                        }
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            blogSched.enabled ? 'bg-emerald-400' : 'bg-amber-400'
+                          className={`font-mono text-[9px] font-bold tracking-wider ${
+                            !blogSched.enabled
+                              ? "text-amber-300"
+                              : "text-emerald-400"
                           }`}
-                        />
-                        {blogSched.enabled ? 'ACTIVE' : 'PAUSED (CLICK TO ENABLE)'}
+                        >
+                          {!blogSched.enabled ? "PAUSED" : "ACTIVE"}
+                        </span>
+                        <span
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+                            !blogSched.enabled
+                              ? "bg-amber-500/80 border-amber-400"
+                              : "bg-white/10 border-white/20"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              !blogSched.enabled
+                                ? "translate-x-4"
+                                : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
                       </button>
                     </div>
 
@@ -1010,14 +1165,20 @@ export function AutomationAndNewsletterManager({
                         <select
                           value={blogSched.scheduleMode}
                           onChange={(e) =>
-                            updateSubSchedule('blogSchedule', {
-                              scheduleMode: e.target.value as 'days_of_week' | 'interval_days',
+                            updateSubSchedule("blogSchedule", {
+                              scheduleMode: e.target.value as
+                                | "days_of_week"
+                                | "interval_days",
                             })
                           }
                           className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         >
-                          <option value="days_of_week">Specific Days of Week (Mon–Sun)</option>
-                          <option value="interval_days">Every N Days (Interval)</option>
+                          <option value="days_of_week">
+                            Specific Days of Week (Mon–Sun)
+                          </option>
+                          <option value="interval_days">
+                            Every N Days (Interval)
+                          </option>
                         </select>
                       </div>
                       <div>
@@ -1027,13 +1188,17 @@ export function AutomationAndNewsletterManager({
                         <input
                           type="time"
                           value={blogSched.timeOfDay}
-                          onChange={(e) => updateSubSchedule('blogSchedule', { timeOfDay: e.target.value })}
+                          onChange={(e) =>
+                            updateSubSchedule("blogSchedule", {
+                              timeOfDay: e.target.value,
+                            })
+                          }
                           className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                       </div>
                     </div>
 
-                    {blogSched.scheduleMode === 'days_of_week' ? (
+                    {blogSched.scheduleMode === "days_of_week" ? (
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-1">
                           <span className="font-mono text-[8px] text-[#888] uppercase">
@@ -1042,21 +1207,33 @@ export function AutomationAndNewsletterManager({
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() => updateSubSchedule('blogSchedule', { daysOfWeek: [1, 2, 3, 4, 5] })}
+                              onClick={() =>
+                                updateSubSchedule("blogSchedule", {
+                                  daysOfWeek: [1, 2, 3, 4, 5],
+                                })
+                              }
                               className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono text-[7px] text-[#bbb] cursor-pointer"
                             >
                               MON–FRI
                             </button>
                             <button
                               type="button"
-                              onClick={() => updateSubSchedule('blogSchedule', { daysOfWeek: [1, 3, 5] })}
+                              onClick={() =>
+                                updateSubSchedule("blogSchedule", {
+                                  daysOfWeek: [1, 3, 5],
+                                })
+                              }
                               className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono text-[7px] text-[#bbb] cursor-pointer"
                             >
                               MON/WED/FRI
                             </button>
                             <button
                               type="button"
-                              onClick={() => updateSubSchedule('blogSchedule', { daysOfWeek: [1, 4] })}
+                              onClick={() =>
+                                updateSubSchedule("blogSchedule", {
+                                  daysOfWeek: [1, 4],
+                                })
+                              }
                               className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono text-[7px] text-[#bbb] cursor-pointer"
                             >
                               MON &amp; THU
@@ -1072,14 +1249,18 @@ export function AutomationAndNewsletterManager({
                                 type="button"
                                 onClick={() => {
                                   const next = active
-                                    ? blogSched.daysOfWeek.filter((x) => x !== d.id)
+                                    ? blogSched.daysOfWeek.filter(
+                                        (x) => x !== d.id,
+                                      )
                                     : [...blogSched.daysOfWeek, d.id].sort();
-                                  updateSubSchedule('blogSchedule', { daysOfWeek: next });
+                                  updateSubSchedule("blogSchedule", {
+                                    daysOfWeek: next,
+                                  });
                                 }}
                                 className={`px-2.5 py-1.5 rounded-lg font-mono text-[9px] border cursor-pointer transition-colors ${
                                   active
-                                    ? 'bg-white text-[#09090b] border-ember font-bold'
-                                    : 'bg-white/[0.04] text-[#888] border-white/10 hover:text-paper'
+                                    ? "bg-white text-[#09090b] border-ember font-bold"
+                                    : "bg-white/[0.04] text-[#888] border-white/10 hover:text-paper"
                                 }`}
                               >
                                 {d.label}
@@ -1090,21 +1271,29 @@ export function AutomationAndNewsletterManager({
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] text-[#aaa]">Run every</span>
+                        <span className="font-mono text-[9px] text-[#aaa]">
+                          Run every
+                        </span>
                         <input
                           type="number"
                           min={1}
                           max={30}
                           value={blogSched.intervalDays}
                           onChange={(e) =>
-                            updateSubSchedule('blogSchedule', {
-                              intervalDays: Math.max(1, parseInt(e.target.value, 10) || 1),
+                            updateSubSchedule("blogSchedule", {
+                              intervalDays: Math.max(
+                                1,
+                                parseInt(e.target.value, 10) || 1,
+                              ),
                             })
                           }
                           className="w-16 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                         <span className="font-mono text-[9px] text-[#aaa]">
-                          day(s) at <strong className="text-zinc-200">{blogSched.timeOfDay}</strong>
+                          day(s) at{" "}
+                          <strong className="text-zinc-200">
+                            {blogSched.timeOfDay}
+                          </strong>
                         </span>
                       </div>
                     )}
@@ -1115,35 +1304,67 @@ export function AutomationAndNewsletterManager({
               {/* ── 2. LINKEDIN POST SCHEDULE CARD ── */}
               {(() => {
                 const liSched =
-                  config.linkedinSchedule || CLIENT_DEFAULT_AUTOMATION_CONFIG.linkedinSchedule;
+                  config.linkedinSchedule ||
+                  CLIENT_DEFAULT_AUTOMATION_CONFIG.linkedinSchedule;
                 return (
                   <div className="p-4 rounded-xl bg-[#161513] border border-sky-500/30 space-y-3.5">
                     <div className="flex items-center justify-between">
                       <div>
                         <span className="font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-wider">
-                          in 2. LINKEDIN POST SCHEDULE (PRE-POST REVIEW EMAIL + OAUTH)
+                          in 2. LINKEDIN POST SCHEDULE (PRE-POST REVIEW EMAIL +
+                          OAUTH)
                         </span>
                         {liSched.lastRunAt && (
                           <p className="font-mono text-[8px] text-[#777] mt-0.5">
-                            Last run: {new Date(liSched.lastRunAt).toLocaleString()}
+                            Last run:{" "}
+                            {new Date(liSched.lastRunAt).toLocaleString()}
                           </p>
                         )}
                       </div>
                       <button
                         type="button"
-                        onClick={() => updateSubSchedule('linkedinSchedule', { enabled: !liSched.enabled }, true)}
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border font-mono text-[9px] font-bold transition-all cursor-pointer ${
+                        role="switch"
+                        aria-checked={!liSched.enabled}
+                        onClick={() =>
+                          updateSubSchedule(
+                            "linkedinSchedule",
+                            {
+                              enabled: !liSched.enabled,
+                            },
+                            true
+                          )
+                        }
+                        className="inline-flex items-center gap-2.5 cursor-pointer group"
+                        title={
                           liSched.enabled
-                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                            : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
-                        }`}
+                            ? "Pause is OFF (schedule is active). Click to pause."
+                            : "Pause is ON (schedule is paused). Click to resume."
+                        }
                       >
                         <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            liSched.enabled ? 'bg-emerald-400' : 'bg-amber-400'
+                          className={`font-mono text-[9px] font-bold tracking-wider ${
+                            !liSched.enabled
+                              ? "text-amber-300"
+                              : "text-emerald-400"
                           }`}
-                        />
-                        {liSched.enabled ? 'ACTIVE' : 'PAUSED (CLICK TO ENABLE)'}
+                        >
+                          {!liSched.enabled ? "PAUSED" : "ACTIVE"}
+                        </span>
+                        <span
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+                            !liSched.enabled
+                              ? "bg-amber-500/80 border-amber-400"
+                              : "bg-white/10 border-white/20"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              !liSched.enabled
+                                ? "translate-x-4"
+                                : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
                       </button>
                     </div>
 
@@ -1156,14 +1377,20 @@ export function AutomationAndNewsletterManager({
                         <select
                           value={liSched.scheduleMode}
                           onChange={(e) =>
-                            updateSubSchedule('linkedinSchedule', {
-                              scheduleMode: e.target.value as 'days_of_week' | 'interval_days',
+                            updateSubSchedule("linkedinSchedule", {
+                              scheduleMode: e.target.value as
+                                | "days_of_week"
+                                | "interval_days",
                             })
                           }
                           className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         >
-                          <option value="days_of_week">Specific Days of Week (Mon–Sun)</option>
-                          <option value="interval_days">Every N Days (Interval)</option>
+                          <option value="days_of_week">
+                            Specific Days of Week (Mon–Sun)
+                          </option>
+                          <option value="interval_days">
+                            Every N Days (Interval)
+                          </option>
                         </select>
                       </div>
                       <div>
@@ -1174,14 +1401,16 @@ export function AutomationAndNewsletterManager({
                           type="time"
                           value={liSched.timeOfDay}
                           onChange={(e) =>
-                            updateSubSchedule('linkedinSchedule', { timeOfDay: e.target.value })
+                            updateSubSchedule("linkedinSchedule", {
+                              timeOfDay: e.target.value,
+                            })
                           }
                           className="w-full px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                       </div>
                     </div>
 
-                    {liSched.scheduleMode === 'days_of_week' ? (
+                    {liSched.scheduleMode === "days_of_week" ? (
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-1">
                           <span className="font-mono text-[8px] text-[#888] uppercase">
@@ -1191,7 +1420,9 @@ export function AutomationAndNewsletterManager({
                             <button
                               type="button"
                               onClick={() =>
-                                updateSubSchedule('linkedinSchedule', { daysOfWeek: [1, 2, 3, 4, 5] })
+                                updateSubSchedule("linkedinSchedule", {
+                                  daysOfWeek: [1, 2, 3, 4, 5],
+                                })
                               }
                               className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono text-[7px] text-[#bbb] cursor-pointer"
                             >
@@ -1200,7 +1431,9 @@ export function AutomationAndNewsletterManager({
                             <button
                               type="button"
                               onClick={() =>
-                                updateSubSchedule('linkedinSchedule', { daysOfWeek: [1, 3, 5] })
+                                updateSubSchedule("linkedinSchedule", {
+                                  daysOfWeek: [1, 3, 5],
+                                })
                               }
                               className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 font-mono text-[7px] text-[#bbb] cursor-pointer"
                             >
@@ -1209,7 +1442,7 @@ export function AutomationAndNewsletterManager({
                             <button
                               type="button"
                               onClick={() =>
-                                updateSubSchedule('linkedinSchedule', {
+                                updateSubSchedule("linkedinSchedule", {
                                   daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
                                 })
                               }
@@ -1228,14 +1461,18 @@ export function AutomationAndNewsletterManager({
                                 type="button"
                                 onClick={() => {
                                   const next = active
-                                    ? liSched.daysOfWeek.filter((x) => x !== d.id)
+                                    ? liSched.daysOfWeek.filter(
+                                        (x) => x !== d.id,
+                                      )
                                     : [...liSched.daysOfWeek, d.id].sort();
-                                  updateSubSchedule('linkedinSchedule', { daysOfWeek: next });
+                                  updateSubSchedule("linkedinSchedule", {
+                                    daysOfWeek: next,
+                                  });
                                 }}
                                 className={`px-2.5 py-1.5 rounded-lg font-mono text-[9px] border cursor-pointer transition-colors ${
                                   active
-                                    ? 'bg-white text-[#09090b] border-sky-400 font-bold'
-                                    : 'bg-white/[0.04] text-[#888] border-white/10 hover:text-paper'
+                                    ? "bg-white text-[#09090b] border-sky-400 font-bold"
+                                    : "bg-white/[0.04] text-[#888] border-white/10 hover:text-paper"
                                 }`}
                               >
                                 {d.label}
@@ -1246,21 +1483,29 @@ export function AutomationAndNewsletterManager({
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] text-[#aaa]">Run every</span>
+                        <span className="font-mono text-[9px] text-[#aaa]">
+                          Run every
+                        </span>
                         <input
                           type="number"
                           min={1}
                           max={30}
                           value={liSched.intervalDays}
                           onChange={(e) =>
-                            updateSubSchedule('linkedinSchedule', {
-                              intervalDays: Math.max(1, parseInt(e.target.value, 10) || 1),
+                            updateSubSchedule("linkedinSchedule", {
+                              intervalDays: Math.max(
+                                1,
+                                parseInt(e.target.value, 10) || 1,
+                              ),
                             })
                           }
                           className="w-16 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono"
                         />
                         <span className="font-mono text-[9px] text-[#aaa]">
-                          day(s) at <strong className="text-zinc-200">{liSched.timeOfDay}</strong>
+                          day(s) at{" "}
+                          <strong className="text-zinc-200">
+                            {liSched.timeOfDay}
+                          </strong>
                         </span>
                       </div>
                     )}
@@ -1276,17 +1521,24 @@ export function AutomationAndNewsletterManager({
                   </label>
                   <select
                     value={config.textModel}
-                    onChange={(e) => setConfig({ ...config, textModel: e.target.value as any })}
+                    onChange={(e) =>
+                      setConfig({ ...config, textModel: e.target.value as any })
+                    }
                     className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   >
                     <option value="auto">
-                      Auto AI-Engine Loop (Gemini 2.0 Flash → Cloudflare Workers AI → Pollinations Free)
+                      Auto AI-Engine Loop (Gemini 2.0 Flash → Cloudflare Workers
+                      AI → Pollinations Free)
                     </option>
-                    <option value="gemini-2.0-flash">Google Gemini 2.0 Flash (Free Tier)</option>
+                    <option value="gemini-2.0-flash">
+                      Google Gemini 2.0 Flash (Free Tier)
+                    </option>
                     <option value="cloudflare-workers-ai">
                       Cloudflare Workers AI (Llama 3.3 70B Instruct Free Tier)
                     </option>
-                    <option value="pollinations-free">Pollinations OpenAI (100% Free, No API Key)</option>
+                    <option value="pollinations-free">
+                      Pollinations OpenAI (100% Free, No API Key)
+                    </option>
                   </select>
                 </div>
                 <div>
@@ -1295,11 +1547,20 @@ export function AutomationAndNewsletterManager({
                   </label>
                   <select
                     value={config.imageModel}
-                    onChange={(e) => setConfig({ ...config, imageModel: e.target.value as any })}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        imageModel: e.target.value as any,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   >
-                    <option value="pollinations-flux">Pollinations Flux (Free 1200×630 → Cloudinary)</option>
-                    <option value="pollinations-turbo">Pollinations SDXL Turbo (Fast Free)</option>
+                    <option value="pollinations-flux">
+                      Pollinations Flux (Free 1200×630 → Cloudinary)
+                    </option>
+                    <option value="pollinations-turbo">
+                      Pollinations SDXL Turbo (Fast Free)
+                    </option>
                   </select>
                 </div>
               </div>
@@ -1311,24 +1572,47 @@ export function AutomationAndNewsletterManager({
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {[
-                    { key: 'autoPublishBlog', label: 'Publish Live (uncheck for Draft)' },
-                    { key: 'autoPublishDevTo', label: 'Cross-post & Sync Cover to DEV.to' },
-                    { key: 'autoGenerateCoverImage', label: 'Generate Free AI Cover → Cloudinary' },
-                    { key: 'autoSendNewsletter', label: 'Email Newsletter Subscribers' },
-                    { key: 'autoPostLinkedin', label: 'Generate Official LinkedIn Draft' },
                     {
-                      key: 'requireSocialReviewAlert',
-                      label: 'Hold LinkedIn Draft & Email Me to Review Before Posting',
+                      key: "autoPublishBlog",
+                      label: "Publish Live (uncheck for Draft)",
+                    },
+                    {
+                      key: "autoPublishDevTo",
+                      label: "Cross-post & Sync Cover to DEV.to",
+                    },
+                    {
+                      key: "autoGenerateCoverImage",
+                      label: "Generate Free AI Cover → Cloudinary",
+                    },
+                    {
+                      key: "autoSendNewsletter",
+                      label: "Email Newsletter Subscribers",
+                    },
+                    {
+                      key: "autoPostLinkedin",
+                      label: "Generate Official LinkedIn Draft",
+                    },
+                    {
+                      key: "requireSocialReviewAlert",
+                      label:
+                        "Hold LinkedIn Draft & Email Me to Review Before Posting",
                     },
                   ].map((item) => (
-                    <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+                    <label
+                      key={item.key}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                       <input
                         type="checkbox"
                         checked={Boolean((config as any)[item.key])}
-                        onChange={(e) => setConfig({ ...config, [item.key]: e.target.checked })}
+                        onChange={(e) =>
+                          setConfig({ ...config, [item.key]: e.target.checked })
+                        }
                         className="accent-ember"
                       />
-                      <span className="font-mono text-[9px] text-[#ccc]">{item.label}</span>
+                      <span className="font-mono text-[9px] text-[#ccc]">
+                        {item.label}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -1336,12 +1620,15 @@ export function AutomationAndNewsletterManager({
                 {/* Admin Review Alert Email Input */}
                 <div className="pt-2">
                   <label className="block font-mono text-[8px] text-zinc-200 uppercase mb-1 font-bold">
-                    Admin Review Alert Email (Receives LinkedIn Draft + Reputation Check Before Posting)
+                    Admin Review Alert Email (Receives LinkedIn Draft +
+                    Reputation Check Before Posting)
                   </label>
                   <input
                     type="email"
-                    value={config.adminAlertEmail || ''}
-                    onChange={(e) => setConfig({ ...config, adminAlertEmail: e.target.value })}
+                    value={config.adminAlertEmail || ""}
+                    onChange={(e) =>
+                      setConfig({ ...config, adminAlertEmail: e.target.value })
+                    }
                     placeholder="you@gmail.com"
                     className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-ember/30 text-xs text-paper font-mono focus:border-white/25 outline-none"
                   />
@@ -1355,7 +1642,7 @@ export function AutomationAndNewsletterManager({
                   disabled={savingConfig}
                   className="px-5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
                 >
-                  {savingConfig ? 'SAVING…' : 'SAVE SCHEDULE & SETTINGS'}
+                  {savingConfig ? "SAVING…" : "SAVE SCHEDULE & SETTINGS"}
                 </button>
               </div>
             </div>
@@ -1381,17 +1668,23 @@ export function AutomationAndNewsletterManager({
                     )}
                   </div>
                   <p className="font-mono text-[8px] text-[#888] leading-relaxed">
-                    At the start of each week, AI auto-generates both queues below sized to the exact number of posting days you scheduled ({getWeeklySlotCount(config.blogSchedule)} DEV.to day(s)/wk &amp; {getWeeklySlotCount(config.linkedinSchedule)} LinkedIn day(s)/wk). Once all cues for the week are fulfilled, the cycle auto-generates the next week&apos;s queues.
+                    At the start of each week, AI auto-generates both queues
+                    below sized to the exact number of posting days you
+                    scheduled ({getWeeklySlotCount(config.blogSchedule)} DEV.to
+                    day(s)/wk &amp;{" "}
+                    {getWeeklySlotCount(config.linkedinSchedule)} LinkedIn
+                    day(s)/wk). Once all cues for the week are fulfilled, the
+                    cycle auto-generates the next week&apos;s queues.
                   </p>
                   <div className="flex flex-wrap gap-2 pt-0.5">
                     <button
                       type="button"
-                      onClick={() => handleGenerateWeeklyQueues('both')}
+                      onClick={() => handleGenerateWeeklyQueues("both")}
                       disabled={generatingQueuesTarget !== null}
                       className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
                     >
-                      {generatingQueuesTarget === 'both'
-                        ? 'AI GENERATING WEEKLY QUEUES…'
+                      {generatingQueuesTarget === "both"
+                        ? "AI GENERATING WEEKLY QUEUES…"
                         : `AI GENERATE THIS WEEK'S QUEUES (${getWeeklySlotCount(config.blogSchedule)} DEV.TO + ${getWeeklySlotCount(config.linkedinSchedule)} LINKEDIN)`}
                     </button>
                   </div>
@@ -1399,7 +1692,8 @@ export function AutomationAndNewsletterManager({
 
                 {/* 1. DEV.to & Portfolio Blog Weekly Queue */}
                 {(() => {
-                  const devtoQueue = config.devtoTopicsQueue || config.topicsQueue || [];
+                  const devtoQueue =
+                    config.devtoTopicsQueue || config.topicsQueue || [];
                   const devtoSlots = getWeeklySlotCount(config.blogSchedule);
                   return (
                     <div className="p-4 rounded-xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-3">
@@ -1414,17 +1708,18 @@ export function AutomationAndNewsletterManager({
                             </span>
                           </div>
                           <p className="font-mono text-[8px] text-[#888] mt-0.5">
-                            Popped on each scheduled DEV.to Blog day. Auto-refills ({devtoSlots} topics) at start of week.
+                            Popped on each scheduled DEV.to Blog day.
+                            Auto-refills ({devtoSlots} topics) at start of week.
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleGenerateWeeklyQueues('devto')}
+                          onClick={() => handleGenerateWeeklyQueues("devto")}
                           disabled={generatingQueuesTarget !== null}
                           className="px-2.5 py-1 rounded-lg bg-ember/20 hover:bg-ember/30 border border-white/[0.12] text-zinc-200 font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
                         >
-                          {generatingQueuesTarget === 'devto'
-                            ? 'GENERATING…'
+                          {generatingQueuesTarget === "devto"
+                            ? "GENERATING…"
                             : `AI FILL DEV.TO WEEK (${devtoSlots})`}
                         </button>
                       </div>
@@ -1433,17 +1728,25 @@ export function AutomationAndNewsletterManager({
                         <input
                           type="text"
                           value={newDevtoQueueTopic}
-                          onChange={(e) => setNewDevtoQueueTopic(e.target.value)}
+                          onChange={(e) =>
+                            setNewDevtoQueueTopic(e.target.value)
+                          }
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newDevtoQueueTopic.trim()) {
+                            if (
+                              e.key === "Enter" &&
+                              newDevtoQueueTopic.trim()
+                            ) {
                               e.preventDefault();
-                              const next = [...devtoQueue, newDevtoQueueTopic.trim()];
+                              const next = [
+                                ...devtoQueue,
+                                newDevtoQueueTopic.trim(),
+                              ];
                               setConfig({
                                 ...config,
                                 devtoTopicsQueue: next,
                                 topicsQueue: next,
                               });
-                              setNewDevtoQueueTopic('');
+                              setNewDevtoQueueTopic("");
                             }
                           }}
                           placeholder="Add a custom DEV.to blog topic to this week's queue…"
@@ -1453,13 +1756,16 @@ export function AutomationAndNewsletterManager({
                           type="button"
                           onClick={() => {
                             if (!newDevtoQueueTopic.trim()) return;
-                            const next = [...devtoQueue, newDevtoQueueTopic.trim()];
+                            const next = [
+                              ...devtoQueue,
+                              newDevtoQueueTopic.trim(),
+                            ];
                             setConfig({
                               ...config,
                               devtoTopicsQueue: next,
                               topicsQueue: next,
                             });
-                            setNewDevtoQueueTopic('');
+                            setNewDevtoQueueTopic("");
                           }}
                           className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer"
                         >
@@ -1476,11 +1782,15 @@ export function AutomationAndNewsletterManager({
                             <span className="px-1.5 py-0.5 rounded bg-ember/15 text-zinc-200 font-mono text-[8px] font-bold shrink-0">
                               {getSlotDayLabel(config.blogSchedule, idx)}
                             </span>
-                            <span className="flex-1 text-xs text-paper truncate">{topic}</span>
+                            <span className="flex-1 text-xs text-paper truncate">
+                              {topic}
+                            </span>
                             <button
                               type="button"
                               onClick={() => {
-                                const next = devtoQueue.filter((_, i) => i !== idx);
+                                const next = devtoQueue.filter(
+                                  (_, i) => i !== idx,
+                                );
                                 setConfig({
                                   ...config,
                                   devtoTopicsQueue: next,
@@ -1495,7 +1805,8 @@ export function AutomationAndNewsletterManager({
                         ))}
                         {devtoQueue.length === 0 && (
                           <p className="font-mono text-[9px] text-[#666] py-2 text-center">
-                            All DEV.to cues fulfilled — AI will auto-generate {devtoSlots} new topic(s) for the next cycle.
+                            All DEV.to cues fulfilled — AI will auto-generate{" "}
+                            {devtoSlots} new topic(s) for the next cycle.
                           </p>
                         )}
                       </div>
@@ -1506,7 +1817,9 @@ export function AutomationAndNewsletterManager({
                 {/* 2. LinkedIn Post Weekly Queue */}
                 {(() => {
                   const linkedinQueue = config.linkedinTopicsQueue || [];
-                  const linkedinSlots = getWeeklySlotCount(config.linkedinSchedule);
+                  const linkedinSlots = getWeeklySlotCount(
+                    config.linkedinSchedule,
+                  );
                   const topicImages = config.linkedinTopicImages || {};
 
                   const addNewLinkedinTopicWithOptionalImage = () => {
@@ -1522,8 +1835,8 @@ export function AutomationAndNewsletterManager({
                       linkedinTopicsQueue: nextQueue,
                       linkedinTopicImages: nextImages,
                     });
-                    setNewLinkedinQueueTopic('');
-                    setNewLinkedinTopicImageUrl('');
+                    setNewLinkedinQueueTopic("");
+                    setNewLinkedinTopicImageUrl("");
                   };
 
                   return (
@@ -1535,21 +1848,25 @@ export function AutomationAndNewsletterManager({
                               in LINKEDIN POST WEEKLY QUEUE
                             </span>
                             <span className="px-2 py-0.5 rounded-full bg-sky-500/15 text-zinc-300 border border-sky-500/30 font-mono text-[8px] font-bold">
-                              {linkedinQueue.length} / {linkedinSlots} DAYS THIS WEEK
+                              {linkedinQueue.length} / {linkedinSlots} DAYS THIS
+                              WEEK
                             </span>
                           </div>
                           <p className="font-mono text-[8px] text-[#888] mt-0.5">
-                            Attach an authentic image (uploaded to Cloudinary) to any queued topic below. If no image is attached, LinkedIn posts without an image (never AI-generated).
+                            Attach an authentic image (uploaded to Cloudinary)
+                            to any queued topic below. If no image is attached,
+                            LinkedIn posts without an image (never
+                            AI-generated).
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => handleGenerateWeeklyQueues('linkedin')}
+                          onClick={() => handleGenerateWeeklyQueues("linkedin")}
                           disabled={generatingQueuesTarget !== null}
                           className="px-2.5 py-1 rounded-lg bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-zinc-300 font-mono text-[8px] font-bold cursor-pointer disabled:opacity-50"
                         >
-                          {generatingQueuesTarget === 'linkedin'
-                            ? 'GENERATING…'
+                          {generatingQueuesTarget === "linkedin"
+                            ? "GENERATING…"
                             : `AI FILL LINKEDIN WEEK (${linkedinSlots})`}
                         </button>
                       </div>
@@ -1559,9 +1876,14 @@ export function AutomationAndNewsletterManager({
                           <input
                             type="text"
                             value={newLinkedinQueueTopic}
-                            onChange={(e) => setNewLinkedinQueueTopic(e.target.value)}
+                            onChange={(e) =>
+                              setNewLinkedinQueueTopic(e.target.value)
+                            }
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && newLinkedinQueueTopic.trim()) {
+                              if (
+                                e.key === "Enter" &&
+                                newLinkedinQueueTopic.trim()
+                              ) {
                                 e.preventDefault();
                                 addNewLinkedinTopicWithOptionalImage();
                               }
@@ -1570,11 +1892,11 @@ export function AutomationAndNewsletterManager({
                             className="flex-1 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper focus:border-white/25 outline-none"
                           />
                           <label className="px-2.5 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 font-bold cursor-pointer flex items-center gap-1 whitespace-nowrap">
-                            {uploadingLinkedinImageKey === '__new__'
-                              ? 'UPLOADING…'
+                            {uploadingLinkedinImageKey === "__new__"
+                              ? "UPLOADING…"
                               : newLinkedinTopicImageUrl
-                              ? 'IMAGE READY'
-                              : 'ATTACH IMAGE'}
+                                ? "IMAGE READY"
+                                : "ATTACH IMAGE"}
                             <input
                               type="file"
                               accept="image/*"
@@ -1582,8 +1904,12 @@ export function AutomationAndNewsletterManager({
                               disabled={uploadingLinkedinImageKey !== null}
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleUploadLinkedinQueueImage(file, '__new__');
-                                e.target.value = '';
+                                if (file)
+                                  handleUploadLinkedinQueueImage(
+                                    file,
+                                    "__new__",
+                                  );
+                                e.target.value = "";
                               }}
                             />
                           </label>
@@ -1607,7 +1933,7 @@ export function AutomationAndNewsletterManager({
                             </span>
                             <button
                               type="button"
-                              onClick={() => setNewLinkedinTopicImageUrl('')}
+                              onClick={() => setNewLinkedinTopicImageUrl("")}
                               className="font-mono text-[8px] text-red-400 hover:underline cursor-pointer"
                             >
                               REMOVE
@@ -1619,7 +1945,8 @@ export function AutomationAndNewsletterManager({
                       <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                         {linkedinQueue.map((topic, idx) => {
                           const attachedImg = topicImages[topic];
-                          const isUploadingThis = uploadingLinkedinImageKey === topic;
+                          const isUploadingThis =
+                            uploadingLinkedinImageKey === topic;
                           return (
                             <div
                               key={idx}
@@ -1627,34 +1954,47 @@ export function AutomationAndNewsletterManager({
                             >
                               <div className="flex items-center justify-between gap-2">
                                 <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-zinc-300 font-mono text-[8px] font-bold shrink-0">
-                                  {getSlotDayLabel(config.linkedinSchedule, idx)}
+                                  {getSlotDayLabel(
+                                    config.linkedinSchedule,
+                                    idx,
+                                  )}
                                 </span>
-                                <span className="flex-1 text-xs text-paper truncate">{topic}</span>
+                                <span className="flex-1 text-xs text-paper truncate">
+                                  {topic}
+                                </span>
                                 <label
                                   className="px-2 py-0.5 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 cursor-pointer shrink-0"
                                   title="Upload an authentic image to Cloudinary and attach it to this LinkedIn topic"
                                 >
                                   {isUploadingThis
-                                    ? 'UPLOADING…'
+                                    ? "UPLOADING…"
                                     : attachedImg
-                                    ? 'CHANGE IMG'
-                                    : 'ATTACH IMG'}
+                                      ? "CHANGE IMG"
+                                      : "ATTACH IMG"}
                                   <input
                                     type="file"
                                     accept="image/*"
                                     className="hidden"
-                                    disabled={uploadingLinkedinImageKey !== null}
+                                    disabled={
+                                      uploadingLinkedinImageKey !== null
+                                    }
                                     onChange={(e) => {
                                       const file = e.target.files?.[0];
-                                      if (file) handleUploadLinkedinQueueImage(file, topic);
-                                      e.target.value = '';
+                                      if (file)
+                                        handleUploadLinkedinQueueImage(
+                                          file,
+                                          topic,
+                                        );
+                                      e.target.value = "";
                                     }}
                                   />
                                 </label>
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    const nextQueue = linkedinQueue.filter((_, i) => i !== idx);
+                                    const nextQueue = linkedinQueue.filter(
+                                      (_, i) => i !== idx,
+                                    );
                                     const nextImages = { ...topicImages };
                                     delete nextImages[topic];
                                     setConfig({
@@ -1693,7 +2033,9 @@ export function AutomationAndNewsletterManager({
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={() => handleRemoveLinkedinQueueImage(topic)}
+                                    onClick={() =>
+                                      handleRemoveLinkedinQueueImage(topic)
+                                    }
                                     className="px-2 py-0.5 rounded bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer shrink-0"
                                   >
                                     REMOVE IMG
@@ -1701,7 +2043,8 @@ export function AutomationAndNewsletterManager({
                                 </div>
                               ) : (
                                 <div className="font-mono text-[8px] text-[#666] pl-1">
-                                  No image attached — will run as text-only LinkedIn post
+                                  No image attached — will run as text-only
+                                  LinkedIn post
                                 </div>
                               )}
                             </div>
@@ -1709,7 +2052,8 @@ export function AutomationAndNewsletterManager({
                         })}
                         {linkedinQueue.length === 0 && (
                           <p className="font-mono text-[9px] text-[#666] py-2 text-center">
-                            All LinkedIn cues fulfilled — AI will auto-generate {linkedinSlots} new topic(s) for the next cycle.
+                            All LinkedIn cues fulfilled — AI will auto-generate{" "}
+                            {linkedinSlots} new topic(s) for the next cycle.
                           </p>
                         )}
                       </div>
@@ -1720,7 +2064,8 @@ export function AutomationAndNewsletterManager({
                 {/* Niche Pillars */}
                 <div className="pt-3 border-t border-white/10 space-y-2">
                   <label className="block font-mono text-[8px] text-[#888] uppercase">
-                    Niche Pillars (Comma-separated · Used by AI to Auto-Generate Weekly DEV.to &amp; LinkedIn Queues)
+                    Niche Pillars (Comma-separated · Used by AI to Auto-Generate
+                    Weekly DEV.to &amp; LinkedIn Queues)
                   </label>
                   <div className="flex gap-2">
                     <input
@@ -1728,26 +2073,29 @@ export function AutomationAndNewsletterManager({
                       value={newKeyword}
                       onChange={(e) => setNewKeyword(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && newKeyword.trim()) {
+                        if (e.key === "Enter" && newKeyword.trim()) {
                           e.preventDefault();
                           const parsed = newKeyword
-                            .split(',')
+                            .split(",")
                             .map((s) => s.trim())
                             .filter(Boolean);
                           if (parsed.length === 0) return;
                           const existingLower = new Set(
-                            config.nicheKeywords.map((k) => k.toLowerCase())
+                            config.nicheKeywords.map((k) => k.toLowerCase()),
                           );
                           const uniqueNew = parsed.filter(
-                            (k) => !existingLower.has(k.toLowerCase())
+                            (k) => !existingLower.has(k.toLowerCase()),
                           );
                           if (uniqueNew.length > 0) {
                             setConfig({
                               ...config,
-                              nicheKeywords: [...config.nicheKeywords, ...uniqueNew],
+                              nicheKeywords: [
+                                ...config.nicheKeywords,
+                                ...uniqueNew,
+                              ],
                             });
                           }
-                          setNewKeyword('');
+                          setNewKeyword("");
                         }
                       }}
                       placeholder="e.g. WebAssembly, Rust in Frontend, Edge Computing (comma-separated)"
@@ -1758,23 +2106,26 @@ export function AutomationAndNewsletterManager({
                       onClick={() => {
                         if (!newKeyword.trim()) return;
                         const parsed = newKeyword
-                          .split(',')
+                          .split(",")
                           .map((s) => s.trim())
                           .filter(Boolean);
                         if (parsed.length === 0) return;
                         const existingLower = new Set(
-                          config.nicheKeywords.map((k) => k.toLowerCase())
+                          config.nicheKeywords.map((k) => k.toLowerCase()),
                         );
                         const uniqueNew = parsed.filter(
-                          (k) => !existingLower.has(k.toLowerCase())
+                          (k) => !existingLower.has(k.toLowerCase()),
                         );
                         if (uniqueNew.length > 0) {
                           setConfig({
                             ...config,
-                            nicheKeywords: [...config.nicheKeywords, ...uniqueNew],
+                            nicheKeywords: [
+                              ...config.nicheKeywords,
+                              ...uniqueNew,
+                            ],
                           });
                         }
-                        setNewKeyword('');
+                        setNewKeyword("");
                       }}
                       className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 font-mono text-[9px] text-paper cursor-pointer"
                     >
@@ -1793,7 +2144,9 @@ export function AutomationAndNewsletterManager({
                           onClick={() =>
                             setConfig({
                               ...config,
-                              nicheKeywords: config.nicheKeywords.filter((_, idx) => idx !== i),
+                              nicheKeywords: config.nicheKeywords.filter(
+                                (_, idx) => idx !== i,
+                              ),
                             })
                           }
                           className="text-red-400 hover:text-red-300 cursor-pointer"
@@ -1830,7 +2183,8 @@ export function AutomationAndNewsletterManager({
                   LIVE AUTOMATION EXECUTION &amp; DEBUG LOGS ({logs.length})
                 </span>
                 <span className="font-mono text-[8px] text-[#777]">
-                  (Also logged in server terminal with timestamps &amp; step durations)
+                  (Also logged in server terminal with timestamps &amp; step
+                  durations)
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -1843,7 +2197,7 @@ export function AutomationAndNewsletterManager({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSelectSubTab('logs')}
+                  onClick={() => handleSelectSubTab("logs")}
                   className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-ember/30 font-mono text-[8px] text-zinc-200 font-bold cursor-pointer"
                 >
                   OPEN FULL DEBUG CONSOLE →
@@ -1856,13 +2210,13 @@ export function AutomationAndNewsletterManager({
                 <div
                   key={entry.id}
                   className={`flex flex-wrap items-start gap-2 px-3 py-1.5 rounded-lg border ${
-                    entry.level === 'error'
-                      ? 'bg-red-950/30 border-red-500/30 text-red-200'
-                      : entry.level === 'warn'
-                      ? 'bg-amber-950/25 border-amber-500/30 text-amber-200'
-                      : entry.level === 'success'
-                      ? 'bg-emerald-950/20 border-emerald-500/25 text-emerald-200'
-                      : 'bg-[#151412] border-white/8 text-[#ccc]'
+                    entry.level === "error"
+                      ? "bg-red-950/30 border-red-500/30 text-red-200"
+                      : entry.level === "warn"
+                        ? "bg-amber-950/25 border-amber-500/30 text-amber-200"
+                        : entry.level === "success"
+                          ? "bg-emerald-950/20 border-emerald-500/25 text-emerald-200"
+                          : "bg-[#151412] border-white/8 text-[#ccc]"
                   }`}
                 >
                   <span className="text-[8px] text-[#777] shrink-0">
@@ -1879,12 +2233,16 @@ export function AutomationAndNewsletterManager({
                       +{entry.durationMs}ms
                     </span>
                   )}
-                  <span className="flex-1 break-words text-[10px]">{entry.message}</span>
+                  <span className="flex-1 break-words text-[10px]">
+                    {entry.message}
+                  </span>
                 </div>
               ))}
               {logs.length === 0 && (
                 <p className="text-[#666] text-[10px] py-3 text-center">
-                  No automation logs yet. Run Blog Automation, LinkedIn Automation, or AI Weekly Queue generation above to watch the step-by-step execution trace.
+                  No automation logs yet. Run Blog Automation, LinkedIn
+                  Automation, or AI Weekly Queue generation above to watch the
+                  step-by-step execution trace.
                 </p>
               )}
             </div>
@@ -1895,7 +2253,7 @@ export function AutomationAndNewsletterManager({
       {/* ════════════════════════════════════════════════════════════════
           SUB-TAB 2: PLATFORM MASTER PROMPTS STUDIO
       ════════════════════════════════════════════════════════════════ */}
-      {subTab === 'prompts' && (
+      {subTab === "prompts" && (
         <div className="space-y-6 p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09]">
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
@@ -1903,7 +2261,9 @@ export function AutomationAndNewsletterManager({
                 Platform-Tailored Master Prompts
               </h3>
               <p className="font-mono text-[9px] text-[#888] mt-0.5">
-                Customize the exact persona and formatting rules for your Blog, LinkedIn (Official &amp; Executive), Cover Images, and Comment Replies.
+                Customize the exact persona and formatting rules for your Blog,
+                LinkedIn (Official &amp; Executive), Cover Images, and Comment
+                Replies.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1925,7 +2285,7 @@ export function AutomationAndNewsletterManager({
                 disabled={savingConfig}
                 className="px-5 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer"
               >
-                {savingConfig ? 'SAVING…' : 'SAVE MASTER PROMPTS'}
+                {savingConfig ? "SAVING…" : "SAVE MASTER PROMPTS"}
               </button>
             </div>
           </div>
@@ -1941,7 +2301,10 @@ export function AutomationAndNewsletterManager({
                 onChange={(e) =>
                   setConfig({
                     ...config,
-                    masterPrompts: { ...config.masterPrompts, blogMasterPrompt: e.target.value },
+                    masterPrompts: {
+                      ...config.masterPrompts,
+                      blogMasterPrompt: e.target.value,
+                    },
                   })
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
@@ -1958,7 +2321,10 @@ export function AutomationAndNewsletterManager({
                 onChange={(e) =>
                   setConfig({
                     ...config,
-                    masterPrompts: { ...config.masterPrompts, linkedinMasterPrompt: e.target.value },
+                    masterPrompts: {
+                      ...config.masterPrompts,
+                      linkedinMasterPrompt: e.target.value,
+                    },
                   })
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
@@ -1975,7 +2341,10 @@ export function AutomationAndNewsletterManager({
                 onChange={(e) =>
                   setConfig({
                     ...config,
-                    masterPrompts: { ...config.masterPrompts, imageMasterPrompt: e.target.value },
+                    masterPrompts: {
+                      ...config.masterPrompts,
+                      imageMasterPrompt: e.target.value,
+                    },
                   })
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
@@ -2014,7 +2383,10 @@ export function AutomationAndNewsletterManager({
                 onChange={(e) =>
                   setConfig({
                     ...config,
-                    masterPrompts: { ...config.masterPrompts, commentReplyDevtoPrompt: e.target.value },
+                    masterPrompts: {
+                      ...config.masterPrompts,
+                      commentReplyDevtoPrompt: e.target.value,
+                    },
                   })
                 }
                 className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-[11px] text-paper font-mono focus:border-white/25 outline-none"
@@ -2027,7 +2399,7 @@ export function AutomationAndNewsletterManager({
       {/* ════════════════════════════════════════════════════════════════
           SUB-TAB 3: LINKEDIN & X SOCIAL POSTS + COMMENTS & REACTIONS
       ════════════════════════════════════════════════════════════════ */}
-      {subTab === 'social' && (
+      {subTab === "social" && (
         <div className="space-y-6">
           {/* LinkedIn OAuth 2.0 + OpenID Connect + Posts API Verification Card */}
           <div className="p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-sky-500/30 space-y-4">
@@ -2039,8 +2411,10 @@ export function AutomationAndNewsletterManager({
                   </span>
                   {providers?.linkedinAuth?.connected ? (
                     <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-emerald-500/40 text-emerald-400 bg-emerald-500/10">
-                      ● VERIFIED: {providers.linkedinAuth.name} ({providers.linkedinAuth.personUrn}) ·{' '}
-                      {providers.linkedinAuth.daysRemaining} DAYS LEFT ON 60-DAY TOKEN
+                      ● VERIFIED: {providers.linkedinAuth.name} (
+                      {providers.linkedinAuth.personUrn}) ·{" "}
+                      {providers.linkedinAuth.daysRemaining} DAYS LEFT ON 60-DAY
+                      TOKEN
                     </span>
                   ) : providers?.linkedinAuth?.expired ? (
                     <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-red-500/40 text-red-300 bg-red-500/10">
@@ -2048,19 +2422,24 @@ export function AutomationAndNewsletterManager({
                     </span>
                   ) : (
                     <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-amber-500/40 text-amber-300 bg-amber-500/10">
-                      ○ NOT VERIFIED YET — ADD CLIENT ID &amp; SECRET THEN CLICK VERIFY
+                      ○ NOT VERIFIED YET — ADD CLIENT ID &amp; SECRET THEN CLICK
+                      VERIFY
                     </span>
                   )}
                 </div>
                 <p className="font-mono text-[9px] text-[#999] leading-relaxed">
-                  1. In LinkedIn Developer Portal → <strong>Products</strong>: enable{' '}
-                  <code className="text-zinc-300">Share on LinkedIn</code> &amp;{' '}
-                  <code className="text-zinc-300">Sign In with LinkedIn using OpenID Connect</code> (scopes:{' '}
-                  <code>openid profile email w_member_social</code>).
+                  1. In LinkedIn Developer Portal → <strong>Products</strong>:
+                  enable{" "}
+                  <code className="text-zinc-300">Share on LinkedIn</code> &amp;{" "}
+                  <code className="text-zinc-300">
+                    Sign In with LinkedIn using OpenID Connect
+                  </code>{" "}
+                  (scopes: <code>openid profile email w_member_social</code>).
                   <br />
-                  2. In <strong>Auth</strong> tab: add the exact Redirect URL below and copy{' '}
-                  <code>LINKEDIN_CLIENT_ID</code> &amp; <code>LINKEDIN_CLIENT_SECRET</code> to{' '}
-                  <code>.env.local</code>.
+                  2. In <strong>Auth</strong> tab: add the exact Redirect URL
+                  below and copy <code>LINKEDIN_CLIENT_ID</code> &amp;{" "}
+                  <code>LINKEDIN_CLIENT_SECRET</code> to <code>.env.local</code>
+                  .
                 </p>
               </div>
 
@@ -2070,8 +2449,8 @@ export function AutomationAndNewsletterManager({
                   className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.06em] transition-colors"
                 >
                   {providers?.linkedinAuth?.connected
-                    ? 'REFRESH 60-DAY LINKEDIN OAUTH TOKEN'
-                    : 'VERIFY LINKEDIN ACCOUNT VIA OAUTH 2.0'}
+                    ? "REFRESH 60-DAY LINKEDIN OAUTH TOKEN"
+                    : "VERIFY LINKEDIN ACCOUNT VIA OAUTH 2.0"}
                 </a>
               </div>
             </div>
@@ -2083,9 +2462,9 @@ export function AutomationAndNewsletterManager({
               </span>
               <code className="px-2.5 py-1 rounded bg-white/[0.04] border border-white/10 font-mono text-[10px] text-zinc-300">
                 {providers?.linkedinAuth?.redirectUri ||
-                  (typeof window !== 'undefined'
+                  (typeof window !== "undefined"
                     ? `${window.location.origin}/api/auth/linkedin/callback`
-                    : '/api/auth/linkedin/callback')}
+                    : "/api/auth/linkedin/callback")}
               </code>
               <button
                 type="button"
@@ -2094,7 +2473,7 @@ export function AutomationAndNewsletterManager({
                     providers?.linkedinAuth?.redirectUri ||
                     `${window.location.origin}/api/auth/linkedin/callback`;
                   navigator.clipboard.writeText(uri);
-                  showToast('Copied LinkedIn Redirect URL');
+                  showToast("Copied LinkedIn Redirect URL");
                 }}
                 className="px-2.5 py-1 rounded bg-white/10 hover:bg-white/15 font-mono text-[8px] text-paper cursor-pointer"
               >
@@ -2102,7 +2481,10 @@ export function AutomationAndNewsletterManager({
               </button>
               {providers?.linkedinAuth?.expiresAt && (
                 <span className="ml-auto font-mono text-[8px] text-[#777]">
-                  Token Expires: {new Date(providers.linkedinAuth.expiresAt).toLocaleDateString()}
+                  Token Expires:{" "}
+                  {new Date(
+                    providers.linkedinAuth.expiresAt,
+                  ).toLocaleDateString()}
                 </span>
               )}
             </div>
@@ -2115,7 +2497,8 @@ export function AutomationAndNewsletterManager({
                 Generate Official LinkedIn Companion Post
               </h3>
               <p className="font-mono text-[9px] text-[#888]">
-                Select any blog article to craft an executive-ready LinkedIn post using your LinkedIn Master Prompt.
+                Select any blog article to craft an executive-ready LinkedIn
+                post using your LinkedIn Master Prompt.
               </p>
             </div>
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -2136,7 +2519,7 @@ export function AutomationAndNewsletterManager({
                 disabled={generatingSocial || !selectedSlugForSocial}
                 className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
               >
-                {generatingSocial ? 'CRAFTING POST…' : 'GENERATE LINKEDIN POST'}
+                {generatingSocial ? "CRAFTING POST…" : "GENERATE LINKEDIN POST"}
               </button>
             </div>
           </div>
@@ -2151,16 +2534,21 @@ export function AutomationAndNewsletterManager({
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-white/10">
                   <div>
                     <span className="font-mono text-[8px] text-zinc-200 uppercase tracking-widest">
-                      SOCIAL CAMPAIGN · {new Date(post.createdAt).toLocaleDateString()}
+                      SOCIAL CAMPAIGN ·{" "}
+                      {new Date(post.createdAt).toLocaleDateString()}
                     </span>
-                    <h4 className="text-sm font-medium text-paper mt-0.5">{post.articleTitle}</h4>
+                    <h4 className="text-sm font-medium text-paper mt-0.5">
+                      {post.articleTitle}
+                    </h4>
                   </div>
 
                   {/* Reactions, Reputation Guardrail & Review Email Summary */}
                   <div className="flex items-center gap-2 flex-wrap">
                     {post.safetyCheck && !post.safetyCheck.passed ? (
                       <span className="px-2.5 py-1 rounded-lg bg-red-500/15 border border-red-500/40 font-mono text-[8px] text-red-300 font-bold">
-                        ⚠ FLAGGED WORDS: [{post.safetyCheck.flaggedWords.join(', ').toUpperCase()}] — EDIT BEFORE POSTING
+                        ⚠ FLAGGED WORDS: [
+                        {post.safetyCheck.flaggedWords.join(", ").toUpperCase()}
+                        ] — EDIT BEFORE POSTING
                       </span>
                     ) : (
                       <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 font-mono text-[8px] text-emerald-400">
@@ -2175,17 +2563,23 @@ export function AutomationAndNewsletterManager({
                       className="px-2.5 py-1 rounded-lg bg-ember/15 hover:bg-ember/25 border border-white/[0.12] font-mono text-[8px] text-zinc-200 font-bold cursor-pointer"
                     >
                       {publishingSocialId === `${post.id}-email`
-                        ? 'SENDING REVIEW EMAIL…'
+                        ? "SENDING REVIEW EMAIL…"
                         : post.reviewEmailSent
-                        ? 'RESEND REVIEW EMAIL TO ME'
-                        : 'EMAIL ME FOR REVIEW'}
+                          ? "RESEND REVIEW EMAIL TO ME"
+                          : "EMAIL ME FOR REVIEW"}
                     </button>
 
                     <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-mono text-[8px] text-[#ccc]">
-                      ♥ DEV.TO REACTIONS: <strong className="text-zinc-200">{post.reactions?.devtoReactions || 0}</strong>
+                      ♥ DEV.TO REACTIONS:{" "}
+                      <strong className="text-zinc-200">
+                        {post.reactions?.devtoReactions || 0}
+                      </strong>
                     </span>
                     <span className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 font-mono text-[8px] text-[#ccc]">
-                      COMMENTS: <strong className="text-zinc-200">{post.reactions?.devtoComments || 0}</strong>
+                      COMMENTS:{" "}
+                      <strong className="text-zinc-200">
+                        {post.reactions?.devtoComments || 0}
+                      </strong>
                     </span>
                   </div>
                 </div>
@@ -2199,10 +2593,10 @@ export function AutomationAndNewsletterManager({
                     <div className="flex items-center gap-2">
                       <label className="px-2.5 py-1 rounded bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/30 font-mono text-[8px] text-zinc-300 font-bold cursor-pointer">
                         {uploadingLinkedinImageKey === `post-${post.id}`
-                          ? 'UPLOADING…'
+                          ? "UPLOADING…"
                           : post.linkedinImageUrl
-                          ? 'CHANGE ATTACHED IMAGE'
-                          : 'ATTACH AUTHENTIC IMAGE'}
+                            ? "CHANGE ATTACHED IMAGE"
+                            : "ATTACH AUTHENTIC IMAGE"}
                         <input
                           type="file"
                           accept="image/*"
@@ -2210,8 +2604,9 @@ export function AutomationAndNewsletterManager({
                           disabled={uploadingLinkedinImageKey !== null}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
-                            if (file) handleUploadSocialPostImage(file, post.id);
-                            e.target.value = '';
+                            if (file)
+                              handleUploadSocialPostImage(file, post.id);
+                            e.target.value = "";
                           }}
                         />
                       </label>
@@ -2232,7 +2627,8 @@ export function AutomationAndNewsletterManager({
                         />
                         <div className="min-w-0">
                           <span className="block font-mono text-[8px] text-emerald-400 font-bold">
-                            AUTHENTIC IMAGE ATTACHED (WILL UPLOAD &amp; POST WITH LINKEDIN UPDATE)
+                            AUTHENTIC IMAGE ATTACHED (WILL UPLOAD &amp; POST
+                            WITH LINKEDIN UPDATE)
                           </span>
                           <a
                             href={post.linkedinImageUrl}
@@ -2247,7 +2643,9 @@ export function AutomationAndNewsletterManager({
                       <button
                         type="button"
                         onClick={() =>
-                          handleUpdateSocialRecord(post.id, { linkedinImageUrl: '' })
+                          handleUpdateSocialRecord(post.id, {
+                            linkedinImageUrl: "",
+                          })
                         }
                         className="px-2.5 py-1 rounded bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer shrink-0"
                       >
@@ -2256,7 +2654,8 @@ export function AutomationAndNewsletterManager({
                     </div>
                   ) : (
                     <div className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/8 font-mono text-[8px] text-[#777]">
-                      No image attached — will publish to LinkedIn as a text-only post (no AI image fallback).
+                      No image attached — will publish to LinkedIn as a
+                      text-only post (no AI image fallback).
                     </div>
                   )}
 
@@ -2266,8 +2665,10 @@ export function AutomationAndNewsletterManager({
                     onChange={(e) =>
                       setSocialPosts((prev) =>
                         prev.map((p) =>
-                          p.id === post.id ? { ...p, linkedinContent: e.target.value } : p
-                        )
+                          p.id === post.id
+                            ? { ...p, linkedinContent: e.target.value }
+                            : p,
+                        ),
                       )
                     }
                     className="w-full p-2.5 rounded-lg bg-white/[0.04] border border-white/10 text-xs text-paper leading-relaxed focus:border-white/25 outline-none"
@@ -2276,7 +2677,9 @@ export function AutomationAndNewsletterManager({
                     <button
                       type="button"
                       onClick={() =>
-                        handleUpdateSocialRecord(post.id, { linkedinContent: post.linkedinContent })
+                        handleUpdateSocialRecord(post.id, {
+                          linkedinContent: post.linkedinContent,
+                        })
                       }
                       className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
                     >
@@ -2286,7 +2689,7 @@ export function AutomationAndNewsletterManager({
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(post.linkedinContent);
-                        showToast('Copied LinkedIn post');
+                        showToast("Copied LinkedIn post");
                       }}
                       className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
                     >
@@ -2299,7 +2702,7 @@ export function AutomationAndNewsletterManager({
                           linkedinContent: post.linkedinContent,
                         });
                         window.location.href = `/api/auth/linkedin?postId=${encodeURIComponent(
-                          post.id
+                          post.id,
                         )}&autoPublish=true`;
                       }}
                       className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
@@ -2310,14 +2713,14 @@ export function AutomationAndNewsletterManager({
                     {providers?.linkedinAuth?.connected && (
                       <button
                         type="button"
-                        onClick={() => handlePublishSocialApi(post, 'linkedin')}
+                        onClick={() => handlePublishSocialApi(post, "linkedin")}
                         disabled={publishingSocialId === `${post.id}-linkedin`}
                         className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-mono text-[8px] font-bold cursor-pointer"
                         title="Publishes immediately using your active 60-day LinkedIn OAuth member token"
                       >
                         {publishingSocialId === `${post.id}-linkedin`
-                          ? 'POSTING…'
-                          : 'PUBLISH (60-DAY TOKEN)'}
+                          ? "POSTING…"
+                          : "PUBLISH (60-DAY TOKEN)"}
                       </button>
                     )}
                     {post.linkedinPostUrl && (
@@ -2338,8 +2741,12 @@ export function AutomationAndNewsletterManager({
 
           {/* Comments & Reactions Manager (Separated LinkedIn & DEV.to Workspaces) */}
           {(() => {
-            const linkedinComments = comments.filter((c) => c.platform === 'linkedin');
-            const devtoComments = comments.filter((c) => c.platform === 'devto');
+            const linkedinComments = comments.filter(
+              (c) => c.platform === "linkedin",
+            );
+            const devtoComments = comments.filter(
+              (c) => c.platform === "devto",
+            );
             return (
               <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-6">
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-white/10">
@@ -2356,7 +2763,8 @@ export function AutomationAndNewsletterManager({
                       </span>
                     </div>
                     <p className="font-mono text-[9px] text-[#888] mt-1">
-                      Separate engagement panels for LinkedIn executive replies &amp; DEV.to deep technical discussions.
+                      Separate engagement panels for LinkedIn executive replies
+                      &amp; DEV.to deep technical discussions.
                     </p>
                   </div>
                   <button
@@ -2365,7 +2773,9 @@ export function AutomationAndNewsletterManager({
                     disabled={syncingComments}
                     className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer disabled:opacity-50"
                   >
-                    {syncingComments ? 'SYNCING DEV.TO & LINKEDIN…' : 'SYNC LIVE COMMENTS & REACTIONS'}
+                    {syncingComments
+                      ? "SYNCING DEV.TO & LINKEDIN…"
+                      : "SYNC LIVE COMMENTS & REACTIONS"}
                   </button>
                 </div>
 
@@ -2379,7 +2789,8 @@ export function AutomationAndNewsletterManager({
                           in LINKEDIN COMMENTS ({linkedinComments.length})
                         </span>
                         <p className="font-mono text-[8px] text-[#8aa0b5] mt-0.5">
-                          Official, executive &amp; career-safe AI replies for LinkedIn discussions.
+                          Official, executive &amp; career-safe AI replies for
+                          LinkedIn discussions.
                         </p>
                       </div>
                     </div>
@@ -2436,11 +2847,13 @@ export function AutomationAndNewsletterManager({
                         />
                         <button
                           type="button"
-                          onClick={() => handleAddAndReplyComment('linkedin')}
-                          disabled={generatingReplyId === 'new-linkedin'}
+                          onClick={() => handleAddAndReplyComment("linkedin")}
+                          disabled={generatingReplyId === "new-linkedin"}
                           className="px-4 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-50"
                         >
-                          {generatingReplyId === 'new-linkedin' ? 'CRAFTING…' : 'LINKEDIN REPLY'}
+                          {generatingReplyId === "new-linkedin"
+                            ? "CRAFTING…"
+                            : "LINKEDIN REPLY"}
                         </button>
                       </div>
                     </div>
@@ -2458,7 +2871,9 @@ export function AutomationAndNewsletterManager({
                                 <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-zinc-300 font-mono text-[8px] font-bold uppercase">
                                   LINKEDIN
                                 </span>
-                                <span className="text-xs font-semibold text-paper">{c.authorName}</span>
+                                <span className="text-xs font-semibold text-paper">
+                                  {c.authorName}
+                                </span>
                               </div>
                               <p className="font-mono text-[8px] text-[#7c90a3] truncate mt-0.5">
                                 on {c.articleTitle}
@@ -2481,7 +2896,9 @@ export function AutomationAndNewsletterManager({
                                 disabled={generatingReplyId === c.id}
                                 className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
                               >
-                                {generatingReplyId === c.id ? '⏳…' : 'AI REPLY'}
+                                {generatingReplyId === c.id
+                                  ? "⏳…"
+                                  : "AI REPLY"}
                               </button>
                             </div>
                           </div>
@@ -2499,15 +2916,19 @@ export function AutomationAndNewsletterManager({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    navigator.clipboard.writeText(c.aiSuggestedReply!);
-                                    showToast('Copied LinkedIn reply');
+                                    navigator.clipboard.writeText(
+                                      c.aiSuggestedReply!,
+                                    );
+                                    showToast("Copied LinkedIn reply");
                                   }}
                                   className="px-2.5 py-0.5 rounded bg-white text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
                                 >
                                   COPY REPLY
                                 </button>
                               </div>
-                              <p className="text-xs text-paper leading-relaxed">{c.aiSuggestedReply}</p>
+                              <p className="text-xs text-paper leading-relaxed">
+                                {c.aiSuggestedReply}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -2519,7 +2940,10 @@ export function AutomationAndNewsletterManager({
                             No LinkedIn comments tracked yet.
                           </p>
                           <p className="font-mono text-[8px] text-[#667788] leading-relaxed">
-                            Note: LinkedIn&apos;s standard self-serve OAuth only grants write permission (w_member_social). Paste any LinkedIn comment above to generate &amp; copy an executive reply.
+                            Note: LinkedIn&apos;s standard self-serve OAuth only
+                            grants write permission (w_member_social). Paste any
+                            LinkedIn comment above to generate &amp; copy an
+                            executive reply.
                           </p>
                         </div>
                       )}
@@ -2534,7 +2958,8 @@ export function AutomationAndNewsletterManager({
                           DEV.TO COMMENTS ({devtoComments.length})
                         </span>
                         <p className="font-mono text-[8px] text-[#9b8d83] mt-0.5">
-                          Live synced comments from your DEV.to articles with technical AI replies.
+                          Live synced comments from your DEV.to articles with
+                          technical AI replies.
                         </p>
                       </div>
                     </div>
@@ -2585,11 +3010,13 @@ export function AutomationAndNewsletterManager({
                         />
                         <button
                           type="button"
-                          onClick={() => handleAddAndReplyComment('devto')}
-                          disabled={generatingReplyId === 'new-devto'}
+                          onClick={() => handleAddAndReplyComment("devto")}
+                          disabled={generatingReplyId === "new-devto"}
                           className="px-4 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer whitespace-nowrap disabled:opacity-50"
                         >
-                          {generatingReplyId === 'new-devto' ? 'CRAFTING…' : 'DEV.TO REPLY'}
+                          {generatingReplyId === "new-devto"
+                            ? "CRAFTING…"
+                            : "DEV.TO REPLY"}
                         </button>
                       </div>
                     </div>
@@ -2607,7 +3034,9 @@ export function AutomationAndNewsletterManager({
                                 <span className="px-1.5 py-0.5 rounded bg-ember/20 text-zinc-200 font-mono text-[8px] font-bold uppercase">
                                   DEV.TO
                                 </span>
-                                <span className="text-xs font-semibold text-paper">{c.authorName}</span>
+                                <span className="text-xs font-semibold text-paper">
+                                  {c.authorName}
+                                </span>
                               </div>
                               <p className="font-mono text-[8px] text-[#777] truncate mt-0.5">
                                 on {c.articleTitle}
@@ -2630,7 +3059,9 @@ export function AutomationAndNewsletterManager({
                                 disabled={generatingReplyId === c.id}
                                 className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 font-mono text-[8px] text-paper cursor-pointer"
                               >
-                                {generatingReplyId === c.id ? '⏳…' : 'AI REPLY'}
+                                {generatingReplyId === c.id
+                                  ? "⏳…"
+                                  : "AI REPLY"}
                               </button>
                             </div>
                           </div>
@@ -2648,15 +3079,19 @@ export function AutomationAndNewsletterManager({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    navigator.clipboard.writeText(c.aiSuggestedReply!);
-                                    showToast('Copied DEV.to reply');
+                                    navigator.clipboard.writeText(
+                                      c.aiSuggestedReply!,
+                                    );
+                                    showToast("Copied DEV.to reply");
                                   }}
                                   className="px-2.5 py-0.5 rounded bg-white text-[#09090b] font-mono text-[8px] font-bold cursor-pointer"
                                 >
                                   COPY REPLY
                                 </button>
                               </div>
-                              <p className="text-xs text-paper leading-relaxed">{c.aiSuggestedReply}</p>
+                              <p className="text-xs text-paper leading-relaxed">
+                                {c.aiSuggestedReply}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -2665,7 +3100,8 @@ export function AutomationAndNewsletterManager({
                       {devtoComments.length === 0 && (
                         <div className="p-6 rounded-xl bg-white/[0.04] border border-white/5 text-center">
                           <p className="font-mono text-[10px] text-[#777]">
-                            No DEV.to comments yet. Click &ldquo;Sync Live Comments &amp; Reactions&rdquo; above.
+                            No DEV.to comments yet. Click &ldquo;Sync Live
+                            Comments &amp; Reactions&rdquo; above.
                           </p>
                         </div>
                       )}
@@ -2681,7 +3117,7 @@ export function AutomationAndNewsletterManager({
       {/* ════════════════════════════════════════════════════════════════
           SUB-TAB 4: NEWSLETTER SUBSCRIBERS & EMAIL SETUP (GMAIL / RESEND)
       ════════════════════════════════════════════════════════════════ */}
-      {subTab === 'newsletter' && (
+      {subTab === "newsletter" && (
         <div className="space-y-6">
           {/* Email Provider Status Banner */}
           <div className="p-5 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] flex flex-wrap items-center justify-between gap-4">
@@ -2692,22 +3128,24 @@ export function AutomationAndNewsletterManager({
                 </span>
                 <span
                   className={`font-mono text-[8px] px-2.5 py-0.5 rounded-full border ${
-                    providers?.email?.activeProvider !== 'none'
-                      ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10'
-                      : 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                    providers?.email?.activeProvider !== "none"
+                      ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10"
+                      : "border-amber-500/40 text-amber-300 bg-amber-500/10"
                   }`}
                 >
-                  {providers?.email?.activeProvider === 'gmail'
+                  {providers?.email?.activeProvider === "gmail"
                     ? `● GMAIL FREE SMTP ACTIVE (${providers.email.gmail?.user})`
-                    : providers?.email?.activeProvider === 'resend'
-                    ? `● RESEND API ACTIVE (${providers.email.resend?.fromEmail})`
-                    : '○ READY FOR GMAIL APP PASSWORD OR RESEND KEY'}
+                    : providers?.email?.activeProvider === "resend"
+                      ? `● RESEND API ACTIVE (${providers.email.resend?.fromEmail})`
+                      : "○ READY FOR GMAIL APP PASSWORD OR RESEND KEY"}
                 </span>
               </div>
               <p className="font-mono text-[9px] text-[#888]">
-                No custom domain yet? Set <code>GMAIL_USER</code> &amp; <code>GMAIL_APP_PASSWORD</code> in{' '}
-                <code>.env.local</code> for 100% free Gmail sending. When you get a domain, set{' '}
-                <code>RESEND_API_KEY</code> &amp; <code>EMAIL_PROVIDER=resend</code> to switch seamlessly.
+                No custom domain yet? Set <code>GMAIL_USER</code> &amp;{" "}
+                <code>GMAIL_APP_PASSWORD</code> in <code>.env.local</code> for
+                100% free Gmail sending. When you get a domain, set{" "}
+                <code>RESEND_API_KEY</code> &amp;{" "}
+                <code>EMAIL_PROVIDER=resend</code> to switch seamlessly.
               </p>
             </div>
 
@@ -2730,7 +3168,9 @@ export function AutomationAndNewsletterManager({
                 disabled={sendingBlast || !selectedSlugForBlast}
                 className="px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold cursor-pointer disabled:opacity-50"
               >
-                {sendingBlast ? 'SENDING…' : `SEND ARTICLE TO LIST (${subscribers.length})`}
+                {sendingBlast
+                  ? "SENDING…"
+                  : `SEND ARTICLE TO LIST (${subscribers.length})`}
               </button>
             </div>
           </div>
@@ -2740,16 +3180,21 @@ export function AutomationAndNewsletterManager({
             {/* Add Subscriber(s) Box */}
             <div className="p-6 rounded-2xl bg-white/[0.04] backdrop-blur-2xl border border-white/[0.09] space-y-4">
               <div>
-                <h3 className="text-base font-medium text-paper">Add Subscriber Emails</h3>
+                <h3 className="text-base font-medium text-paper">
+                  Add Subscriber Emails
+                </h3>
                 <p className="font-mono text-[9px] text-[#888] mt-0.5">
-                  Add one or multiple emails (comma or newline separated) directly to your newsletter list.
+                  Add one or multiple emails (comma or newline separated)
+                  directly to your newsletter list.
                 </p>
               </div>
               <textarea
                 rows={5}
                 value={bulkEmailsInput}
                 onChange={(e) => setBulkEmailsInput(e.target.value)}
-                placeholder={'reader1@gmail.com\nreader2@company.com, friend@domain.com'}
+                placeholder={
+                  "reader1@gmail.com\nreader2@company.com, friend@domain.com"
+                }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
               />
               <button
@@ -2758,7 +3203,7 @@ export function AutomationAndNewsletterManager({
                 disabled={addingEmails || !bulkEmailsInput.trim()}
                 className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-zinc-200 text-[#09090b] font-mono text-[9px] font-bold tracking-[0.08em] cursor-pointer disabled:opacity-50"
               >
-                {addingEmails ? 'ADDING…' : '+ ADD TO NEWSLETTER LIST'}
+                {addingEmails ? "ADDING…" : "+ ADD TO NEWSLETTER LIST"}
               </button>
             </div>
 
@@ -2779,9 +3224,11 @@ export function AutomationAndNewsletterManager({
                   <button
                     type="button"
                     onClick={() => {
-                      const csv = subscribers.map((s) => `${s.email},${s.source},${s.subscribedAt}`).join('\n');
+                      const csv = subscribers
+                        .map((s) => `${s.email},${s.source},${s.subscribedAt}`)
+                        .join("\n");
                       navigator.clipboard.writeText(csv);
-                      showToast('Copied subscriber list as CSV');
+                      showToast("Copied subscriber list as CSV");
                     }}
                     className="px-3 py-1.5 rounded-xl bg-white/10 font-mono text-[8px] text-paper cursor-pointer"
                   >
@@ -2797,10 +3244,14 @@ export function AutomationAndNewsletterManager({
                     className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10"
                   >
                     <div className="min-w-0">
-                      <p className="font-mono text-xs text-paper truncate">{sub.email}</p>
+                      <p className="font-mono text-xs text-paper truncate">
+                        {sub.email}
+                      </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="font-mono text-[8px] text-zinc-200 uppercase">
-                          {sub.source === 'frontend' ? 'CURVED INPUT (FRONTEND)' : 'ADMIN ADDED'}
+                          {sub.source === "frontend"
+                            ? "CURVED INPUT (FRONTEND)"
+                            : "ADMIN ADDED"}
                         </span>
                         <span className="font-mono text-[8px] text-[#666]">
                           · {new Date(sub.subscribedAt).toLocaleDateString()}
@@ -2818,7 +3269,8 @@ export function AutomationAndNewsletterManager({
                 ))}
                 {filteredSubscribers.length === 0 && (
                   <p className="text-center font-mono text-xs text-[#666] py-10">
-                    No subscribers yet. Visitors can subscribe via the CurvedInput widget on your blog, or add emails on the left.
+                    No subscribers yet. Visitors can subscribe via the
+                    CurvedInput widget on your blog, or add emails on the left.
                   </p>
                 )}
               </div>
@@ -2830,27 +3282,39 @@ export function AutomationAndNewsletterManager({
       {/* ════════════════════════════════════════════════════════════════
           SUB-TAB 5: AUTOMATION EXECUTION & DEBUG LOGS CONSOLE
       ════════════════════════════════════════════════════════════════ */}
-      {subTab === 'logs' && (
+      {subTab === "logs" && (
         <div className="p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/[0.09] space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
             <div>
               <h3 className="text-base font-medium text-paper">
-                Automation Step-by-Step Debug &amp; Execution Console ({filteredLogs.length})
+                Automation Step-by-Step Debug &amp; Execution Console (
+                {filteredLogs.length})
               </h3>
               <p className="font-mono text-[9px] text-[#777] mt-0.5">
-                Every pipeline stage (Weekly AI Queues, Gemini / Pollinations text &amp; image generation, Cloudinary upload, DEV.to sync, LinkedIn review email &amp; Cron checks) is logged here and in your server terminal.
+                Every pipeline stage (Weekly AI Queues, Gemini / Pollinations
+                text &amp; image generation, Cloudinary upload, DEV.to sync,
+                LinkedIn review email &amp; Cron checks) is logged here and in
+                your server terminal.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {['all', 'blog', 'linkedin', 'weekly-queue', 'image', 'cron', 'system'].map((p) => (
+              {[
+                "all",
+                "blog",
+                "linkedin",
+                "weekly-queue",
+                "image",
+                "cron",
+                "system",
+              ].map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setLogFilterPipeline(p)}
                   className={`px-2.5 py-1 rounded-lg font-mono text-[8px] uppercase cursor-pointer border ${
                     logFilterPipeline === p
-                      ? 'bg-white text-[#09090b] border-ember font-bold'
-                      : 'bg-white/[0.03] backdrop-blur-xl text-[#999] border-white/10 hover:text-paper'
+                      ? "bg-white text-[#09090b] border-ember font-bold"
+                      : "bg-white/[0.03] backdrop-blur-xl text-[#999] border-white/10 hover:text-paper"
                   }`}
                 >
                   {p}
@@ -2869,7 +3333,7 @@ export function AutomationAndNewsletterManager({
                 disabled={clearingLogs || logs.length === 0}
                 className="px-3 py-1 rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-500/30 font-mono text-[8px] text-red-300 cursor-pointer disabled:opacity-40"
               >
-                {clearingLogs ? 'CLEARING…' : 'CLEAR LOGS'}
+                {clearingLogs ? "CLEARING…" : "CLEAR LOGS"}
               </button>
             </div>
           </div>
@@ -2879,26 +3343,26 @@ export function AutomationAndNewsletterManager({
               <div
                 key={entry.id}
                 className={`p-3 rounded-xl border space-y-1.5 ${
-                  entry.level === 'error'
-                    ? 'bg-red-950/35 border-red-500/35 text-red-100'
-                    : entry.level === 'warn'
-                    ? 'bg-amber-950/30 border-amber-500/35 text-amber-100'
-                    : entry.level === 'success'
-                    ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-100'
-                    : 'bg-white/[0.03] backdrop-blur-xl border-white/10 text-paper'
+                  entry.level === "error"
+                    ? "bg-red-950/35 border-red-500/35 text-red-100"
+                    : entry.level === "warn"
+                      ? "bg-amber-950/30 border-amber-500/35 text-amber-100"
+                      : entry.level === "success"
+                        ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-100"
+                        : "bg-white/[0.03] backdrop-blur-xl border-white/10 text-paper"
                 }`}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                        entry.level === 'error'
-                          ? 'bg-red-500 text-black'
-                          : entry.level === 'warn'
-                          ? 'bg-amber-400 text-black'
-                          : entry.level === 'success'
-                          ? 'bg-emerald-400 text-black'
-                          : 'bg-white/15 text-paper'
+                        entry.level === "error"
+                          ? "bg-red-500 text-black"
+                          : entry.level === "warn"
+                            ? "bg-amber-400 text-black"
+                            : entry.level === "success"
+                              ? "bg-emerald-400 text-black"
+                              : "bg-white/15 text-paper"
                       }`}
                     >
                       {entry.level}
@@ -2920,12 +3384,15 @@ export function AutomationAndNewsletterManager({
                   </span>
                 </div>
 
-                <p className="text-xs leading-relaxed break-words">{entry.message}</p>
+                <p className="text-xs leading-relaxed break-words">
+                  {entry.message}
+                </p>
 
                 {entry.meta && Object.keys(entry.meta).length > 0 && (
                   <details className="pt-1">
                     <summary className="text-[9px] text-[#999] hover:text-paper cursor-pointer select-none">
-                      Inspect step metadata / payload ({Object.keys(entry.meta).join(', ')})
+                      Inspect step metadata / payload (
+                      {Object.keys(entry.meta).join(", ")})
                     </summary>
                     <pre className="mt-1.5 p-2.5 rounded-lg bg-black/60 border border-white/10 text-[9px] text-[#ccc] overflow-x-auto whitespace-pre-wrap">
                       {JSON.stringify(entry.meta, null, 2)}
@@ -2937,7 +3404,8 @@ export function AutomationAndNewsletterManager({
 
             {filteredLogs.length === 0 && (
               <p className="text-center text-xs text-[#666] py-12">
-                No log entries match the selected filter. Trigger an automation action to see real-time step logs.
+                No log entries match the selected filter. Trigger an automation
+                action to see real-time step logs.
               </p>
             )}
           </div>
@@ -2961,4 +3429,3 @@ export function AutomationAndNewsletterManager({
     </div>
   );
 }
-
