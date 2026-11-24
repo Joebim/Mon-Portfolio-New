@@ -445,7 +445,7 @@ export async function generateTextWithFreeAI(
     const stepPrefix = `[Engine ${i + 1}/${engineQueue.length}: ${engine}]`;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ENGINE A: Google Gemini Free Tier (gemini-2.0-flash)
+    // ENGINE A: Google Gemini Free Tier (gemini-2.5-flash → gemini-3.8-flash → gemini-2.5-flash-lite)
     // ─────────────────────────────────────────────────────────────────────────
     if (engine === 'gemini-2.0-flash') {
       if (!geminiKey) {
@@ -458,65 +458,81 @@ export async function generateTextWithFreeAI(
         continue;
       }
 
-      const geminiStart = Date.now();
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-              generationConfig: {
-                temperature: 0.75,
-                maxOutputTokens: 8192,
-                ...(expectJson ? { responseMimeType: 'application/json' } : {}),
-              },
-            }),
-            signal: AbortSignal.timeout(45000),
-          }
-        );
+      const geminiModels = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-2.5-flash-lite'];
+      for (const activeGeminiModel of geminiModels) {
+        const geminiStart = Date.now();
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${activeGeminiModel}:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+                contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                generationConfig: {
+                  temperature: 0.75,
+                  maxOutputTokens: 8192,
+                  ...(expectJson ? { responseMimeType: 'application/json' } : {}),
+                },
+              }),
+              signal: AbortSignal.timeout(45000),
+            }
+          );
 
-        if (res.ok) {
-          const data = await res.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-          const finishReason = data?.candidates?.[0]?.finishReason;
-          if (text) {
+          if (res.ok) {
+            const data = await res.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            const finishReason = data?.candidates?.[0]?.finishReason;
+            if (text && finishReason !== 'MAX_TOKENS') {
+              await logAutomationStep({
+                level: 'success',
+                pipeline: 'system',
+                step: 'AI_ENGINE_GEMINI_OK',
+                message: `${stepPrefix} ${activeGeminiModel} succeeded with ${text.length} chars (finishReason=${finishReason || 'STOP'})`,
+                durationMs: Date.now() - geminiStart,
+                meta: {
+                  engine,
+                  model: activeGeminiModel,
+                  chars: text.length,
+                  finishReason,
+                  preview: text.slice(0, 200),
+                },
+              });
+              return { text: text.trim(), modelUsed: `${activeGeminiModel} (Free Tier)` };
+            }
+            if (text && finishReason === 'MAX_TOKENS') {
+              await logAutomationStep({
+                level: 'warn',
+                pipeline: 'system',
+                step: 'AI_ENGINE_GEMINI_TRUNCATED',
+                message: `${stepPrefix} ${activeGeminiModel} hit MAX_TOKENS (${text.length} chars) — trying next model`,
+                durationMs: Date.now() - geminiStart,
+              });
+            }
+          } else {
+            const errBody = await res.text().catch(() => '');
             await logAutomationStep({
-              level: 'success',
+              level: 'warn',
               pipeline: 'system',
-              step: 'AI_ENGINE_GEMINI_OK',
-              message: `${stepPrefix} Gemini 2.0 Flash succeeded with ${text.length} chars (finishReason=${finishReason || 'STOP'})`,
+              step: 'AI_ENGINE_GEMINI_FAILOVER',
+              message: `${stepPrefix} ${activeGeminiModel} HTTP ${res.status} — trying next model/engine`,
               durationMs: Date.now() - geminiStart,
-              meta: {
-                engine,
-                chars: text.length,
-                finishReason,
-                preview: text.slice(0, 200),
-              },
+              meta: { model: activeGeminiModel, status: res.status, nextEngine, errorBody: errBody.slice(0, 300) },
             });
-            return { text: text.trim(), modelUsed: 'gemini-2.0-flash (Free Tier)' };
+            if (res.status === 429 || res.status === 401 || res.status === 403) {
+              break; // Quota or auth issue applies across Gemini models
+            }
           }
-        } else {
-          const errBody = await res.text().catch(() => '');
+        } catch (err) {
           await logAutomationStep({
             level: 'warn',
             pipeline: 'system',
             step: 'AI_ENGINE_GEMINI_FAILOVER',
-            message: `${stepPrefix} Gemini HTTP ${res.status} — failing over to ${nextEngine || 'next engine'}`,
+            message: `${stepPrefix} ${activeGeminiModel} exception — failing over: ${err instanceof Error ? err.message : String(err)}`,
             durationMs: Date.now() - geminiStart,
-            meta: { status: res.status, nextEngine, errorBody: errBody.slice(0, 300) },
           });
         }
-      } catch (err) {
-        await logAutomationStep({
-          level: 'warn',
-          pipeline: 'system',
-          step: 'AI_ENGINE_GEMINI_FAILOVER',
-          message: `${stepPrefix} Gemini exception — failing over to ${nextEngine || 'next engine'}: ${err instanceof Error ? err.message : String(err)}`,
-          durationMs: Date.now() - geminiStart,
-        });
       }
       continue;
     }
@@ -571,18 +587,30 @@ export async function generateTextWithFreeAI(
               data?.choices?.[0]?.message?.content ||
               data?.result?.response ||
               data?.result?.choices?.[0]?.message?.content;
+            const finishReason = data?.choices?.[0]?.finish_reason;
 
             if (text && typeof text === 'string') {
+              if (finishReason === 'length') {
+                await logAutomationStep({
+                  level: 'warn',
+                  pipeline: 'system',
+                  step: 'AI_ENGINE_CLOUDFLARE_TRUNCATED',
+                  message: `${stepPrefix} Cloudflare Workers AI (${activeCfModel}) hit length limit (${text.length} chars) — failing over to avoid cut-off output`,
+                  durationMs: Date.now() - cfStart,
+                });
+                continue;
+              }
               await logAutomationStep({
                 level: 'success',
                 pipeline: 'system',
                 step: 'AI_ENGINE_CLOUDFLARE_OK',
-                message: `${stepPrefix} Cloudflare Workers AI (${activeCfModel}) succeeded with ${text.length} chars`,
+                message: `${stepPrefix} Cloudflare Workers AI (${activeCfModel}) succeeded with ${text.length} chars (finishReason=${finishReason || 'stop'})`,
                 durationMs: Date.now() - cfStart,
                 meta: {
                   engine,
                   model: activeCfModel,
                   chars: text.length,
+                  finishReason,
                   preview: text.slice(0, 200),
                 },
               });
