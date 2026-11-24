@@ -193,6 +193,26 @@ export function AutomationAndNewsletterManager({
 
   const syncingRef = useRef(false);
   const hasUnsavedConfigRef = useRef(false);
+  const [draggedQueueItem, setDraggedQueueItem] = useState<{
+    queue: "devto" | "linkedin";
+    index: number;
+  } | null>(null);
+  const [dragOverQueueItem, setDragOverQueueItem] = useState<{
+    queue: "devto" | "linkedin";
+    index: number;
+  } | null>(null);
+
+  const updateConfigDraft = useCallback(
+    (
+      updater:
+        | AutomationConfig
+        | ((prev: AutomationConfig) => AutomationConfig),
+    ) => {
+      hasUnsavedConfigRef.current = true;
+      setConfig(updater);
+    },
+    [],
+  );
 
   const loadAll = useCallback(
     async (silent = false) => {
@@ -1743,12 +1763,16 @@ export function AutomationAndNewsletterManager({
                                 ...devtoQueue,
                                 newDevtoQueueTopic.trim(),
                               ];
-                              setConfig({
+                              updateConfigDraft({
                                 ...config,
                                 devtoTopicsQueue: next,
                                 topicsQueue: next,
                               });
                               setNewDevtoQueueTopic("");
+                              void handleSaveConfig({
+                                devtoTopicsQueue: next,
+                                topicsQueue: next,
+                              });
                             }
                           }}
                           placeholder="Add a custom DEV.to blog topic to this week's queue…"
@@ -1762,12 +1786,16 @@ export function AutomationAndNewsletterManager({
                               ...devtoQueue,
                               newDevtoQueueTopic.trim(),
                             ];
-                            setConfig({
+                            updateConfigDraft({
                               ...config,
                               devtoTopicsQueue: next,
                               topicsQueue: next,
                             });
                             setNewDevtoQueueTopic("");
+                            void handleSaveConfig({
+                              devtoTopicsQueue: next,
+                              topicsQueue: next,
+                            });
                           }}
                           className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/[0.1] font-mono text-[9px] text-paper cursor-pointer"
                         >
@@ -1775,36 +1803,103 @@ export function AutomationAndNewsletterManager({
                         </button>
                       </div>
 
-                      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                        {devtoQueue.map((topic, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10"
-                          >
-                            <span className="px-1.5 py-0.5 rounded bg-ember/15 text-zinc-200 font-mono text-[8px] font-bold shrink-0">
-                              {getSlotDayLabel(config.blogSchedule, idx)}
-                            </span>
-                            <span className="flex-1 text-xs text-paper truncate">
-                              {topic}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const next = devtoQueue.filter(
-                                  (_, i) => i !== idx,
-                                );
-                                setConfig({
-                                  ...config,
-                                  devtoTopicsQueue: next,
-                                  topicsQueue: next,
-                                });
+                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+                        {devtoQueue.map((topic, idx) => {
+                          const isDragTarget =
+                            dragOverQueueItem?.queue === "devto" &&
+                            dragOverQueueItem.index === idx;
+                          return (
+                            <div
+                              key={`${topic}-${idx}`}
+                              draggable
+                              onDragStart={() =>
+                                setDraggedQueueItem({
+                                  queue: "devto",
+                                  index: idx,
+                                })
+                              }
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                if (
+                                  draggedQueueItem?.queue === "devto" &&
+                                  dragOverQueueItem?.index !== idx
+                                ) {
+                                  setDragOverQueueItem({
+                                    queue: "devto",
+                                    index: idx,
+                                  });
+                                }
                               }}
-                              className="text-red-400 font-mono text-xs hover:underline cursor-pointer"
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (
+                                  draggedQueueItem?.queue === "devto" &&
+                                  draggedQueueItem.index !== idx
+                                ) {
+                                  const next = [...devtoQueue];
+                                  const [moved] = next.splice(
+                                    draggedQueueItem.index,
+                                    1,
+                                  );
+                                  next.splice(idx, 0, moved);
+                                  updateConfigDraft({
+                                    ...config,
+                                    devtoTopicsQueue: next,
+                                    topicsQueue: next,
+                                  });
+                                  void handleSaveConfig({
+                                    devtoTopicsQueue: next,
+                                    topicsQueue: next,
+                                  });
+                                }
+                                setDraggedQueueItem(null);
+                                setDragOverQueueItem(null);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedQueueItem(null);
+                                setDragOverQueueItem(null);
+                              }}
+                              className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border transition-colors cursor-grab active:cursor-grabbing ${
+                                isDragTarget
+                                  ? "bg-[#f36d45]/10 border-[#f36d45]"
+                                  : "bg-white/[0.04] border-white/10"
+                              }`}
                             >
-                              ×
-                            </button>
-                          </div>
-                        ))}
+                              <span
+                                className="text-zinc-500 font-mono text-[10px] select-none shrink-0"
+                                title="Drag to reorder"
+                              >
+                                ⋮⋮
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded bg-ember/15 text-zinc-200 font-mono text-[8px] font-bold shrink-0">
+                                {getSlotDayLabel(config.blogSchedule, idx)}
+                              </span>
+                              <span className="flex-1 text-xs text-paper truncate">
+                                {topic}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = devtoQueue.filter(
+                                    (_, i) => i !== idx,
+                                  );
+                                  updateConfigDraft({
+                                    ...config,
+                                    devtoTopicsQueue: next,
+                                    topicsQueue: next,
+                                  });
+                                  void handleSaveConfig({
+                                    devtoTopicsQueue: next,
+                                    topicsQueue: next,
+                                  });
+                                }}
+                                className="text-red-400 font-mono text-xs hover:underline cursor-pointer px-1"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          );
+                        })}
                         {devtoQueue.length === 0 && (
                           <p className="font-mono text-[9px] text-[#666] py-2 text-center">
                             All DEV.to cues fulfilled — AI will auto-generate{" "}
@@ -1832,13 +1927,17 @@ export function AutomationAndNewsletterManager({
                     if (newLinkedinTopicImageUrl) {
                       nextImages[trimmed] = newLinkedinTopicImageUrl;
                     }
-                    setConfig({
+                    updateConfigDraft({
                       ...config,
                       linkedinTopicsQueue: nextQueue,
                       linkedinTopicImages: nextImages,
                     });
                     setNewLinkedinQueueTopic("");
                     setNewLinkedinTopicImageUrl("");
+                    void handleSaveConfig({
+                      linkedinTopicsQueue: nextQueue,
+                      linkedinTopicImages: nextImages,
+                    });
                   };
 
                   return (
@@ -1949,12 +2048,71 @@ export function AutomationAndNewsletterManager({
                           const attachedImg = topicImages[topic];
                           const isUploadingThis =
                             uploadingLinkedinImageKey === topic;
+                          const isDragTarget =
+                            dragOverQueueItem?.queue === "linkedin" &&
+                            dragOverQueueItem.index === idx;
                           return (
                             <div
-                              key={idx}
-                              className="p-2.5 rounded-xl bg-white/[0.04] border border-white/10 space-y-2"
+                              key={`${topic}-${idx}`}
+                              draggable
+                              onDragStart={() =>
+                                setDraggedQueueItem({
+                                  queue: "linkedin",
+                                  index: idx,
+                                })
+                              }
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                if (
+                                  draggedQueueItem?.queue === "linkedin" &&
+                                  dragOverQueueItem?.index !== idx
+                                ) {
+                                  setDragOverQueueItem({
+                                    queue: "linkedin",
+                                    index: idx,
+                                  });
+                                }
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (
+                                  draggedQueueItem?.queue === "linkedin" &&
+                                  draggedQueueItem.index !== idx
+                                ) {
+                                  const nextQueue = [...linkedinQueue];
+                                  const [moved] = nextQueue.splice(
+                                    draggedQueueItem.index,
+                                    1,
+                                  );
+                                  nextQueue.splice(idx, 0, moved);
+                                  updateConfigDraft({
+                                    ...config,
+                                    linkedinTopicsQueue: nextQueue,
+                                  });
+                                  void handleSaveConfig({
+                                    linkedinTopicsQueue: nextQueue,
+                                  });
+                                }
+                                setDraggedQueueItem(null);
+                                setDragOverQueueItem(null);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedQueueItem(null);
+                                setDragOverQueueItem(null);
+                              }}
+                              className={`p-2.5 rounded-xl border space-y-2 transition-colors cursor-grab active:cursor-grabbing ${
+                                isDragTarget
+                                  ? "bg-[#f36d45]/10 border-[#f36d45]"
+                                  : "bg-white/[0.04] border-white/10"
+                              }`}
                             >
                               <div className="flex items-center justify-between gap-2">
+                                <span
+                                  className="text-zinc-500 font-mono text-[10px] select-none shrink-0"
+                                  title="Drag to reorder"
+                                >
+                                  ⋮⋮
+                                </span>
                                 <span className="px-1.5 py-0.5 rounded bg-sky-500/15 text-zinc-300 font-mono text-[8px] font-bold shrink-0">
                                   {getSlotDayLabel(
                                     config.linkedinSchedule,
@@ -1999,8 +2157,12 @@ export function AutomationAndNewsletterManager({
                                     );
                                     const nextImages = { ...topicImages };
                                     delete nextImages[topic];
-                                    setConfig({
+                                    updateConfigDraft({
                                       ...config,
+                                      linkedinTopicsQueue: nextQueue,
+                                      linkedinTopicImages: nextImages,
+                                    });
+                                    void handleSaveConfig({
                                       linkedinTopicsQueue: nextQueue,
                                       linkedinTopicImages: nextImages,
                                     });
@@ -2272,7 +2434,7 @@ export function AutomationAndNewsletterManager({
               <button
                 type="button"
                 onClick={() =>
-                  setConfig({
+                  updateConfigDraft({
                     ...config,
                     masterPrompts: DEFAULT_MASTER_PROMPTS,
                   })
@@ -2301,13 +2463,13 @@ export function AutomationAndNewsletterManager({
                 rows={9}
                 value={config.masterPrompts.blogMasterPrompt}
                 onChange={(e) =>
-                  setConfig({
-                    ...config,
+                  updateConfigDraft((prev) => ({
+                    ...prev,
                     masterPrompts: {
-                      ...config.masterPrompts,
+                      ...prev.masterPrompts,
                       blogMasterPrompt: e.target.value,
                     },
-                  })
+                  }))
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
@@ -2321,13 +2483,13 @@ export function AutomationAndNewsletterManager({
                 rows={9}
                 value={config.masterPrompts.linkedinMasterPrompt}
                 onChange={(e) =>
-                  setConfig({
-                    ...config,
+                  updateConfigDraft((prev) => ({
+                    ...prev,
                     masterPrompts: {
-                      ...config.masterPrompts,
+                      ...prev.masterPrompts,
                       linkedinMasterPrompt: e.target.value,
                     },
-                  })
+                  }))
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
@@ -2341,13 +2503,13 @@ export function AutomationAndNewsletterManager({
                 rows={5}
                 value={config.masterPrompts.imageMasterPrompt}
                 onChange={(e) =>
-                  setConfig({
-                    ...config,
+                  updateConfigDraft((prev) => ({
+                    ...prev,
                     masterPrompts: {
-                      ...config.masterPrompts,
+                      ...prev.masterPrompts,
                       imageMasterPrompt: e.target.value,
                     },
-                  })
+                  }))
                 }
                 className="w-full p-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono leading-relaxed focus:border-white/25 outline-none"
               />
@@ -2364,13 +2526,13 @@ export function AutomationAndNewsletterManager({
                 rows={4}
                 value={config.masterPrompts.commentReplyLinkedinPrompt}
                 onChange={(e) =>
-                  setConfig({
-                    ...config,
+                  updateConfigDraft((prev) => ({
+                    ...prev,
                     masterPrompts: {
-                      ...config.masterPrompts,
+                      ...prev.masterPrompts,
                       commentReplyLinkedinPrompt: e.target.value,
                     },
-                  })
+                  }))
                 }
                 className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-[11px] text-paper font-mono focus:border-white/25 outline-none"
               />
@@ -2383,13 +2545,13 @@ export function AutomationAndNewsletterManager({
                 rows={4}
                 value={config.masterPrompts.commentReplyDevtoPrompt}
                 onChange={(e) =>
-                  setConfig({
-                    ...config,
+                  updateConfigDraft((prev) => ({
+                    ...prev,
                     masterPrompts: {
-                      ...config.masterPrompts,
+                      ...prev.masterPrompts,
                       commentReplyDevtoPrompt: e.target.value,
                     },
-                  })
+                  }))
                 }
                 className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.1] text-[11px] text-paper font-mono focus:border-white/25 outline-none"
               />
