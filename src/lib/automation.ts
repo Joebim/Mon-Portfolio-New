@@ -1005,7 +1005,90 @@ function parseGeneratedBlogResponse(
 }
 
 // ---------------------------------------------------------------------------
-// Generate Official LinkedIn Post for an Article
+// Helpers: LinkedIn Preamble Sanitizer, Niche Blog Matcher, & Shuffler
+// ---------------------------------------------------------------------------
+
+/** Strips conversational AI preamble like "Here's a LinkedIn post sharing the new article:" */
+function sanitizeLinkedInPostText(raw: string): string {
+  let text = (raw || '').trim();
+  const preamblePattern =
+    /^(?:here(?:'s| is)\s+(?:a|an|the|your)?\s*(?:official\s+|draft\s+)?linkedin\s+post[^\n]*:|sure[,!.:]*\s*here(?:'s| is)[^\n]*:|certainly[,!.:]*\s*[^\n]*:|below is[^\n]*:|linkedin post\s*[:\-]\s*)\s*\n+/i;
+  for (let i = 0; i < 3; i++) {
+    const next = text.replace(preamblePattern, '').trim();
+    if (next === text) break;
+    text = next;
+  }
+  text = text.replace(/^---+\s*\n+/, '').replace(/\n+---+$/, '').trim();
+  if (
+    (text.startsWith('"') && text.endsWith('"')) ||
+    (text.startsWith('“') && text.endsWith('”'))
+  ) {
+    text = text.slice(1, -1).trim();
+  }
+  return text;
+}
+
+const GENERIC_TOPIC_STOPWORDS = new Set([
+  'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'your', 'about',
+  'how', 'why', 'what', 'when', 'where', 'which', 'building', 'scalable',
+  'production', 'ready', 'engineering', 'modern', 'guide', 'best', 'practices',
+  'lessons', 'insights', 'deep', 'dive', 'application', 'applications', 'system',
+  'systems', 'software', 'frontend', 'fullstack', 'development', 'webdev',
+]);
+
+function extractNicheTokens(text: string): string[] {
+  return Array.from(
+    new Set(
+      (text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter((w) => w.length >= 3 && !GENERIC_TOPIC_STOPWORDS.has(w))
+    )
+  );
+}
+
+/**
+ * Matches a LinkedIn topic to a published blog ONLY when they share strong niche/domain overlap.
+ * Prevents unrelated LinkedIn posts from repeatedly referencing an unrelated recent blog.
+ */
+function findMatchingBlogForTopic(topicTitle: string, articles: BlogArticle[]): BlogArticle | undefined {
+  const topicTokens = extractNicheTokens(topicTitle);
+  if (topicTokens.length === 0 || articles.length === 0) return undefined;
+
+  let bestArticle: BlogArticle | undefined;
+  let bestScore = 0;
+
+  for (const article of articles) {
+    const articleTokens = new Set(
+      extractNicheTokens(`${article.title} ${(article.tagList || []).join(' ')} ${article.description || ''}`)
+    );
+    let matches = 0;
+    for (const token of topicTokens) {
+      if (articleTokens.has(token)) matches++;
+    }
+    const minRequired = topicTokens.length >= 4 ? 2 : 1;
+    const overlapRatio = matches / topicTokens.length;
+    if (matches >= minRequired && overlapRatio >= 0.35 && matches > bestScore) {
+      bestScore = matches;
+      bestArticle = article;
+    }
+  }
+
+  return bestArticle;
+}
+
+function shuffleArray<T>(items: T[]): T[] {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+// ---------------------------------------------------------------------------
+// Generate Official LinkedIn Post for an Article or Standalone Niche Topic
 // ---------------------------------------------------------------------------
 
 export async function generateSocialPostsForArticle(
@@ -1021,11 +1104,14 @@ export async function generateSocialPostsForArticle(
   options?: {
     /** Manually attached authentic Cloudinary image URL (never AI-generated) */
     linkedinImageUrl?: string;
+    /** Only true when this LinkedIn post actually complements a matching blog article */
+    hasMatchingBlog?: boolean;
   }
 ): Promise<SocialPostRecord> {
   const activeConfig = config || (await getAutomationConfig());
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://josephakinwole.com';
-  const articleUrl = article.url || `${siteUrl}/blog/${article.slug}`;
+  const hasMatchingBlog = options?.hasMatchingBlog ?? Boolean(article.url);
+  const articleUrl = hasMatchingBlog ? article.url || `${siteUrl}/blog/${article.slug}` : '';
 
   // Look up if a manual Cloudinary image was attached to this topic in `linkedinTopicImages` or passed explicitly
   const attachedImageUrl =
@@ -1033,29 +1119,38 @@ export async function generateSocialPostsForArticle(
     activeConfig.linkedinTopicImages?.[article.title]?.trim() ||
     undefined;
 
-  const articleContext = `ARTICLE TITLE: ${article.title}
+  const articleContext = hasMatchingBlog
+    ? `TOPIC / ARTICLE TITLE: ${article.title}
 SUMMARY: ${article.description}
 TAGS: ${(article.tagList || []).join(', ')}
 ARTICLE LINK: ${articleUrl}
 KEY CONTENT EXCERPT:
-${(article.bodyMarkdown || article.description).slice(0, 2200)}`;
+${(article.bodyMarkdown || article.description).slice(0, 2200)}`
+    : `LINKEDIN TOPIC: ${article.title}
+FOCUS: ${article.description}
+TAGS: ${(article.tagList || []).join(', ')}`;
+
+  const userPrompt = hasMatchingBlog
+    ? `Create an official, authoritative LinkedIn post on this topic that naturally complements and shares this matching article:\n\n${articleContext}\n\nInclude the article link: ${articleUrl}\n\nCRITICAL OUTPUT RULE: Output ONLY the final LinkedIn post body (plus hashtags). Do NOT include any introductory sentence or preamble such as "Here's a LinkedIn post..." or "Sure...".`
+    : `Create an official, authoritative standalone LinkedIn thought-leadership post on this topic:\n\n${articleContext}\n\nCRITICAL RULES:\n1. Output ONLY the final LinkedIn post body (plus hashtags). Do NOT include any introductory sentence or preamble such as "Here's a LinkedIn post..." or "Sure...".\n2. Do NOT mention, reference, or link to any blog article or external URL.`;
 
   // LinkedIn Post (Official, Executive, Structured)
   const linkedinRes = await generateTextWithFreeAI(
     activeConfig.masterPrompts.linkedinMasterPrompt,
-    `Create an official, authoritative LinkedIn post sharing this new article:\n\n${articleContext}\n\nInclude the article link: ${articleUrl}`,
+    userPrompt,
     activeConfig.textModel,
     false
   );
 
-  const safetyCheck = scanForReputationRisks([linkedinRes.text]);
+  const cleanLinkedinText = sanitizeLinkedInPostText(linkedinRes.text);
+  const safetyCheck = scanForReputationRisks([cleanLinkedinText]);
 
   const record: SocialPostRecord = {
     id: `social-${article.slug}-${Date.now()}`,
     articleSlug: article.slug,
     articleTitle: article.title,
     articleUrl,
-    linkedinContent: linkedinRes.text,
+    linkedinContent: cleanLinkedinText,
     ...(attachedImageUrl ? { linkedinImageUrl: attachedImageUrl } : {}),
     linkedinStatus: 'pending_review',
     safetyCheck,
@@ -1734,21 +1829,37 @@ export async function generateWeeklyQueuesWithAI(options: {
     // ignore
   }
 
-  const pillars =
+  const allKeywords =
     config.nicheKeywords.length > 0
-      ? config.nicheKeywords.join(', ')
-      : 'Frontend Architecture, Financial Tooling & Fintech UX, TypeScript Design Patterns, React 19 & Next.js Performance';
+      ? config.nicheKeywords
+      : [
+          'Frontend Architecture',
+          'Financial Tooling & Fintech UX',
+          'TypeScript Design Patterns',
+          'React 19 & Next.js Performance',
+        ];
+  const shuffledNiches = shuffleArray(allKeywords);
+  const devtoAssignedNiches = Array.from(
+    { length: devtoCount },
+    (_, i) => shuffledNiches[i % shuffledNiches.length]
+  );
+  const linkedinAssignedNiches = Array.from(
+    { length: linkedinCount },
+    (_, i) => shuffledNiches[(devtoCount + i) % shuffledNiches.length]
+  );
 
   const systemPrompt = `You are the Editorial & Content Strategy Engine for Joseph Akinwole (Senior Frontend & Full-Stack Engineer specializing in React, Next.js, TypeScript, Angular, and Fintech systems).
-Your job is to plan the weekly content queues separately for DEV.to technical blog articles and LinkedIn executive engineering posts.`;
+Your job is to plan diverse weekly content queues separately for DEV.to technical blog articles and LinkedIn executive engineering posts, ensuring each slot covers a DIFFERENT randomized niche.`;
 
-  const userPrompt = `Generate this week's content queues (Week starting ${weekKey}) based on these Niche Pillars:
-NICHE PILLARS: ${pillars}
+  const userPrompt = `Generate this week's content queues (Week starting ${weekKey}) with STRICT NICHE DIVERSITY (never cluster multiple topics into the same niche).
 ${existingTitles.length > 0 ? `AVOID REPEATING THESE RECENTLY PUBLISHED TITLES:\n- ${existingTitles.join('\n- ')}\n` : ''}
 
 SCHEDULE REQUIREMENTS FOR THIS WEEK:
-1. DEV.to Blog Queue: Exactly ${devtoCount} deep-dive technical blog topic(s) for scheduled days (${devtoDayLabels}). Focus on concrete architecture, code patterns, performance, and production engineering lessons.
-2. LinkedIn Post Queue: Exactly ${linkedinCount} authoritative LinkedIn post topic(s) for scheduled days (${linkedinDayLabels}). Focus on engineering leadership insights, system trade-offs, fintech UX reliability, and product-impact lessons.
+1. DEV.to Blog Queue: Exactly ${devtoCount} deep-dive technical blog topic(s) for scheduled days (${devtoDayLabels}). Assign each slot strictly to its randomized niche below:
+${devtoAssignedNiches.map((niche, idx) => `   - Slot ${idx + 1}: Niche = "${niche}"`).join('\n')}
+
+2. LinkedIn Post Queue: Exactly ${linkedinCount} authoritative LinkedIn post topic(s) for scheduled days (${linkedinDayLabels}). Assign each slot strictly to its randomized niche below:
+${linkedinAssignedNiches.map((niche, idx) => `   - Slot ${idx + 1}: Niche = "${niche}"`).join('\n')}
 
 Return the response in this exact format:
 ---DEVTO_QUEUE---
@@ -2177,7 +2288,6 @@ export async function runAutomatedLinkedInPipeline(options: {
 
     const { articles } = await getAllBlogArticles();
     const publishedArticles = articles.filter((a) => !a.isDraft);
-    const latestPublished = publishedArticles[0];
 
     let remainingLinkedinQueue = [...(config.linkedinTopicsQueue || [])];
     let queuedLinkedinTopic = options.customTopic?.trim() || '';
@@ -2189,27 +2299,30 @@ export async function runAutomatedLinkedInPipeline(options: {
     let targetArticle = options.slug
       ? publishedArticles.find((a) => a.slug === options.slug)
       : undefined;
+    let hasMatchingBlog = Boolean(targetArticle);
 
     if (!targetArticle) {
       const topicTitle =
         queuedLinkedinTopic ||
-        latestPublished?.title ||
-        config.nicheKeywords[0] ||
+        config.nicheKeywords[Math.floor(Math.random() * Math.max(1, config.nicheKeywords.length))] ||
         'Frontend Architecture & Engineering Leadership';
+      const matchedBlog = findMatchingBlogForTopic(topicTitle, publishedArticles);
+      hasMatchingBlog = Boolean(matchedBlog);
+
       targetArticle = {
         id: `linkedin-${Date.now()}`,
-        slug: latestPublished?.slug || 'engineering-insights',
+        slug: matchedBlog?.slug || 'engineering-insights',
         title: topicTitle,
         description: `Architectural insights and production engineering lessons on: ${topicTitle}.`,
-        bodyMarkdown: latestPublished
-          ? `LinkedIn Weekly Topic Focus: ${topicTitle}\n\nRelated Recent Article Context (${latestPublished.title}):\n${(latestPublished.bodyMarkdown || latestPublished.description).slice(0, 1500)}`
-          : `Deep architectural and engineering leadership perspective on ${topicTitle}.`,
-        tagList: latestPublished?.tagList || ['architecture', 'typescript', 'react', 'webdev'],
+        bodyMarkdown: matchedBlog
+          ? `LinkedIn Weekly Topic Focus: ${topicTitle}\n\nComplementary Blog Context (${matchedBlog.title}):\n${(matchedBlog.bodyMarkdown || matchedBlog.description).slice(0, 1500)}`
+          : `Standalone LinkedIn post on: ${topicTitle}.`,
+        tagList: matchedBlog?.tagList || ['engineering', 'architecture', 'software'],
         publishedAt: new Date().toISOString(),
         readingTimeMinutes: 5,
         isDraft: false,
         publishedTo: ['portfolio'],
-        url: latestPublished?.devtoUrl || latestPublished?.url,
+        url: matchedBlog ? matchedBlog.devtoUrl || matchedBlog.url : '',
       };
     }
 
@@ -2229,9 +2342,11 @@ export async function runAutomatedLinkedInPipeline(options: {
       level: 'info',
       pipeline: 'linkedin',
       step: 'STEP_1_LINKEDIN_TOPIC_SELECTED',
-      message: `Selected LinkedIn topic: "${targetArticle.title}" (attachedImage=${attachedTopicImage ? 'YES (Cloudinary)' : 'NONE — text-only post'}, ${remainingLinkedinQueue.length} remaining in week's LinkedIn queue)`,
+      message: `Selected LinkedIn topic: "${targetArticle.title}" (matchedBlog=${hasMatchingBlog ? targetArticle.url || targetArticle.slug : 'NONE — standalone niche post'}, attachedImage=${attachedTopicImage ? 'YES (Cloudinary)' : 'NONE — text-only post'}, ${remainingLinkedinQueue.length} remaining in week's LinkedIn queue)`,
       meta: {
         topic: targetArticle.title,
+        hasMatchingBlog,
+        matchedBlogUrl: hasMatchingBlog ? targetArticle.url : null,
         attachedImageUrl: attachedTopicImage || null,
         remainingLinkedinQueueCount: remainingLinkedinQueue.length,
         remainingLinkedinQueue,
@@ -2240,6 +2355,7 @@ export async function runAutomatedLinkedInPipeline(options: {
 
     const socialPost = await generateSocialPostsForArticle(targetArticle, config, {
       linkedinImageUrl: attachedTopicImage,
+      hasMatchingBlog,
     });
     const nowIso = new Date().toISOString();
 

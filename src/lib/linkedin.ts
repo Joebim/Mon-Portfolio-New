@@ -14,6 +14,27 @@ export interface LinkedInAuthSession {
 
 let memoryLinkedInAuth: LinkedInAuthSession | null = null;
 
+/** Returns a live LinkedIn REST API version (previous month YYYYMM, always within LinkedIn's 12-month support window). */
+function getActiveLinkedInApiVersion(): string {
+  const now = new Date();
+  const prevMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+  const year = prevMonth.getUTCFullYear();
+  const month = String(prevMonth.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}${month}`;
+}
+
+/** Ensures Cloudinary URLs resolve as JPEG/PNG instead of WebP/AVIF so LinkedIn's media uploader accepts them. */
+function toLinkedInCompatibleImageUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.includes('res.cloudinary.com') && trimmed.includes('/upload/')) {
+    if (!/\/upload\/[^/]*f_(jpg|jpeg|png)/.test(trimmed)) {
+      return trimmed.replace('/upload/', '/upload/f_jpg,q_auto:good/');
+    }
+  }
+  return trimmed;
+}
+
 export function getLinkedInOAuthConfig(requestOrigin?: string) {
   const clientId = (process.env.LINKEDIN_CLIENT_ID || '').trim();
   const clientSecret = (process.env.LINKEDIN_CLIENT_SECRET || '').trim();
@@ -301,23 +322,27 @@ export async function publishPostToLinkedInProfile(input: {
 
   // If a manual Cloudinary image was attached to this LinkedIn post/topic, fetch its binary buffer once
   let attachedImageBuffer: Buffer | null = null;
-  let attachedImageMime = 'image/png';
+  let attachedImageMime = 'image/jpeg';
   if (input.imageUrl && input.imageUrl.trim()) {
+    const resolvedImageUrl = toLinkedInCompatibleImageUrl(input.imageUrl);
     try {
-      const imgFetch = await fetch(input.imageUrl.trim(), {
+      const imgFetch = await fetch(resolvedImageUrl, {
         signal: AbortSignal.timeout(25000),
       });
       if (imgFetch.ok) {
         const arrBuf = await imgFetch.arrayBuffer();
         attachedImageBuffer = Buffer.from(arrBuf);
-        attachedImageMime = imgFetch.headers.get('content-type') || 'image/png';
+        const rawMime = (imgFetch.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
+        attachedImageMime = rawMime === 'image/png' || rawMime === 'image/gif' ? rawMime : 'image/jpeg';
       } else {
-        console.warn(`[linkedin.ts] Failed to fetch attached Cloudinary image (${imgFetch.status}): ${input.imageUrl}`);
+        console.warn(`[linkedin.ts] Failed to fetch attached Cloudinary image (${imgFetch.status}): ${resolvedImageUrl}`);
       }
     } catch (err) {
       console.warn('[linkedin.ts] Error fetching attached Cloudinary image:', err);
     }
   }
+
+  const linkedInVersion = getActiveLinkedInApiVersion();
 
   // 1. Attempt LinkedIn Official Posts API (`POST https://api.linkedin.com/rest/posts`)
   try {
@@ -333,7 +358,7 @@ export async function publishPostToLinkedInProfile(input: {
               Authorization: `Bearer ${session.accessToken}`,
               'Content-Type': 'application/json',
               'X-Restli-Protocol-Version': '2.0.0',
-              'LinkedIn-Version': '202411',
+              'LinkedIn-Version': linkedInVersion,
             },
             body: JSON.stringify({
               initializeUploadRequest: {
@@ -358,8 +383,13 @@ export async function publishPostToLinkedInProfile(input: {
             });
             if (putRes.ok || putRes.status === 201) {
               restImageUrn = imageUrn;
+            } else {
+              console.warn(`[linkedin.ts] /rest/images PUT failed (${putRes.status})`);
             }
           }
+        } else {
+          const errTxt = await initRes.text().catch(() => '');
+          console.warn(`[linkedin.ts] /rest/images initializeUpload failed (${initRes.status}): ${errTxt.slice(0, 300)}`);
         }
       } catch (err) {
         console.warn('[linkedin.ts] /rest/images upload warning (will try /v2/assets fallback if needed):', err);
@@ -396,7 +426,7 @@ export async function publishPostToLinkedInProfile(input: {
           Authorization: `Bearer ${session.accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
-          'LinkedIn-Version': '202411',
+          'LinkedIn-Version': linkedInVersion,
         },
         body: JSON.stringify(restPayload),
       });
@@ -413,6 +443,9 @@ export async function publishPostToLinkedInProfile(input: {
             ? `https://www.linkedin.com/feed/update/${postUrn}`
             : 'https://www.linkedin.com/feed/',
         };
+      } else {
+        const restErr = await restRes.text().catch(() => '');
+        console.warn(`[linkedin.ts] /rest/posts failed (${restRes.status}): ${restErr.slice(0, 300)}`);
       }
     }
   } catch (err) {
