@@ -19,6 +19,8 @@ import {
   getAutomationLogs,
   clearAutomationLogs,
   logAutomationStep,
+  getZonedDateParts,
+  isPostTypeScheduleDue,
 } from '../../../../lib/automation';
 import { getBlogArticleBySlug } from '../../../../lib/controllers/blogController';
 import { getEmailProviderStatus } from '../../../../lib/email';
@@ -42,11 +44,32 @@ export async function GET(request: Request) {
       getAutomationLogs(),
     ]);
 
+    const now = new Date();
+    const configuredTimezone = config.timezone || 'Africa/Lagos';
+    const serverTimeDebug = {
+      serverIsoUtc: now.toISOString(),
+      serverLocalString: now.toString(),
+      serverIntlTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      serverTimezoneOffsetMinutes: now.getTimezoneOffset(),
+      configuredTimezone,
+      evaluatedWatClock: getZonedDateParts(now, configuredTimezone),
+      blogScheduleCheck: isPostTypeScheduleDue(config.blogSchedule, 'Blog Schedule', now, configuredTimezone),
+      linkedinScheduleCheck: isPostTypeScheduleDue(
+        config.linkedinSchedule,
+        'LinkedIn Schedule',
+        now,
+        configuredTimezone
+      ),
+      linkedinScheduleConfig: config.linkedinSchedule,
+      recentCronLogs: logs.filter((l) => l.pipeline === 'cron').slice(0, 5),
+    };
+
     return NextResponse.json({
       config,
       socialPosts,
       comments,
       logs,
+      serverTimeDebug,
       providers: {
         geminiConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY),
         cloudflareWorkersAiConfigured: Boolean(

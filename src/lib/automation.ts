@@ -2290,7 +2290,7 @@ export async function runAutomatedLinkedInPipeline(options: {
 // Check if an individual PostTypeSchedule (Blog or LinkedIn) is currently due
 // ---------------------------------------------------------------------------
 
-function getZonedDateParts(date: Date, timeZone = 'Africa/Lagos') {
+export function getZonedDateParts(date: Date, timeZone = 'Africa/Lagos') {
   const safeFormat = (tz: string) =>
     new Intl.DateTimeFormat('en-US', {
       timeZone: tz,
