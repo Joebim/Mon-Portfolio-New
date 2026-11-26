@@ -40,7 +40,7 @@ export interface AutomationConfig {
   /** Individual schedule for LinkedIn Official Post generation & review alert */
   linkedinSchedule: PostTypeSchedule;
   textModel: 'auto' | 'gemini-2.0-flash' | 'cloudflare-workers-ai' | 'pollinations-free';
-  imageModel: 'pollinations-flux' | 'pollinations-turbo';
+  imageModel: 'cloudflare-flux' | 'cloudflare-sdxl' | 'pollinations-flux' | 'pollinations-turbo';
   autoPublishBlog: boolean;
   autoPublishDevTo: boolean;
   autoGenerateCoverImage: boolean;
@@ -140,7 +140,7 @@ export const DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
     timeOfDay: '11:00',
   },
   textModel: 'auto',
-  imageModel: 'pollinations-flux',
+  imageModel: 'cloudflare-flux',
   autoPublishBlog: true,
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
@@ -736,7 +736,7 @@ export async function generateFreeCoverImage(
     articleContent?: string;
     platform?: string;
     imageMasterPrompt?: string;
-    model?: 'pollinations-flux' | 'pollinations-turbo';
+    model?: 'cloudflare-flux' | 'cloudflare-sdxl' | 'pollinations-flux' | 'pollinations-turbo';
     uploadToCloud?: boolean;
   } = {}
 ): Promise<{
@@ -763,40 +763,157 @@ export async function generateFreeCoverImage(
     .replace(/\{\{[A-Z0-9_]+\}\}/g, '');
 
   const basePrompt = hasAnyPlaceholder ? replaced : `${replaced} Subject: ${resolvedTopic}`;
-
-  // Concatenated addition in CAPITAL LETTERS to tailor the cover image to the exact blog title context
   const titleContextAddition = ` TAILOR THIS COVER IMAGE SPECIFICALLY TO THE CONTEXT AND CORE ENGINEERING SUBJECT OF THE BLOG TITLE: "${upperBlogTitle}". KEEP THE VISUAL METAPHOR AND TECHNICAL ARCHITECTURE DIRECTLY FOCUSED ON "${upperBlogTitle}".`;
 
   const finalPrompt = `${basePrompt.trim()}${titleContextAddition}`;
-
-  const modelParam = options.model === 'pollinations-turbo' ? 'turbo' : 'flux';
-  const seed = Math.floor(Math.random() * 1000000);
-  const encodedPrompt = encodeURIComponent(finalPrompt.slice(0, 900));
-
-  // Pollinations.ai 100% free image generation endpoint (1200x630 widescreen cover)
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1200&height=630&model=${modelParam}&nologo=true&seed=${seed}`;
+  const compactPrompt = `${titleContextAddition.trim()}\n\n${basePrompt.trim().slice(0, 1100)}`.slice(0, 1500);
 
   const shouldUpload = options.uploadToCloud !== false && isCloudinaryConfigured();
   const imgStart = Date.now();
+
+  const cfAccountId = (process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  const cfApiToken = (
+    process.env.CLOUDFLARE_API_TOKEN ||
+    process.env.CLOUDFLARE_WORKERS_AI_API_KEY ||
+    process.env.CLOUDFLARE_API_KEY ||
+    ''
+  ).trim();
+  const cfConfigured = Boolean(cfAccountId && cfApiToken);
 
   await logAutomationStep({
     level: 'info',
     pipeline: 'image',
     step: 'IMAGE_GEN_START',
-    message: `Generating AI cover image tailored to blog title "${resolvedBlogTitle}" via Pollinations (${modelParam}, uploadToCloudinary=${shouldUpload})`,
+    message: `Generating AI cover image for "${resolvedBlogTitle}" (preferred=${options.model || 'cloudflare-flux'}, cloudflareConfigured=${cfConfigured}, uploadToCloudinary=${shouldUpload})`,
     meta: {
       blogTitle: resolvedBlogTitle,
       topicOrPrompt,
-      finalPrompt,
-      model: modelParam,
+      preferredModel: options.model || 'cloudflare-flux',
+      cloudflareConfigured: cfConfigured,
       shouldUpload,
     },
   });
 
+  // 1. Primary Free Engine: Cloudflare Workers AI (Flux.1 Schnell → SDXL Lightning → SDXL Base)
+  if (cfConfigured && options.model !== 'pollinations-turbo') {
+    const cfImageModels =
+      options.model === 'cloudflare-sdxl'
+        ? [
+            '@cf/bytedance/stable-diffusion-xl-lightning',
+            '@cf/black-forest-labs/flux-1-schnell',
+            '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+          ]
+        : [
+            '@cf/black-forest-labs/flux-1-schnell',
+            '@cf/bytedance/stable-diffusion-xl-lightning',
+            '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+          ];
+
+    for (const cfImgModel of cfImageModels) {
+      try {
+        const bodyPayload =
+          cfImgModel.includes('flux-1-schnell')
+            ? { prompt: compactPrompt, steps: 4 }
+            : { prompt: compactPrompt, width: 1200, height: 630 };
+
+        const cfRes = await fetch(
+          `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/${cfImgModel}`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${cfApiToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(bodyPayload),
+            signal: AbortSignal.timeout(45000),
+          }
+        );
+
+        if (!cfRes.ok) {
+          const errTxt = await cfRes.text().catch(() => '');
+          await logAutomationStep({
+            level: 'warn',
+            pipeline: 'image',
+            step: 'IMAGE_CLOUDFLARE_MODEL_WARN',
+            message: `Cloudflare image model ${cfImgModel} returned HTTP ${cfRes.status} — trying next model`,
+            meta: { model: cfImgModel, status: cfRes.status, error: errTxt.slice(0, 250) },
+          });
+          continue;
+        }
+
+        const contentType = (cfRes.headers.get('content-type') || '').toLowerCase();
+        let buffer: Buffer | null = null;
+        if (contentType.includes('application/json')) {
+          const json = await cfRes.json();
+          const b64 = json?.result?.image;
+          if (typeof b64 === 'string' && b64.length > 100) {
+            buffer = Buffer.from(b64, 'base64');
+          }
+        } else {
+          const arrBuf = await cfRes.arrayBuffer();
+          if (arrBuf.byteLength > 1000) {
+            buffer = Buffer.from(arrBuf);
+          }
+        }
+
+        if (!buffer || buffer.length < 1000) {
+          continue;
+        }
+
+        if (shouldUpload) {
+          const uploaded = await uploadToCloudinary(buffer, {
+            folder: 'portfolio/blogs',
+            tags: ['portfolio', 'ai-generated', 'blog-cover', 'cloudflare-ai'],
+            context: { alt: resolvedBlogTitle, caption: `AI Cover (${cfImgModel})` },
+          });
+          await logAutomationStep({
+            level: 'success',
+            pipeline: 'image',
+            step: 'IMAGE_CLOUDINARY_UPLOAD_OK',
+            message: `Generated cover via Cloudflare (${cfImgModel}, ${Math.round(buffer.length / 1024)} KB) & uploaded to Cloudinary`,
+            durationMs: Date.now() - imgStart,
+            meta: {
+              model: cfImgModel,
+              bytes: buffer.length,
+              secureUrl: uploaded.secureUrl,
+              devtoUrl: uploaded.devtoUrl,
+            },
+          });
+          return {
+            imageUrl: uploaded.secureUrl,
+            devtoCompatibleUrl: uploaded.devtoUrl,
+            uploadedToCloudinary: true,
+            promptUsed: finalPrompt,
+          };
+        }
+
+        const dataUri = `data:image/png;base64,${buffer.toString('base64')}`;
+        return {
+          imageUrl: dataUri,
+          devtoCompatibleUrl: dataUri,
+          uploadedToCloudinary: false,
+          promptUsed: finalPrompt,
+        };
+      } catch (err) {
+        await logAutomationStep({
+          level: 'warn',
+          pipeline: 'image',
+          step: 'IMAGE_CLOUDFLARE_WARN',
+          message: `Cloudflare image model ${cfImgModel} failed: ${err instanceof Error ? err.message : String(err)}`,
+          durationMs: Date.now() - imgStart,
+        });
+      }
+    }
+  }
+
+  // 2. Fallback Engine: Pollinations.ai
+  const modelParam = options.model === 'pollinations-turbo' ? 'turbo' : 'flux';
+  const seed = Math.floor(Math.random() * 1000000);
+  const encodedPrompt = encodeURIComponent(compactPrompt.slice(0, 900));
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1200&height=630&model=${modelParam}&nologo=true&seed=${seed}`;
+
   if (shouldUpload) {
     try {
-      // Fetch image bytes and upload to Cloudinary so we own the asset in our Media Library
-      // and get a guaranteed .png DEV.to-compatible cover URL
       const imgRes = await fetch(pollinationsUrl, {
         signal: AbortSignal.timeout(35000),
       });
@@ -812,7 +929,7 @@ export async function generateFreeCoverImage(
           level: 'success',
           pipeline: 'image',
           step: 'IMAGE_CLOUDINARY_UPLOAD_OK',
-          message: `Uploaded AI cover (${Math.round(buffer.length / 1024)} KB) to Cloudinary & transformed for DEV.to`,
+          message: `Uploaded Pollinations AI cover (${Math.round(buffer.length / 1024)} KB) to Cloudinary`,
           durationMs: Date.now() - imgStart,
           meta: {
             bytes: buffer.length,

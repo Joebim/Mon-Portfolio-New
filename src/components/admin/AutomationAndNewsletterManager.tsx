@@ -39,7 +39,7 @@ const CLIENT_DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
     timeOfDay: "11:00",
   },
   textModel: "auto",
-  imageModel: "pollinations-flux",
+  imageModel: "cloudflare-flux",
   autoPublishBlog: true,
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
@@ -1074,8 +1074,7 @@ export function AutomationAndNewsletterManager({
                 → POLLINATIONS FREE
               </span>
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-sky-500/40 text-zinc-200 bg-sky-500/10">
-                ● FREE IMAGE AI: POLLINATIONS FLUX 1200×630 → CLOUDINARY →
-                DEV.TO
+                ● FREE IMAGE AI: CLOUDFLARE FLUX.1 / SDXL → CLOUDINARY → DEV.TO
               </span>
               <span className="font-mono text-[8px] px-2.5 py-0.5 rounded-full border border-purple-500/40 text-purple-300 bg-purple-500/10">
                 ● EMAIL:{" "}
@@ -1570,18 +1569,24 @@ export function AutomationAndNewsletterManager({
                   <select
                     value={config.imageModel}
                     onChange={(e) =>
-                      setConfig({
+                      updateConfigDraft({
                         ...config,
                         imageModel: e.target.value as any,
                       })
                     }
                     className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs text-paper font-mono focus:border-white/25 outline-none"
                   >
+                    <option value="cloudflare-flux">
+                      Cloudflare Workers AI — Flux.1 Schnell (Free → Cloudinary)
+                    </option>
+                    <option value="cloudflare-sdxl">
+                      Cloudflare Workers AI — SDXL Lightning (Fast Free → Cloudinary)
+                    </option>
                     <option value="pollinations-flux">
-                      Pollinations Flux (Free 1200×630 → Cloudinary)
+                      Pollinations Flux (Fallback Free)
                     </option>
                     <option value="pollinations-turbo">
-                      Pollinations SDXL Turbo (Fast Free)
+                      Pollinations SDXL Turbo (Fallback Free)
                     </option>
                   </select>
                 </div>
