@@ -44,6 +44,8 @@ export interface AutomationConfig {
   autoPublishBlog: boolean;
   autoPublishDevTo: boolean;
   autoGenerateCoverImage: boolean;
+  /** Optional switch: auto-generate & attach an AI image to LinkedIn posts when no manual image is attached */
+  autoGenerateLinkedinImage?: boolean;
   autoSendNewsletter: boolean;
   autoPostLinkedin: boolean;
   requireSocialReviewAlert: boolean;
@@ -144,6 +146,7 @@ export const DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
   autoPublishBlog: true,
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
+  autoGenerateLinkedinImage: false,
   autoSendNewsletter: true,
   autoPostLinkedin: false,
   requireSocialReviewAlert: true,
@@ -1304,13 +1307,48 @@ TAGS: ${(article.tagList || []).join(', ')}`;
   const cleanLinkedinText = sanitizeLinkedInPostText(linkedinRes.text);
   const safetyCheck = scanForReputationRisks([cleanLinkedinText]);
 
+  // Manual image attached to the topic always overrides auto-generation.
+  // If no manual image is attached AND the admin switch `autoGenerateLinkedinImage` is ON,
+  // auto-generate and attach a free AI image to the LinkedIn post.
+  let finalLinkedinImageUrl = attachedImageUrl;
+  if (!finalLinkedinImageUrl && activeConfig.autoGenerateLinkedinImage) {
+    try {
+      const imgRes = await generateFreeCoverImage(article.title, {
+        blogTitle: article.title,
+        topic: article.title,
+        description: article.description,
+        tags: article.tagList,
+        articleContent: cleanLinkedinText,
+        platform: 'LinkedIn',
+        imageMasterPrompt: activeConfig.masterPrompts.imageMasterPrompt,
+        model: activeConfig.imageModel,
+        uploadToCloud: true,
+      });
+      finalLinkedinImageUrl = imgRes.devtoCompatibleUrl || imgRes.imageUrl;
+      await logAutomationStep({
+        level: 'success',
+        pipeline: 'linkedin',
+        step: 'LINKEDIN_IMAGE_AUTO_GENERATED',
+        message: `Auto-generated LinkedIn image for "${article.title}" (uploadedToCloudinary=${imgRes.uploadedToCloudinary})`,
+        meta: { imageUrl: finalLinkedinImageUrl },
+      });
+    } catch (err) {
+      await logAutomationStep({
+        level: 'warn',
+        pipeline: 'linkedin',
+        step: 'LINKEDIN_IMAGE_AUTO_GEN_WARN',
+        message: `Auto-generating LinkedIn image failed (continuing text-only): ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
   const record: SocialPostRecord = {
     id: `social-${article.slug}-${Date.now()}`,
     articleSlug: article.slug,
     articleTitle: article.title,
     articleUrl,
     linkedinContent: cleanLinkedinText,
-    ...(attachedImageUrl ? { linkedinImageUrl: attachedImageUrl } : {}),
+    ...(finalLinkedinImageUrl ? { linkedinImageUrl: finalLinkedinImageUrl } : {}),
     linkedinStatus: 'pending_review',
     safetyCheck,
     reviewEmailSent: false,

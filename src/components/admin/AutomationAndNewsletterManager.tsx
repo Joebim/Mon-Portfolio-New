@@ -43,6 +43,7 @@ const CLIENT_DEFAULT_AUTOMATION_CONFIG: AutomationConfig = {
   autoPublishBlog: true,
   autoPublishDevTo: true,
   autoGenerateCoverImage: true,
+  autoGenerateLinkedinImage: false,
   autoSendNewsletter: true,
   autoPostLinkedin: false,
   requireSocialReviewAlert: true,
@@ -1530,6 +1531,59 @@ export function AutomationAndNewsletterManager({
                         </span>
                       </div>
                     )}
+
+                    {/* Optional AI Image Generation Switch for LinkedIn Posts */}
+                    <div className="pt-3 mt-1 border-t border-white/10 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="block font-mono text-[9px] text-zinc-200 font-bold uppercase tracking-wider">
+                          Auto-Generate Image for LinkedIn Posts
+                        </span>
+                        <span className="block font-mono text-[8px] text-[#777] mt-0.5">
+                          Generates &amp; attaches a free AI image when no manual image is attached (manual attachment overrides this).
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean(config.autoGenerateLinkedinImage)}
+                        onClick={() => {
+                          const nextVal = !config.autoGenerateLinkedinImage;
+                          updateConfigDraft({
+                            ...config,
+                            autoGenerateLinkedinImage: nextVal,
+                          });
+                          void handleSaveConfig({
+                            autoGenerateLinkedinImage: nextVal,
+                          });
+                        }}
+                        className="inline-flex items-center gap-2 shrink-0 cursor-pointer"
+                      >
+                        <span
+                          className={`font-mono text-[9px] font-bold tracking-wider ${
+                            config.autoGenerateLinkedinImage
+                              ? "text-emerald-400"
+                              : "text-zinc-400"
+                          }`}
+                        >
+                          {config.autoGenerateLinkedinImage ? "ON" : "OFF"}
+                        </span>
+                        <span
+                          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors ${
+                            config.autoGenerateLinkedinImage
+                              ? "bg-emerald-500/80 border-emerald-400"
+                              : "bg-white/10 border-white/20"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                              config.autoGenerateLinkedinImage
+                                ? "translate-x-4"
+                                : "translate-x-0.5"
+                            }`}
+                          />
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 );
               })()}
